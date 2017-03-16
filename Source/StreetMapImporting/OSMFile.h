@@ -180,6 +180,8 @@ public:
 	// Average Latitude (roughly the center of the map)
 	double AverageLatitude = 0.0;
 	double AverageLongitude = 0.0;
+
+	FSpatialReferenceSystem SpatialReferenceSystem;
 		
 	// All ways we've parsed
 	TArray<FOSMWayInfo*> Ways;
