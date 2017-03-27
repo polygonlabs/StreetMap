@@ -43,6 +43,12 @@ public:
 	/** Updates available landscape layers based on selected material */
 	void RefreshLandscapeLayersList();
 
+	/** Handles create fancy buildings button clicking */
+	FReply OnBuildFancyBuildingsClicked();
+
+	/** Handles clear fancy buildings button clicking */
+	FReply OnClearFancyBuildingsClicked();
+
 protected:
 	/** Holds Selected Street Map Component */
 	 class UStreetMapComponent* SelectedStreetMapComponent;

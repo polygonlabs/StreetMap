@@ -1,38 +1,25 @@
-// Copyright 2017 Mike Fricker. All Rights Reserved.
-#pragma once
+#pragma once	
 
-#include "StreetMap.h"
-#include "FancyBuildingActor.h"
 #include "Components/MeshComponent.h"
 #include "Interfaces/Interface_CollisionDataProvider.h"
 #include "StreetMapSceneProxy.h"
-#include "StreetMapComponent.generated.h"
-
+#include "FancyBuildingComponent.generated.h"
 
 
 class UBodySetup;
 
 /**
- * Component that represents a section of street map roads and buildings
- */
-UCLASS( meta=(BlueprintSpawnableComponent) , hidecategories = (Physics))
-class STREETMAPRUNTIME_API UStreetMapComponent : public UMeshComponent, public IInterface_CollisionDataProvider
+* Component that represents a fancy building
+*/
+UCLASS(meta = (BlueprintSpawnableComponent), hidecategories = (Physics))
+class STREETMAPRUNTIME_API UFancyBuildingComponent : public UMeshComponent, public IInterface_CollisionDataProvider
 {
 	GENERATED_BODY()
 
 public:
 
-	/** UStreetMapComponent constructor */
-	UStreetMapComponent(const class FObjectInitializer& ObjectInitializer);
-
-	/** @return Gets the street map object associated with this component */
-	UStreetMap* GetStreetMap()
-	{
-		return StreetMap;
-	}
-
-	/** Returns StreetMap asset object name  */
-	FString GetStreetMapAssetName() const;
+	/** UFancyBuildingComponent constructor */
+	UFancyBuildingComponent(const class FObjectInitializer& ObjectInitializer);
 
 	/** Returns true if we have valid cached mesh data from our assigned street map asset */
 	bool HasValidMesh() const
@@ -53,18 +40,12 @@ public:
 	}
 
 	/**
-	* Returns StreetMap Default Material if a valid one is found in plugin's content folder.
+	* Returns StreetMap Facny Building Default Material if a valid one is found in plugin's content folder.
 	* Otherwise , it returns the default surface 3d material.
 	*/
 	UMaterialInterface* GetDefaultMaterial() const
 	{
-		return StreetMapDefaultMaterial != nullptr ? StreetMapDefaultMaterial : UMaterial::GetDefaultMaterial(MD_Surface);
-	}
-
-	/** Returns true, if the input PropertyName correspond to a collision property. */
-	bool IsCollisionProperty(const FName& PropertyName) const 
-	{
-		return PropertyName == TEXT("bGenerateCollision") || PropertyName == TEXT("bAllowDoubleSidedGeometry");
+		return FancyBuildingDefaultMaterial != nullptr ? FancyBuildingDefaultMaterial : UMaterial::GetDefaultMaterial(MD_Surface);
 	}
 
 	/**
@@ -78,16 +59,16 @@ public:
 	}
 
 	/**
-	 * Assigns a street map asset to this component.  Render state will be updated immediately.
-	 *
-	 * @param NewStreetMap The street map to use
-	 *
-	 * @param bRebuildMesh : Rebuilds map mesh based on the new map asset
-	 *
-	 * @return Sets the street map object
-	 */
-	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void SetStreetMap(UStreetMap* NewStreetMap, bool bClearPreviousMeshIfAny = false, bool bRebuildMesh = false);
+	* Assigns a street map asset to this component.  Render state will be updated immediately.
+	*
+	* @param NewStreetMap The street map to use
+	*
+	* @param bRebuildMesh : Rebuilds map mesh based on the new map asset
+	*
+	* @return Sets the street map object
+	*/
+	UFUNCTION(BlueprintCallable, Category = "FancyBuilding")
+		void SetPolygon(const TArray<FVector2D>& Polygon);
 
 
 
@@ -122,9 +103,6 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
-	/** Wipes out our cached mesh data. Designed to be called on demand.*/
-	void InvalidateMesh();
-
 	/** Rebuilds the graphics and physics mesh representation if we don't have one right now.  Designed to be called on demand. */
 	void BuildMesh();
 
@@ -153,27 +131,9 @@ protected:
 
 protected:
 
-	/** The street map we're representing. */
-	UPROPERTY(EditAnywhere, Category = "StreetMap")
-		UStreetMap* StreetMap;
-
-	UPROPERTY(EditAnywhere, Category = "StreetMap")
-		FStreetMapMeshBuildSettings MeshBuildSettings;
-
-	UPROPERTY(EditAnywhere, Category = "StreetMap")
-		FStreetMapCollisionSettings CollisionSettings;
-
-	UPROPERTY(EditAnywhere, Category = "Landscape")
-		FStreetMapLandscapeBuildSettings LandscapeSettings;
-
-	UPROPERTY(EditAnywhere, Category = "Fancy Buildings")
-		FStreetMapFancyBuildingBuildSettings FancyBuildingSettings;
-
 	//** Physics data for mesh collision. */
 	UPROPERTY(Transient)
 		UBodySetup* StreetMapBodySetup;
-
-	friend class FStreetMapComponentDetails;
 
 protected:
 	//
@@ -194,8 +154,5 @@ protected:
 
 	/** Cached StreetMap DefaultMaterial */
 	UPROPERTY()
-		UMaterialInterface* StreetMapDefaultMaterial;
-
-	UPROPERTY()
-		TArray<AFancyBuildingActor*> FancyBuildings;
+		UMaterialInterface* FancyBuildingDefaultMaterial;
 };

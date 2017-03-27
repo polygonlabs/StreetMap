@@ -150,6 +150,23 @@ public:
 	}
 };
 
+/** Fancy Buildings generation settings */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapFancyBuildingBuildSettings
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+	UPROPERTY(Category = "Fancy Buildings", EditAnywhere, meta = (UIMin = 1))
+		bool SnapToLandscape;
+
+	FStreetMapFancyBuildingBuildSettings()
+		: SnapToLandscape(true)
+	{
+	}
+};
+
+
 /** Types of roads */
 UENUM( BlueprintType )
 enum EStreetMapRoadType

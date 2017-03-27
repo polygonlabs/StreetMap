@@ -657,3 +657,14 @@ FString UStreetMapComponent::GetStreetMapAssetName() const
 	return StreetMap != nullptr ? StreetMap->GetName() : FString(TEXT("NONE"));
 }
 
+
+
+void UStreetMapComponent::BuildFancyBuildings()
+{
+	
+}
+
+void UStreetMapComponent::RemoveFancyBuildings()
+{
+
+}

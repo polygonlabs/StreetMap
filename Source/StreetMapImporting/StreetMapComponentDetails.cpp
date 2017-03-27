@@ -216,6 +216,46 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 
 		RefreshLandscapeLayersList();
 	}
+
+	// Fancy Building Settings
+	{
+		IDetailCategoryBuilder& FancyBuildingsCategory = DetailBuilder.EditCategory("Fancy Buildings", FText::GetEmpty(), ECategoryPriority::Important);
+		FancyBuildingsCategory.InitiallyCollapsed(false);
+
+		const bool bCanRebuildFancyBuildings = HasValidMapObject();
+		const bool bCanClearFancyBuildings = false; // HasValidMeshData();
+
+		FancyBuildingsCategory.AddCustomRow(FText::GetEmpty(), false)
+			[
+				SAssignNew(TempHorizontalBox, SHorizontalBox)
+				+ SHorizontalBox::Slot()
+			[
+				SNew(SButton)
+				.ToolTipText(LOCTEXT("GenerateMesh_Tooltip", "Generate fancy buildings from raw street map data."))
+			.OnClicked(this, &FStreetMapComponentDetails::OnBuildFancyBuildingsClicked)
+			.IsEnabled(bCanRebuildFancyBuildings)
+			.HAlign(HAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(bCanClearFancyBuildings ? LOCTEXT("RebuildBuildings", "Rebuild Fancy Buildings") : LOCTEXT("BuildBuildings", "Build Fancy Buildings"))
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+			]
+			]
+			];
+
+		TempHorizontalBox->AddSlot()
+			[
+				SNew(SButton)
+				.ToolTipText(LOCTEXT("ClearFancyBuildings_Tooltip", "Remove all fancy building actors from the map."))
+			.OnClicked(this, &FStreetMapComponentDetails::OnClearFancyBuildingsClicked)
+			.IsEnabled(bCanClearFancyBuildings)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("ClearFancyBuildings", "Clear Fancy Buildings"))
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+			]
+			];
+	}
 }
 
 bool FStreetMapComponentDetails::HasValidMeshData() const
@@ -470,6 +510,32 @@ void FStreetMapComponentDetails::RefreshLandscapeLayersList()
 
 		SelectedStreetMapComponent->LandscapeSettings.Layers.Add(MoveTemp(NewImportLayer));
 	}
+}
+
+FReply FStreetMapComponentDetails::OnBuildFancyBuildingsClicked()
+{
+	if (SelectedStreetMapComponent != nullptr)
+	{
+		SelectedStreetMapComponent->BuildFancyBuildings();
+
+		// regenerates details panel layouts, to take in consideration new changes.
+		RefreshDetails();
+	}
+
+	return FReply::Handled();
+}
+
+FReply FStreetMapComponentDetails::OnClearFancyBuildingsClicked()
+{
+	if (SelectedStreetMapComponent != nullptr)
+	{
+		SelectedStreetMapComponent->RemoveFancyBuildings();
+
+		// regenerates details panel layouts, to take in consideration new changes.
+		RefreshDetails();
+	}
+
+	return FReply::Handled();
 }
 
 
