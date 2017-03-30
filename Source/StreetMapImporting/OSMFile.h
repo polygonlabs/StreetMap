@@ -29,6 +29,9 @@ public:
 		/** Used for identifying any kind of road, street or path. */
 		Highway,
 
+		/** Including light rail, mainline railways, metros, monorails and Trams. */
+		Railway,
+
 		/** Used to mark areas as a building. */
 		Building,
 
