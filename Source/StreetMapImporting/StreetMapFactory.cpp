@@ -247,6 +247,92 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		return true;
 	};
 
+	// Adds a railway to the street map using the OpenStreetMap data, flattening the railway's coordinates into our map's space
+	auto AddRailwayForWay = [OSMToCentimetersScaleFactor](
+		const FOSMFile& OSMFile,
+		UStreetMap& StreetMapRef,
+		const FOSMFile::FOSMWayInfo& OSMWay) -> bool
+	{
+		EStreetMapRailwayType RailwayType = EStreetMapRailwayType::OtherRailway;
+		if (OSMWay.Category == TEXT("rail"))
+			RailwayType = EStreetMapRailwayType::Rail;
+		else if (OSMWay.Category == TEXT("light_rail"))
+			RailwayType = EStreetMapRailwayType::LightRail;
+		else if (OSMWay.Category == TEXT("subway"))
+			RailwayType = EStreetMapRailwayType::Subway;
+		else if (OSMWay.Category == TEXT("tram"))
+			RailwayType = EStreetMapRailwayType::Tram;
+
+		if (RailwayType == EStreetMapRailwayType::OtherRailway)
+		{
+			// There are other types that we don't recognize yet. See http://wiki.openstreetmap.org/wiki/Key:railway
+			return false;
+		}
+
+		// Require at least two points!
+		if (OSMWay.Nodes.Num() < 2)
+		{
+			// NOTE: Skipped adding railway for way because it has less than 2 points
+			// @todo: Log this for the user as an import warning
+			return false;
+		}
+
+		// Create a railway for this way
+		FStreetMapRailway& NewRailway = *new(StreetMapRef.Railways)FStreetMapRailway();
+
+		FVector2D BoundsMin(TNumericLimits<float>::Max(), TNumericLimits<float>::Max());
+		FVector2D BoundsMax(TNumericLimits<float>::Lowest(), TNumericLimits<float>::Lowest());
+
+		NewRailway.Points.AddUninitialized(OSMWay.Nodes.Num());
+		int32 CurRailwayPoint = 0;
+
+		for (const FOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes)
+		{
+			const FOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
+			const FVector2D NodePos = OSMFile.SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+
+			// Update bounding box
+			{
+				if (NodePos.X < BoundsMin.X)
+				{
+					BoundsMin.X = NodePos.X;
+				}
+				if (NodePos.Y < BoundsMin.Y)
+				{
+					BoundsMin.Y = NodePos.Y;
+				}
+				if (NodePos.X > BoundsMax.X)
+				{
+					BoundsMax.X = NodePos.X;
+				}
+				if (NodePos.Y > BoundsMax.Y)
+				{
+					BoundsMax.Y = NodePos.Y;
+				}
+			}
+
+			// Fill in the points
+			NewRailway.Points[CurRailwayPoint++] = NodePos;
+		}
+
+
+		NewRailway.Name = OSMWay.Name;
+		if (NewRailway.Name.IsEmpty())
+		{
+			NewRailway.Name = OSMWay.Ref;
+		}
+		NewRailway.Type = RailwayType;
+		NewRailway.BoundsMin = BoundsMin;
+		NewRailway.BoundsMax = BoundsMax;
+
+		StreetMapRef.BoundsMin.X = FMath::Min(StreetMapRef.BoundsMin.X, BoundsMin.X);
+		StreetMapRef.BoundsMin.Y = FMath::Min(StreetMapRef.BoundsMin.Y, BoundsMin.Y);
+		StreetMapRef.BoundsMax.X = FMath::Max(StreetMapRef.BoundsMax.X, BoundsMax.X);
+		StreetMapRef.BoundsMax.Y = FMath::Max(StreetMapRef.BoundsMax.Y, BoundsMax.Y);
+
+		return true;
+	};
+
 	// Adds a remaining recognized ways to the street map using the OpenStreetMap data
 	auto AddMiscWay = [OSMToCentimetersScaleFactor](
 		const FOSMFile& OSMFile,
@@ -380,6 +466,13 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 				OSMWayToRoadIndexMap.Add( OSMWay, RoadIndex );
 			}
 		}
+		else if (OSMWay->WayType == FOSMFile::EOSMWayType::Railway)
+		{
+			if (AddRailwayForWay(OSMFile, *StreetMap, *OSMWay))
+			{
+				// ...
+			}
+		}
 		else if (AddMiscWay(OSMFile, *StreetMap, *OSMWay))
 		{
 			// ...
@@ -446,7 +539,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 				}
 				else
 				{
-					// Node has only one road that is references, and it wasn't the beginning or end of the road, so filter it out!
+					// Node has only one road that it references, and it wasn't the beginning or end of the road, so filter it out!
 				}
 			}
 			else

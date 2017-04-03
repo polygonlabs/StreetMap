@@ -300,6 +300,58 @@ struct STREETMAPRUNTIME_API FStreetMapNode
 };
 
 
+/** Types of railways */
+UENUM(BlueprintType)
+enum EStreetMapRailwayType
+{
+	/** Full sized passenger or freight trains in the standard gauge for the country or state. */
+	Rail,
+
+	/** A higher-standard tram system, normally in its own right-of-way. */
+	LightRail,
+
+	/** A city passenger rail service running mostly grade separated. */
+	Subway,
+
+	/** One or two carriage rail vehicles, usually sharing motor road. */
+	Tram,
+
+	/** Other (monorail, abandoned, construction, disused, funicular, etc.) */
+	OtherRailway,
+};
+
+
+/** A railway */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapRailway
+{
+	GENERATED_USTRUCT_BODY()
+
+	/** Name of the railway */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+	FString Name;
+
+	/** Type of railway */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		TEnumAsByte<EStreetMapRailwayType> Type;
+
+	/** List of all of the points on this raiway */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		TArray<FVector2D> Points;
+
+	// @todo: Performance: Bounding information could be computed at load time if we want to avoid the memory cost of storing it
+
+	/** 2D bounds (min) of this railway's points */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FVector2D BoundsMin;
+
+	/** 2D bounds (max) of this railway's points */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FVector2D BoundsMax;
+};
+
+
+
 /** A building */
 USTRUCT( BlueprintType )
 struct STREETMAPRUNTIME_API FStreetMapBuilding
@@ -483,6 +535,10 @@ protected:
 	/** List of all buildings on the street map */
 	UPROPERTY( Category=StreetMap, VisibleAnywhere)
 	TArray<FStreetMapBuilding> Buildings;
+
+	/** List of railways */
+	UPROPERTY(Category = StreetMap, VisibleAnywhere)
+	TArray<FStreetMapRailway> Railways;
 
 	/** List of all miscellaneous ways on the street map */
 	UPROPERTY(Category = StreetMap, VisibleAnywhere)
