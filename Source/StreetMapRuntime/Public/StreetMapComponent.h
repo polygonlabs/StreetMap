@@ -160,6 +160,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Landscape")
 		FStreetMapLandscapeBuildSettings LandscapeSettings;
 
+	UPROPERTY(EditAnywhere, Category = "Railway")
+		FStreetMapRailwayBuildSettings RailwaySettings;
+
 	//** Physics data for mesh collision. */
 	UPROPERTY(Transient)
 		UBodySetup* StreetMapBodySetup;

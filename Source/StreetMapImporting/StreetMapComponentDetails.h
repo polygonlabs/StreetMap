@@ -43,6 +43,12 @@ public:
 	/** Updates available landscape layers based on selected material */
 	void RefreshLandscapeLayersList();
 
+	/** Handles build railway button clicking */
+	FReply OnBuildRailwayClicked();
+
+	/** Returns whether railway can be created or not */
+	bool BuildRailwayIsEnabled() const;
+
 protected:
 	/** Holds Selected Street Map Component */
 	 class UStreetMapComponent* SelectedStreetMapComponent;

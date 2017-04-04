@@ -192,7 +192,6 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 		IDetailCategoryBuilder& LandscapeCategory = DetailBuilder.EditCategory("Landscape", FText::GetEmpty(), ECategoryPriority::Important);
 		LandscapeCategory.InitiallyCollapsed(false);
 
-		const bool bCanBuildLandscape = HasValidMapObject();
 		LandscapeCategory.AddCustomRow(FText::GetEmpty(), false)
 			[
 				SAssignNew(TempHorizontalBox, SHorizontalBox)
@@ -215,6 +214,30 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 		PropertyHandle_Material->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FStreetMapComponentDetails::RefreshLandscapeLayersList));
 
 		RefreshLandscapeLayersList();
+	}
+
+	// Railway settings
+	{
+		IDetailCategoryBuilder& RailwayCategory = DetailBuilder.EditCategory("Railway", FText::GetEmpty(), ECategoryPriority::Important);
+		RailwayCategory.InitiallyCollapsed(false);
+
+		RailwayCategory.AddCustomRow(FText::GetEmpty(), false)
+			[
+				SAssignNew(TempHorizontalBox, SHorizontalBox)
+				+ SHorizontalBox::Slot()
+			[
+				SNew(SButton)
+				.ToolTipText(LOCTEXT("BuildRailway_Tooltip", "Generate railways onto the Landscape based on the OpenStreetMap data."))
+			.OnClicked(this, &FStreetMapComponentDetails::OnBuildRailwayClicked)
+			.IsEnabled(this, &FStreetMapComponentDetails::BuildRailwayIsEnabled)
+			.HAlign(HAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("BuildRailway", "Build Railway"))
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+			]
+			]
+			];
 	}
 }
 
@@ -472,5 +495,28 @@ void FStreetMapComponentDetails::RefreshLandscapeLayersList()
 	}
 }
 
+
+FReply FStreetMapComponentDetails::OnBuildRailwayClicked()
+{
+	if (SelectedStreetMapComponent != nullptr)
+	{
+		// @todo: BuildRailway(SelectedStreetMapComponent);
+
+		// regenerates details panel layouts, to take in consideration new changes.
+		RefreshDetails();
+	}
+
+	return FReply::Handled();
+}
+
+bool FStreetMapComponentDetails::BuildRailwayIsEnabled() const
+{
+	if (!SelectedStreetMapComponent || !SelectedStreetMapComponent->RailwaySettings.RailwayLineMesh)
+	{
+		return false;
+	}
+
+	return true;
+}
 
 #undef LOCTEXT_NAMESPACE
