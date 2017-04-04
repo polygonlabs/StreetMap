@@ -150,6 +150,24 @@ public:
 	}
 };
 
+/** Railway generation settings */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapRailwayBuildSettings
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+	
+	// Track segment used to build the railroad line via Landscape Spline Meshes.
+	UPROPERTY(Category = "Railway", EditAnywhere)
+		UStaticMesh* RailwayLineMesh;
+
+	FStreetMapRailwayBuildSettings()
+		: RailwayLineMesh(nullptr)
+	{
+	}
+};
+
 /** Types of roads */
 UENUM( BlueprintType )
 enum EStreetMapRoadType
