@@ -23,7 +23,7 @@
 
 #include "StreetMapComponent.h"
 #include "GISUtils/Elevation.h"
-
+#include "StreetMapRailway.h"
 
 #define LOCTEXT_NAMESPACE "StreetMapComponentDetails"
 
@@ -500,7 +500,7 @@ FReply FStreetMapComponentDetails::OnBuildRailwayClicked()
 {
 	if (SelectedStreetMapComponent != nullptr)
 	{
-		// @todo: BuildRailway(SelectedStreetMapComponent);
+		BuildRailway(SelectedStreetMapComponent, SelectedStreetMapComponent->RailwaySettings);
 
 		// regenerates details panel layouts, to take in consideration new changes.
 		RefreshDetails();
