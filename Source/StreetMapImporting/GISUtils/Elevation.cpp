@@ -37,7 +37,7 @@ static const FString& GetElevationCacheDir()
 
 	if (!ElevationCacheDir.Len())
 	{
-		auto UserTempDir = FPaths::ConvertRelativePathToFull(FDesktopPlatformModule::Get()->GetUserTempPath());
+		const FString UserTempDir = FPaths::ConvertRelativePathToFull(FDesktopPlatformModule::Get()->GetUserTempPath());
 		ElevationCacheDir = FString::Printf(TEXT("%s%s"), *UserTempDir, TEXT("ElevationCache/"));
 	}
 	return ElevationCacheDir;
@@ -65,7 +65,7 @@ private:
 	const FTiledMap& TiledMap;
 
 	bool WasInitialized;
-	bool WasDownloadASuccess;
+	bool WasDownloadSuccessful;
 	bool Failed;
 
 	FDateTime StartTime;
@@ -137,7 +137,7 @@ private:
 		// unpack data
 		if (Response.IsValid())
 		{
-			auto Content = Response->GetContent();
+			const TArray<uint8>& Content = Response->GetContent();
 			if (!UnpackElevation(Content))
 			{
 				Failed = true;
@@ -148,7 +148,7 @@ private:
 			FFileHelper::SaveArrayToFile(Content, *GetCachedFilePath(X, Y, Z));
 		}
 
-		WasDownloadASuccess = true;
+		WasDownloadSuccessful = true;
 	}
 
 	void DownloadFile()
@@ -181,7 +181,7 @@ private:
 			{
 				if (UnpackElevation(RawData))
 				{
-					WasDownloadASuccess = true;
+					WasDownloadSuccessful = true;
 					return;
 				}
 			}
@@ -203,12 +203,12 @@ public:
 
 	bool HasFinished() const
 	{
-		return WasDownloadASuccess || Failed;
+		return WasDownloadSuccessful || Failed;
 	}
 
 	bool Succeeded() const
 	{
-		return WasDownloadASuccess;
+		return WasDownloadSuccessful;
 	}
 
 	void CancelRequest()
@@ -233,7 +233,7 @@ public:
 			Initialize();
 		}
 
-		if (WasDownloadASuccess || Failed) return;
+		if (WasDownloadSuccessful || Failed) return;
 
 		if (TimeSpan.GetSeconds() > 10)
 		{
@@ -270,7 +270,7 @@ public:
 	FCachedElevationFile(const FTiledMap& TiledMap, uint32 X, uint32 Y, uint32 Z)
 		: TiledMap(TiledMap)
 		, WasInitialized(false)
-		, WasDownloadASuccess(false)
+		, WasDownloadSuccessful(false)
 		, Failed(false)
 		, StartTime(FDateTime::UtcNow())
 		, X(X)
@@ -367,7 +367,7 @@ public:
 			}
 
 			float Progress = 0.0f;
-			for (auto FileToDownload : FilesToDownload)
+			for (TSharedPtr<FCachedElevationFile> FileToDownload : FilesToDownload)
 			{
 				FileToDownload->Tick();
 
@@ -386,7 +386,7 @@ public:
 					else
 					{
 						// We failed to download one file so cancel the rest because we cannot proceed without it.
-						for (auto FileToCancel : FilesToDownload)
+						for (TSharedPtr<FCachedElevationFile> FileToCancel : FilesToDownload)
 						{
 							FileToCancel->CancelRequest();
 						}
@@ -446,8 +446,8 @@ public:
 				if (SRS.ToEPSG3857(VertexLocation, WebMercatorX, WebMercatorY))
 				{
 					FVector2D PixelXY;
-					const auto TileXY = TiledMap.GetTileXY(WebMercatorX, WebMercatorY, LevelIndex, PixelXY);
-					const auto Tile = GetTile(TileXY, LevelIndex);
+					const FIntPoint TileXY = TiledMap.GetTileXY(WebMercatorX, WebMercatorY, LevelIndex, PixelXY);
+					const FCachedElevationFile* Tile = GetTile(TileXY, LevelIndex);
 
 					const float* ElevationData = Tile->Elevation.GetData();
 
@@ -473,7 +473,7 @@ public:
 		const float LandscapeInternalScaleZ = 512.0f / 100.0f;
 		const float ScaleXY = OSMToCentimetersScaleFactor * BuildSettings.QuadSize / DefaultLandscapeScaleXY;
 		const float ScaleZ = ElevationRange / DefaultLandscapeScaleZ / LandscapeInternalScaleZ;
-		const auto Scale3D = FVector(ScaleXY, ScaleXY, ScaleZ);
+		const FVector Scale3D(ScaleXY, ScaleXY, ScaleZ);
 		Transform.SetScale3D(Scale3D);
 	}
 
@@ -487,7 +487,7 @@ private:
 
 	FCachedElevationFile* GetTile(const FIntPoint& XY, uint32 LevelIndex)
 	{
-		for (auto& Tile : FilesDownloaded)
+		for (TSharedPtr<FCachedElevationFile> Tile : FilesDownloaded)
 		{
 			if (Tile->X == XY.X && Tile->Y == XY.Y && Tile->Z == LevelIndex)
 			{

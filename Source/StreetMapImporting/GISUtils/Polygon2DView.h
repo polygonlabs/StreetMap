@@ -14,9 +14,9 @@ private:
 
 	struct FEdge
 	{
-		FVector2D center;
-		FVector2D direction;
-		float	  extent;
+		FVector2D Center;
+		FVector2D Direction;
+		float	  Extent;
 	};
 
 	const TArray<FVector2D>&		Vertices;
@@ -29,40 +29,51 @@ public:
 	{
 		Edges.SetNumUninitialized(Vertices.Num());
 
-		const uint32 numVertices = GetNumVertices();
-		const uint32 numEdges = GetNumEdges();
-		for (uint32 n = 0; n < numEdges; n++)
-		{
-			const FVector2D& v0 = Vertices[n];
-			const FVector2D& v1 = Vertices[(n < numVertices - 1) ? n + 1 : 0];
+		const uint32 NumVertices = GetNumVertices();
+		const uint32 NumEdges = GetNumEdges();
 
-			FEdge& edge = Edges[n];
-			edge.center = (v0 + v1) * 0.5f;
-			(v1 - v0).ToDirectionAndLength(edge.direction, edge.extent);
-			edge.extent *= 0.5f;
+		uint32 VertexIndex0 = NumVertices - 1;
+		for (uint32 EdgeIndex = 0; EdgeIndex < NumEdges; EdgeIndex++)
+		{
+			const uint32 VertexIndex1 = EdgeIndex;
+
+			const FVector2D& Vertex0 = Vertices[VertexIndex0];
+			const FVector2D& Vertex1 = Vertices[VertexIndex1];
+
+			FEdge& Edge = Edges[EdgeIndex];
+			Edge.Center = (Vertex0 + Vertex1) * 0.5f;
+			(Vertex1 - Vertex0).ToDirectionAndLength(Edge.Direction, Edge.Extent);
+			Edge.Extent *= 0.5f;
+
+			VertexIndex0 = VertexIndex1;
 		}
 	}
 
-	float ComputeSquareDistance(const FVector2D& v, bool& OutIsInside, FVector2D* OutClosestPoint = nullptr) const
+	float ComputeSquareDistance(const FVector2D& Point, bool& OutIsInside, FVector2D* OutClosestPoint = nullptr) const
 	{
 		OutIsInside = false;
-		float minSqrDistance = TNumericLimits<float>::Max();
-		FVector2D closestPointLocal;
-		FVector2D* pClosestPointLocal = OutClosestPoint ? &closestPointLocal : NULL;
-		for (uint32_t n = 0; n < GetNumEdges(); n++)
+		float MinSquareDistance = TNumericLimits<float>::Max();
+		FVector2D ClosestPointLocal;
+		FVector2D* ClosestPointLocalPtr = OutClosestPoint ? &ClosestPointLocal : NULL;
+		uint32 VertexIndex0 = GetNumVertices() - 1;
+		for (uint32 EdgeIndex = 0; EdgeIndex < GetNumEdges(); EdgeIndex++)
 		{
-			float sqrDistance = SquareDistanceToEdge(v, n, OutIsInside, pClosestPointLocal);
-			if (sqrDistance < minSqrDistance)
+			const uint32 VertexIndex1 = EdgeIndex;
+
+			float SquareDistance = ComputeSquareDistanceToEdge(Point, VertexIndex0, VertexIndex1, OutIsInside, ClosestPointLocalPtr);
+			if (SquareDistance < MinSquareDistance)
 			{
-				minSqrDistance = sqrDistance;
+				MinSquareDistance = SquareDistance;
 				if (OutClosestPoint)
 				{
-					*OutClosestPoint = closestPointLocal;
+					*OutClosestPoint = ClosestPointLocal;
 				}
 			}
+
+			VertexIndex0 = VertexIndex1;
 		}
 
-		return minSqrDistance;
+		return MinSquareDistance;
 	}
 
 
@@ -78,48 +89,46 @@ public:
 
 private:
 
-	double SquareDistanceToEdge(const FVector2D& point, uint32 edgeIndex, bool& CountAsIntersection, FVector2D* OutClosestPoint = nullptr) const
+	double ComputeSquareDistanceToEdge(const FVector2D& Point, const uint32 VertexIndex0, const uint32 VertexIndex1, bool& CountAsIntersection, FVector2D* OutClosestPoint = nullptr) const
 	{
-		const uint32 numVertices = GetNumVertices();
-		const FEdge& edge = Edges[edgeIndex];
+		const uint32 NumVertices = GetNumVertices();
+		const FEdge& Edge = Edges[VertexIndex1];
 
-		FVector2D diff = point - edge.center;
-		float segmentParameter = FVector2D::DotProduct(edge.direction, diff);
-		FVector2D segmentClosestPoint;
-		if (-edge.extent < segmentParameter)
+		const FVector2D DirToEdgeCenter = Point - Edge.Center;
+		const float SegmentParameter = FVector2D::DotProduct(Edge.Direction, DirToEdgeCenter);
+		FVector2D SegmentClosestPoint;
+		if (-Edge.Extent < SegmentParameter)
 		{
-			if (segmentParameter < edge.extent)
+			if (SegmentParameter < Edge.Extent)
 			{
-				segmentClosestPoint = edge.center + edge.direction * segmentParameter;
+				SegmentClosestPoint = Edge.Center + Edge.Direction * SegmentParameter;
 			}
 			else
 			{
-				// Vertex 1 of Edge
-				segmentClosestPoint = Vertices[(edgeIndex < numVertices - 1) ? edgeIndex + 1 : 0];
+				SegmentClosestPoint = Vertices[VertexIndex1];
 			}
 		}
 		else
 		{
-			// Vertex 0 of Edge
-			segmentClosestPoint = Vertices[edgeIndex];
+			SegmentClosestPoint = Vertices[VertexIndex0];
 		}
 
-		diff = point - segmentClosestPoint;
-		float sqrDistance = FVector2D::DotProduct(diff, diff);
+		const FVector2D DirToClosestPoint = Point - SegmentClosestPoint;
+		float SquareDistance = FVector2D::DotProduct(DirToClosestPoint, DirToClosestPoint);
 
-		const FVector2D& v0 = Vertices[edgeIndex];
-		const FVector2D& v1 = (edgeIndex < numVertices - 1) ? Vertices[edgeIndex + 1] : Vertices[0];
+		const FVector2D& Vertex0 = Vertices[VertexIndex0];
+		const FVector2D& Vertex1 = Vertices[VertexIndex1];
 
-		if ((v0.Y > point.Y) != (v1.Y > point.Y))
+		if ((Vertex0.Y > Point.Y) != (Vertex1.Y > Point.Y))
 		{
-			CountAsIntersection ^= (point.X < ((v1.X - v0.X) * (point.Y - v0.Y) / (v1.Y - v0.Y) + v0.X));
+			CountAsIntersection ^= (Point.X < ((Vertex1.X - Vertex0.X) * (Point.Y - Vertex0.Y) / (Vertex1.Y - Vertex0.Y) + Vertex0.X));
 		}
 
 		if (OutClosestPoint)
 		{
-			*OutClosestPoint = segmentClosestPoint;
+			*OutClosestPoint = SegmentClosestPoint;
 		}
 
-		return sqrDistance;
+		return SquareDistance;
 	}
 };
