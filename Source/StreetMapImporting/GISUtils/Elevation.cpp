@@ -14,7 +14,7 @@
 #include "SpatialReferenceSystem.h"
 #include "TiledMap.h"
 #include "LandscapeInfo.h"
-#include "PolygonTools.h"
+#include "Polygon2DView.h"
 
 #define LOCTEXT_NAMESPACE "StreetMapImporting"
 
@@ -597,9 +597,19 @@ static ALandscape* CreateLandscape(UStreetMapComponent* StreetMapComponent, cons
 					const float FillBlendWeightProgressPerPolygon = FillBlendWeightProgress / Polygons.Num();
 					for(const FStreetMapMiscWay* Polygon : Polygons)
 					{
+						const float BlendGauge = BuildSettings.BlendGauge * OSMToCentimetersScaleFactor;
+						const float HalfBlendGauge = BlendGauge * 0.5f;
+						const float HalfBlendGaugeSqr = HalfBlendGauge * HalfBlendGauge;
+
 						// Transform polygon AABB into blendweight/vertex space
-						const FVector Min = TransformLocal.TransformPosition(FVector(Polygon->BoundsMin, 0.0f));
-						const FVector Max = TransformLocal.TransformPosition(FVector(Polygon->BoundsMax, 0.0f));
+						FVector Min = TransformLocal.TransformPosition(FVector(Polygon->BoundsMin, 0.0f));
+						FVector Max = TransformLocal.TransformPosition(FVector(Polygon->BoundsMax, 0.0f));
+
+						// extend AABB by width of BlendGauge
+						Min.X -= HalfBlendGauge;
+						Min.Y -= HalfBlendGauge;
+						Max.X += HalfBlendGauge;
+						Max.Y += HalfBlendGauge;
 
 						// Ensure we do not paint over the limits of the available blendweight area
 						const int32 MinX = FMath::Max(-NumVerticesForRadius, FMath::FloorToInt(Min.X));
@@ -607,6 +617,7 @@ static ALandscape* CreateLandscape(UStreetMapComponent* StreetMapComponent, cons
 						const int32 MaxX = FMath::Min( NumVerticesForRadius - 1, FMath::CeilToInt(Max.X));
 						const int32 MaxY = FMath::Min( NumVerticesForRadius - 1, FMath::CeilToInt(Max.Y));
 
+						const FPolygon2DView Polygon2DView(Polygon->Points);
 						for (int32 Y = MinY; Y <= MaxY; Y++)
 						{
 							for (int32 X = MinX; X <= MaxX; X++)
@@ -614,16 +625,21 @@ static ALandscape* CreateLandscape(UStreetMapComponent* StreetMapComponent, cons
 								FVector2D VertexLocation(X * BuildSettings.QuadSize * OSMToCentimetersScaleFactor, 
 														 Y * BuildSettings.QuadSize * OSMToCentimetersScaleFactor);
 
-								// @todo: use distance to polygon instead to enable smooth blend weights
-								if (FPolygonTools::IsPointInsidePolygon(Polygon->Points, VertexLocation))
+								bool IsInside;
+								float SquareDistance = Polygon2DView.ComputeSquareDistance(VertexLocation, IsInside);
+								if (IsInside || SquareDistance < HalfBlendGaugeSqr)
 								{
+									// use distance to polygon to enable smooth blend weights
+									const float Lerp = (HalfBlendGauge > SMALL_NUMBER) ? (FMath::Sqrt(SquareDistance) / HalfBlendGauge) * (IsInside ? 0.5f : -0.5f) + 0.5f : 1.0f;
+									
 									const int32 PixelIndex = (Y + NumVerticesForRadius) * Size + X + NumVerticesForRadius;
-									WeightData[PixelIndex] = 255;
+									WeightData[PixelIndex] = FMath::Min(255, FMath::RoundToInt(255.0f * Lerp));
 
-									// Deactivate the blendweight of this pixel of all other layers
+									// ramp down the blendweight of this pixel for all other layers
+									const float AvailableBlendWeight = (255.0f - WeightData[PixelIndex]) / 255.0f;
 									for (auto& PreviousImportLayer : ImportLayers)
 									{
-										PreviousImportLayer.LayerData[PixelIndex] = 0;
+										PreviousImportLayer.LayerData[PixelIndex] = FMath::RoundToInt(AvailableBlendWeight * PreviousImportLayer.LayerData[PixelIndex]);
 									}
 								}
 							}

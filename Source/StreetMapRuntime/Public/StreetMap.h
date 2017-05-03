@@ -134,6 +134,10 @@ public:
 	UPROPERTY(Category = "Landscape", EditAnywhere, meta = (UIMin = 1, ClampMin = 256, ClampMax = 16384))
 		int32 Radius;
 
+	// Width of the blend area between layers in meters.
+	UPROPERTY(Category = "Landscape", EditAnywhere, meta = (UIMin = 1, ClampMin = 0.0f, ClampMax = 200.0f))
+		float BlendGauge;
+
 	// Material initially applied to the landscape. Setting a material here exposes properties for setting up layer info based on the landscape blend nodes in the material.
 	UPROPERTY(Category = "Landscape", EditAnywhere, meta = (DisplayName = "Material", ShowForTools = "Landscape"))
 		UMaterialInterface* Material;
@@ -145,6 +149,7 @@ public:
 	FStreetMapLandscapeBuildSettings() 
 		: QuadSize(4.0f)
 		, Radius(8192)
+		, BlendGauge(8.0f)
 		, Material(nullptr)
 	{
 	}
