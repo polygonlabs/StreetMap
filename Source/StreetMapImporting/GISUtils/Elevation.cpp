@@ -18,6 +18,8 @@
 
 #define LOCTEXT_NAMESPACE "StreetMapImporting"
 
+static const int LanczosFilterSize = 3;
+
 static void ShowErrorMessage(const FText& MessageText)
 {
 	FNotificationInfo Info(MessageText);
@@ -337,14 +339,16 @@ public:
 
 			// download highest resolution available
 			const uint32 LevelIndex = TiledMap.NumLevels - 1;
+			const int32  NumTiles = 1 << LevelIndex;
 			const FIntPoint SouthWestTileXY = TiledMap.GetTileXY(West, South, LevelIndex);
 			const FIntPoint NorthEastTileXY = TiledMap.GetTileXY(East, North, LevelIndex);
 
 			// since we may not know the direction of tile order the source uses we need to order them
-			const int32 MinX = FMath::Min(SouthWestTileXY.X, NorthEastTileXY.X);
-			const int32 MinY = FMath::Min(SouthWestTileXY.Y, NorthEastTileXY.Y);
-			const int32 MaxX = FMath::Max(SouthWestTileXY.X, NorthEastTileXY.X);
-			const int32 MaxY = FMath::Max(SouthWestTileXY.Y, NorthEastTileXY.Y);
+			// additionally download padded frame around needed area to cover enoúgh for the lanczos filter
+			const int32 MinX = FMath::Max(FMath::Min(SouthWestTileXY.X, NorthEastTileXY.X) - 1, 0);
+			const int32 MinY = FMath::Max(FMath::Min(SouthWestTileXY.Y, NorthEastTileXY.Y) - 1, 0);
+			const int32 MaxX = FMath::Min(FMath::Max(SouthWestTileXY.X, NorthEastTileXY.X) + 1, NumTiles - 1);
+			const int32 MaxY = FMath::Min(FMath::Max(SouthWestTileXY.Y, NorthEastTileXY.Y) + 1, NumTiles - 1);
 
 			for (int32 Y = MinY; Y <= MaxY; Y++)
 			{
@@ -416,7 +420,84 @@ public:
 		return true;
 	}
 
-	void ReprojectData(UStreetMapComponent* StreetMapComponent, const FStreetMapLandscapeBuildSettings& BuildSettings, FScopedSlowTask& SlowTask, TArray<uint16>& OutElevationData)
+	template<int FilterSize>
+	static float EvalLanczos(float x)
+	{
+		const float FilterSizeFloat = FilterSize;
+
+		// we don't need this since we never sample outside of the window
+		/*if (x <= -FilterSizeFloat || x >= FilterSizeFloat)
+		{
+			return 0.0f;  // Outside of the window
+		}*/
+
+		if (x > -0.0001 &&
+			x <  0.0001)
+		{
+			return 1.0f;  // Special case (the discontinuity at the origin)
+		}
+
+		float xpi = x * PI;
+		float xUnit = xpi / FilterSizeFloat;
+		float xpiSqr = xpi * xpi;
+
+		float sincx = FMath::Sin(xpi);
+		float sincxUnit = FMath::Sin(xUnit);
+
+		return FilterSizeFloat * sincx * sincxUnit / xpiSqr;
+	}
+
+	static float SampleElevationLanczos(const float* ElevationData, uint32 DataWidth, uint32 DataHeight, const FVector2D& PixelXY)
+	{
+		static_assert(LanczosFilterSize == 3, "Sample taps are optimized for filter size 3");
+
+		// 5x5 footprint with corners dropped (because outside of lanczos kernel) result in 13 taps
+		const int NumTaps = 13;
+		const FIntPoint Taps[NumTaps] = {		FIntPoint(0,-2),
+							  FIntPoint(-1,-1), FIntPoint(0,-1), FIntPoint(1,-1),
+			FIntPoint(-2, 0), FIntPoint(-1, 0), FIntPoint(0, 0), FIntPoint(1, 0), FIntPoint(2, 0),
+							  FIntPoint(-1, 1), FIntPoint(0, 1), FIntPoint(1, 1),
+												FIntPoint(0, 2)
+		};
+		const FIntPoint* TapsEnd = &Taps[NumTaps];
+
+		int32 ElevationX = (int32)PixelXY.X;
+		int32 ElevationY = (int32)PixelXY.Y;
+		const float X = PixelXY.X - ElevationX;
+		const float Y = PixelXY.Y - ElevationY;
+
+		float ElevationValue = 0.0f;
+		float LanczosWeightSum = 0.0f;
+
+		const FIntPoint* Tap = Taps;
+		do
+		{
+			const float TapX = X - Tap->X;
+			const float TapY = Y - Tap->Y;
+			const float Distance = FMath::Sqrt(TapX * TapX + TapY * TapY);
+
+			const float LanczosWeight = EvalLanczos<LanczosFilterSize>(Distance);
+			const float ElevationTapValue = ElevationData[DataWidth * (ElevationY + Tap->Y) + ElevationX + Tap->X] * LanczosWeight;
+
+			ElevationValue += ElevationTapValue;
+			LanczosWeightSum += LanczosWeight;
+
+			Tap++;
+		}
+		while (Tap < TapsEnd);
+
+		return ElevationValue / LanczosWeightSum;
+	}
+
+	static float SampleElevationNearest(const float* ElevationData, const uint32 DataWidth, const uint32 DataHeight, const FVector2D& PixelXY)
+	{
+		int32 ElevationX = (int32)PixelXY.X;
+		int32 ElevationY = (int32)PixelXY.Y;
+		float ElevationValue = ElevationData[DataWidth * ElevationY + ElevationX];
+		return ElevationValue;
+	}
+
+	bool ReprojectData(UStreetMapComponent* StreetMapComponent, const FStreetMapLandscapeBuildSettings& BuildSettings, FScopedSlowTask& SlowTask, TArray<uint16>& OutElevationData)
 	{
 		const FText ProgressText = LOCTEXT("ReprojectingElevationModel", "Reprojecting Elevation Model");
 		const UStreetMap* StreetMap = StreetMapComponent->GetStreetMap();
@@ -451,14 +532,17 @@ public:
 
 					const float* ElevationData = Tile->Elevation.GetData();
 
-					// @todo: sample elevation using Lanczos filtering
+					// @todo: remove check as soon as we support padded tiles
+					if(PixelXY.X >= 2 && 
+						PixelXY.Y >= 2 && 
+						PixelXY.X < TiledMap.TileWidth - 3 && 
+						PixelXY.Y < TiledMap.TileHeight - 3)
+					{ 
+						const float ElevationValue = SampleElevationLanczos(ElevationData, TiledMap.TileWidth, TiledMap.TileHeight, PixelXY);
+						const float ScaledElevationValue = (ElevationValue - ElevationMin) * ElevationScale;
 
-					int32 ElevationX = (int32)PixelXY.X;
-					int32 ElevationY = (int32)PixelXY.Y;
-					float ElevationValue = ElevationData[TiledMap.TileWidth * ElevationY + ElevationX];
-					float ScaledElevationValue = (ElevationValue - ElevationMin) * ElevationScale;
-
-					QuantizedElevation = (uint16)FMath::RoundToInt(ScaledElevationValue);
+						QuantizedElevation = (uint16)FMath::RoundToInt(ScaledElevationValue);
+					}
 				}
 
 				*Elevation = QuantizedElevation;
@@ -466,6 +550,11 @@ public:
 			}
 
 			SlowTask.EnterProgressFrame(ProgressPerRow, ProgressText);
+
+			if (GWarn->ReceivedUserCancel())
+			{
+				return false;
+			}
 		}
 
 		// compute exact scale of landscape
@@ -475,6 +564,8 @@ public:
 		const float ScaleZ = ElevationRange / DefaultLandscapeScaleZ / LandscapeInternalScaleZ;
 		const FVector Scale3D(ScaleXY, ScaleXY, ScaleZ);
 		Transform.SetScale3D(Scale3D);
+
+		return true;
 	}
 
 private:
@@ -646,6 +737,11 @@ static ALandscape* CreateLandscape(UStreetMapComponent* StreetMapComponent, cons
 						}
 
 						SlowTask.EnterProgressFrame(FillBlendWeightProgressPerPolygon, ProgressText);
+
+						if (GWarn->ReceivedUserCancel())
+						{
+							return nullptr;
+						}
 					}
 				}
 				else
@@ -712,7 +808,10 @@ ALandscape* BuildLandscape(UStreetMapComponent* StreetMapComponent, const FStree
 	}
 
 	TArray<uint16> ElevationData;
-	ElevationModel.ReprojectData(StreetMapComponent, BuildSettings, SlowTask, ElevationData);
+	if(!ElevationModel.ReprojectData(StreetMapComponent, BuildSettings, SlowTask, ElevationData))
+	{
+		return nullptr;
+	}
 
 	return CreateLandscape(StreetMapComponent, BuildSettings, ElevationModel.GetTransform(), ElevationData, SlowTask);
 }
