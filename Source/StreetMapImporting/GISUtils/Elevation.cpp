@@ -199,6 +199,7 @@ protected:
 	float ElevationMin;
 	float ElevationMax;
 
+	friend class FPaddedElevationTile;
 	friend class FElevationModel;
 
 public:
@@ -281,6 +282,52 @@ public:
 		, ElevationMin(TNumericLimits<float>::Max())
 		, ElevationMax(TNumericLimits<float>::Lowest())
 	{
+	}
+};
+
+class FPaddedElevationTile
+{
+
+protected:
+	TArray<float> Elevation;
+	uint32 X, Y, Z;
+	uint32 Width, Height;
+	uint32 PaddingX, PaddingY;
+
+	friend class FElevationModel;
+
+public:
+
+	FPaddedElevationTile(const TArray<TSharedPtr<FCachedElevationFile>>& CachedElevationFiles, const FIntPoint& XY, uint32 LevelIndex)
+		: X(XY.X)
+		, Y(XY.Y)
+		, Z(LevelIndex)
+	{
+		const FCachedElevationFile* MainTile = GetTile(CachedElevationFiles, XY.X, XY.Y, LevelIndex);
+
+		PaddingX = LanczosFilterSize - 1;
+		PaddingY = LanczosFilterSize - 1;
+		Width = MainTile->TiledMap.TileWidth + PaddingX * 2;
+		Height = MainTile->TiledMap.TileHeight + PaddingY * 2;
+
+		// @todo: fill elevation data
+		Elevation.SetNumUninitialized(Width * Height);
+	}
+
+
+private:
+
+	const FCachedElevationFile* GetTile(const TArray<TSharedPtr<FCachedElevationFile>>& CachedElevationFiles,
+										int32 TileX, int32 TileY, uint32 LevelIndex)
+	{
+		for (const TSharedPtr<FCachedElevationFile>& Tile : CachedElevationFiles)
+		{
+			if (Tile->X == TileX && Tile->Y == TileY && Tile->Z == LevelIndex)
+			{
+				return Tile.Get();
+			}
+		}
+		return nullptr;
 	}
 };
 
@@ -447,11 +494,13 @@ public:
 		return FilterSizeFloat * sincx * sincxUnit / xpiSqr;
 	}
 
-	static float SampleElevationLanczos(const float* ElevationData, uint32 DataWidth, uint32 DataHeight, const FVector2D& PixelXY)
+	static float SampleElevationLanczos(const FPaddedElevationTile* Tile, const FVector2D& PixelXY)
 	{
-		static_assert(LanczosFilterSize == 3, "Sample taps are optimized for filter size 3");
+		const float* ElevationData = Tile->Elevation.GetData();
+		const uint32 DataWidth = Tile->Width;
 
-		// 5x5 footprint with corners dropped (because outside of lanczos kernel) result in 13 taps
+		// 5x5 footprint with corners dropped (because outside of lanczos kernel) results in 13 taps
+		static_assert(LanczosFilterSize == 3, "Sample taps are optimized for filter size 3");
 		const int NumTaps = 13;
 		const FIntPoint Taps[NumTaps] = {		FIntPoint(0,-2),
 							  FIntPoint(-1,-1), FIntPoint(0,-1), FIntPoint(1,-1),
@@ -528,21 +577,15 @@ public:
 				{
 					FVector2D PixelXY;
 					const FIntPoint TileXY = TiledMap.GetTileXY(WebMercatorX, WebMercatorY, LevelIndex, PixelXY);
-					const FCachedElevationFile* Tile = GetTile(TileXY, LevelIndex);
+					const FPaddedElevationTile* Tile = GetPaddedTile(TileXY, LevelIndex);
 
-					const float* ElevationData = Tile->Elevation.GetData();
+					PixelXY.X += Tile->PaddingX;
+					PixelXY.Y += Tile->PaddingY;
 
-					// @todo: remove check as soon as we support padded tiles
-					if(PixelXY.X >= 2 && 
-						PixelXY.Y >= 2 && 
-						PixelXY.X < TiledMap.TileWidth - 3 && 
-						PixelXY.Y < TiledMap.TileHeight - 3)
-					{ 
-						const float ElevationValue = SampleElevationLanczos(ElevationData, TiledMap.TileWidth, TiledMap.TileHeight, PixelXY);
-						const float ScaledElevationValue = (ElevationValue - ElevationMin) * ElevationScale;
+					const float ElevationValue = SampleElevationLanczos(Tile, PixelXY);
+					const float ScaledElevationValue = (ElevationValue - ElevationMin) * ElevationScale;
 
-						QuantizedElevation = (uint16)FMath::RoundToInt(ScaledElevationValue);
-					}
+					QuantizedElevation = (uint16)FMath::RoundToInt(ScaledElevationValue);
 				}
 
 				*Elevation = QuantizedElevation;
@@ -571,21 +614,25 @@ public:
 private:
 	const FTiledMap TiledMap;
 	TArray<TSharedPtr<FCachedElevationFile>> FilesDownloaded;
+	TArray<TSharedPtr<FPaddedElevationTile>> CachedPaddedTiles;
 	FTransform Transform;
 
 	float ElevationMin;
 	float ElevationMax;
 
-	FCachedElevationFile* GetTile(const FIntPoint& XY, uint32 LevelIndex)
+	const FPaddedElevationTile* GetPaddedTile(const FIntPoint& XY, uint32 LevelIndex)
 	{
-		for (TSharedPtr<FCachedElevationFile> Tile : FilesDownloaded)
+		for (const TSharedPtr<FPaddedElevationTile>& Tile : CachedPaddedTiles)
 		{
 			if (Tile->X == XY.X && Tile->Y == XY.Y && Tile->Z == LevelIndex)
 			{
 				return Tile.Get();
 			}
 		}
-		return nullptr;
+		// create the missing tile
+		TSharedPtr<FPaddedElevationTile> PaddedTile = MakeShared<FPaddedElevationTile>(FilesDownloaded, XY, LevelIndex);
+		CachedPaddedTiles.Add(PaddedTile);
+		return PaddedTile.Get();
 	}
 };
 
