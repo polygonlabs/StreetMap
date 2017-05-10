@@ -58,6 +58,10 @@ static FString GetCachedFilePath(uint32 X, uint32 Y, uint32 Z)
 	return FilePath;
 }
 
+
+/** Represents a file from a Tiled Elevation Map Service. 
+ *	Its functionality includes elevation data decoding and caching to disk.
+ */
 class FCachedElevationFile
 {
 private:
@@ -285,8 +289,40 @@ public:
 	}
 };
 
+
+/** A Padded Elevation Tile. Useful for resampling the elevation data. */
 class FPaddedElevationTile
 {
+private:
+	void CopyRegion(const TArray<TSharedPtr<FCachedElevationFile>>& CachedElevationFiles,
+					 int32 TileX, int32 TileY, uint32 LevelIndex,
+					 uint32 SrcX, uint32 SrcY,
+					 uint32 DstX, uint32 DstY,
+					 uint32 StrideX, uint32 SrideY)
+	{
+		const FCachedElevationFile* SrcTile = GetTile(CachedElevationFiles, TileX, TileY, LevelIndex);
+		
+		float* DstTileElevationData = Elevation.GetData();
+
+		if (!SrcTile)
+		{
+			for (uint32 Row = 0; Row < SrideY; Row++)
+			{
+				FMemory::Memset(&DstTileElevationData[Height * (DstY + Row) + DstX], 0, StrideX * sizeof(float));
+			}
+			return;
+		}
+
+		const uint32 SrcTileWidth = SrcTile->TiledMap.TileWidth;
+		const uint32 SrcTileHeight = SrcTile->TiledMap.TileHeight;
+		const float* SrcTileElevationData = SrcTile->Elevation.GetData();
+
+		for (uint32 Row = 0; Row < SrideY; Row++)
+		{
+			FMemory::Memcpy(&DstTileElevationData[Height * (DstY + Row) + DstX],
+							&SrcTileElevationData[SrcTileHeight * (SrcY + Row) + SrcX], StrideX * sizeof(float));
+		}
+	}
 
 protected:
 	TArray<float> Elevation;
@@ -298,20 +334,42 @@ protected:
 
 public:
 
-	FPaddedElevationTile(const TArray<TSharedPtr<FCachedElevationFile>>& CachedElevationFiles, const FIntPoint& XY, uint32 LevelIndex)
+	FPaddedElevationTile(const TArray<TSharedPtr<FCachedElevationFile>>& CachedElevationFiles,
+						 const FTiledMap& TiledMap, const FIntPoint& XY, uint32 LevelIndex)
 		: X(XY.X)
 		, Y(XY.Y)
 		, Z(LevelIndex)
 	{
-		const FCachedElevationFile* MainTile = GetTile(CachedElevationFiles, XY.X, XY.Y, LevelIndex);
+		const uint32 TileWidth = TiledMap.TileWidth;
+		const uint32 TileHeight = TiledMap.TileHeight;
 
 		PaddingX = LanczosFilterSize - 1;
 		PaddingY = LanczosFilterSize - 1;
-		Width = MainTile->TiledMap.TileWidth + PaddingX * 2;
-		Height = MainTile->TiledMap.TileHeight + PaddingY * 2;
+		Width = TileWidth + PaddingX * 2;
+		Height = TileHeight + PaddingY * 2;
 
-		// @todo: fill elevation data
+		// fill elevation data including padding
 		Elevation.SetNumUninitialized(Width * Height);
+
+		// central main part
+		CopyRegion(CachedElevationFiles, XY.X + 0, XY.Y + 0, LevelIndex, 0, 0, PaddingX, PaddingY, TileWidth, TileHeight);
+		
+		// top row padding 
+		CopyRegion(CachedElevationFiles, XY.X + 0, XY.Y - 1, LevelIndex, 0, TileHeight - PaddingY, PaddingX, 0, TileWidth, PaddingY);
+		// bottom row padding
+		CopyRegion(CachedElevationFiles, XY.X + 0, XY.Y + 1, LevelIndex, 0, 0, PaddingX, Height - PaddingY, TileWidth, PaddingY);
+		// left column padding
+		CopyRegion(CachedElevationFiles, XY.X - 1, XY.Y + 0, LevelIndex, TileWidth - PaddingX, 0, 0, PaddingY, PaddingX, TileHeight);
+		// right column padding
+		CopyRegion(CachedElevationFiles, XY.X + 1, XY.Y + 0, LevelIndex, 0, 0, Width - PaddingX, PaddingY, PaddingX, TileHeight);
+		// top left corner padding
+		CopyRegion(CachedElevationFiles, XY.X - 1, XY.Y - 1, LevelIndex, TileWidth - PaddingX, TileHeight - PaddingY, 0, 0, PaddingX, PaddingY);
+		// top right corner padding
+		CopyRegion(CachedElevationFiles, XY.X + 1, XY.Y - 1, LevelIndex, 0, TileHeight - PaddingY, Width - PaddingX, 0, PaddingX, PaddingY);
+		// bottom left corner padding
+		CopyRegion(CachedElevationFiles, XY.X - 1, XY.Y + 1, LevelIndex, TileWidth - PaddingX, 0, 0, Height - PaddingY, PaddingX, PaddingY);
+		// bottom right corner padding
+		CopyRegion(CachedElevationFiles, XY.X + 1, XY.Y + 1, LevelIndex, 0, 0, Width - PaddingX, Height - PaddingY, PaddingX, PaddingY);
 	}
 
 
@@ -346,6 +404,7 @@ static const float DefaultLandscapeScaleXY = 128.0f;
 static const float DefaultLandscapeScaleZ = 256.0f;
 static const float OSMToCentimetersScaleFactor = 100.0f;
 
+/** Loads and transforms elevation data for desired region. */
 class FElevationModel
 {
 public:
@@ -467,85 +526,6 @@ public:
 		return true;
 	}
 
-	template<int FilterSize>
-	static float EvalLanczos(float x)
-	{
-		const float FilterSizeFloat = FilterSize;
-
-		// we don't need this since we never sample outside of the window
-		/*if (x <= -FilterSizeFloat || x >= FilterSizeFloat)
-		{
-			return 0.0f;  // Outside of the window
-		}*/
-
-		if (x > -0.0001 &&
-			x <  0.0001)
-		{
-			return 1.0f;  // Special case (the discontinuity at the origin)
-		}
-
-		float xpi = x * PI;
-		float xUnit = xpi / FilterSizeFloat;
-		float xpiSqr = xpi * xpi;
-
-		float sincx = FMath::Sin(xpi);
-		float sincxUnit = FMath::Sin(xUnit);
-
-		return FilterSizeFloat * sincx * sincxUnit / xpiSqr;
-	}
-
-	static float SampleElevationLanczos(const FPaddedElevationTile* Tile, const FVector2D& PixelXY)
-	{
-		const float* ElevationData = Tile->Elevation.GetData();
-		const uint32 DataWidth = Tile->Width;
-
-		// 5x5 footprint with corners dropped (because outside of lanczos kernel) results in 13 taps
-		static_assert(LanczosFilterSize == 3, "Sample taps are optimized for filter size 3");
-		const int NumTaps = 13;
-		const FIntPoint Taps[NumTaps] = {		FIntPoint(0,-2),
-							  FIntPoint(-1,-1), FIntPoint(0,-1), FIntPoint(1,-1),
-			FIntPoint(-2, 0), FIntPoint(-1, 0), FIntPoint(0, 0), FIntPoint(1, 0), FIntPoint(2, 0),
-							  FIntPoint(-1, 1), FIntPoint(0, 1), FIntPoint(1, 1),
-												FIntPoint(0, 2)
-		};
-		const FIntPoint* TapsEnd = &Taps[NumTaps];
-
-		int32 ElevationX = (int32)PixelXY.X;
-		int32 ElevationY = (int32)PixelXY.Y;
-		const float X = PixelXY.X - ElevationX;
-		const float Y = PixelXY.Y - ElevationY;
-
-		float ElevationValue = 0.0f;
-		float LanczosWeightSum = 0.0f;
-
-		const FIntPoint* Tap = Taps;
-		do
-		{
-			const float TapX = X - Tap->X;
-			const float TapY = Y - Tap->Y;
-			const float Distance = FMath::Sqrt(TapX * TapX + TapY * TapY);
-
-			const float LanczosWeight = EvalLanczos<LanczosFilterSize>(Distance);
-			const float ElevationTapValue = ElevationData[DataWidth * (ElevationY + Tap->Y) + ElevationX + Tap->X] * LanczosWeight;
-
-			ElevationValue += ElevationTapValue;
-			LanczosWeightSum += LanczosWeight;
-
-			Tap++;
-		}
-		while (Tap < TapsEnd);
-
-		return ElevationValue / LanczosWeightSum;
-	}
-
-	static float SampleElevationNearest(const float* ElevationData, const uint32 DataWidth, const uint32 DataHeight, const FVector2D& PixelXY)
-	{
-		int32 ElevationX = (int32)PixelXY.X;
-		int32 ElevationY = (int32)PixelXY.Y;
-		float ElevationValue = ElevationData[DataWidth * ElevationY + ElevationX];
-		return ElevationValue;
-	}
-
 	bool ReprojectData(UStreetMapComponent* StreetMapComponent, const FStreetMapLandscapeBuildSettings& BuildSettings, FScopedSlowTask& SlowTask, TArray<uint16>& OutElevationData)
 	{
 		const FText ProgressText = LOCTEXT("ReprojectingElevationModel", "Reprojecting Elevation Model");
@@ -630,9 +610,88 @@ private:
 			}
 		}
 		// create the missing tile
-		TSharedPtr<FPaddedElevationTile> PaddedTile = MakeShared<FPaddedElevationTile>(FilesDownloaded, XY, LevelIndex);
+		TSharedPtr<FPaddedElevationTile> PaddedTile = MakeShared<FPaddedElevationTile>(FilesDownloaded, TiledMap, XY, LevelIndex);
 		CachedPaddedTiles.Add(PaddedTile);
 		return PaddedTile.Get();
+	}
+
+	template<int FilterSize>
+	static float EvalLanczos(float X)
+	{
+		const float FilterSizeFloat = FilterSize;
+
+		// we don't need this since we never sample outside of the window
+		//if (x <= -FilterSizeFloat || x >= FilterSizeFloat)
+		//{
+		//	return 0.0f;  // Outside of the window
+		//}
+
+		if (X > -0.0001 &&
+			X <  0.0001)
+		{
+			return 1.0f;  // Special case (the discontinuity at the origin)
+		}
+
+		float XPI = X * PI;
+		float XUnit = XPI / FilterSizeFloat;
+		float XPISquared = XPI * XPI;
+
+		float SincX = FMath::Sin(XPI);
+		float SincXUnit = FMath::Sin(XUnit);
+
+		return FilterSizeFloat * SincX * SincXUnit / XPISquared;
+	}
+
+	static float SampleElevationLanczos(const FPaddedElevationTile* Tile, const FVector2D& PixelXY)
+	{
+		const float* ElevationData = Tile->Elevation.GetData();
+		const uint32 DataWidth = Tile->Width;
+
+		// 5x5 footprint with corners dropped (because outside of lanczos kernel) results in 13 taps
+		static_assert(LanczosFilterSize == 3, "Sample taps are optimized for filter size 3");
+		const int NumTaps = 13;
+		const FIntPoint Taps[NumTaps] = {			FIntPoint(0,-2),
+								  FIntPoint(-1,-1), FIntPoint(0,-1), FIntPoint(1,-1),
+				FIntPoint(-2, 0), FIntPoint(-1, 0), FIntPoint(0, 0), FIntPoint(1, 0), FIntPoint(2, 0),
+								  FIntPoint(-1, 1), FIntPoint(0, 1), FIntPoint(1, 1),
+													FIntPoint(0, 2)
+		};
+		const FIntPoint* TapsEnd = &Taps[NumTaps];
+
+		int32 ElevationX = (int32)PixelXY.X;
+		int32 ElevationY = (int32)PixelXY.Y;
+		const float X = PixelXY.X - ElevationX;
+		const float Y = PixelXY.Y - ElevationY;
+
+		float ElevationValue = 0.0f;
+		float LanczosWeightSum = 0.0f;
+
+		const FIntPoint* Tap = Taps;
+		do
+		{
+			const float TapX = X - Tap->X;
+			const float TapY = Y - Tap->Y;
+			const float Distance = FMath::Sqrt(TapX * TapX + TapY * TapY);
+
+			const float LanczosWeight = EvalLanczos<LanczosFilterSize>(Distance);
+			const float ElevationTapValue = ElevationData[DataWidth * (ElevationY + Tap->Y) + ElevationX + Tap->X] * LanczosWeight;
+
+			ElevationValue += ElevationTapValue;
+			LanczosWeightSum += LanczosWeight;
+
+			Tap++;
+		} 
+		while (Tap < TapsEnd);
+
+		return ElevationValue / LanczosWeightSum;
+	}
+
+	static float SampleElevationNearest(const float* ElevationData, const uint32 DataWidth, const uint32 DataHeight, const FVector2D& PixelXY)
+	{
+		int32 ElevationX = (int32)PixelXY.X;
+		int32 ElevationY = (int32)PixelXY.Y;
+		float ElevationValue = ElevationData[DataWidth * ElevationY + ElevationX];
+		return ElevationValue;
 	}
 };
 
