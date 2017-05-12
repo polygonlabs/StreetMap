@@ -696,38 +696,20 @@ private:
 };
 
 
-typedef TTuple<EStreetMapMiscWayType, FString> FWayMatch;
 bool operator==(const FWayMatch& LHS, const FWayMatch& RHS)
 {
-	return LHS.Get<0>() == RHS.Get<0>() && LHS.Get<1>() == RHS.Get<1>();
+	return LHS.Type == RHS.Type && LHS.Category == RHS.Category;
 }
 
-static void GetPolygonWaysForLayer(const FName& LayerName, const UStreetMap* StreetMap, TArray<const FStreetMapMiscWay*>& OutPolygons)
+static void GetPolygonWaysForLayer(const FName& LayerName, const UStreetMap* StreetMap, const FStreetMapLandscapeBuildSettings& BuildSettings, TArray<const FStreetMapMiscWay*>& OutPolygons)
 {
-	static const TMap<FName, TArray<FWayMatch>> LayerWayMapping = []()
+	const FLayerWayMapping* Mapping = BuildSettings.LayerWayMapping.FindByPredicate(
+		[LayerName](const FLayerWayMapping& LayerWayMapping)
 	{
-		TMap<FName, TArray<FWayMatch>> Result;
+		return LayerWayMapping.LayerName == LayerName;
+	});
 
-		// @todo: these mappings should probably not be hardcoded and be part of FStreetMapLandscapeBuildSettings instead
-		TArray<FWayMatch> GrassWays;
-		GrassWays.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("grass")));
-		GrassWays.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("village_green")));
-		GrassWays.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("meadow")));
-		GrassWays.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("farmland")));
-		GrassWays.Add(FWayMatch(EStreetMapMiscWayType::Leisure, TEXT("park")));
-		Result.Add("Grass", GrassWays);
-
-		TArray<FWayMatch> WoodWays;
-		WoodWays.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("forest")));
-		WoodWays.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("wood")));
-		WoodWays.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("nature_reserve")));
-		Result.Add("Wood", WoodWays);
-
-		return Result;
-	}();
-
-	const TArray<FWayMatch>* WayMatches = LayerWayMapping.Find(LayerName);
-	if (!WayMatches)
+	if (!Mapping)
 	{
 		return;
 	}
@@ -738,14 +720,19 @@ static void GetPolygonWaysForLayer(const FName& LayerName, const UStreetMap* Str
 		if (!MiscWay.bIsClosed) continue;
 
 		const FWayMatch WayMatch(MiscWay.Type, MiscWay.Category);
-		if (WayMatches->Contains(WayMatch))
+		if (Mapping->Matches.Contains(WayMatch))
 		{
 			OutPolygons.Add(&MiscWay);
 		}
 	}
 }
 
-static ALandscape* CreateLandscape(UStreetMapComponent* StreetMapComponent, const FStreetMapLandscapeBuildSettings& BuildSettings, const FTransform& Transform, const TArray<uint16>& ElevationData, FScopedSlowTask& SlowTask)
+static ALandscape* CreateLandscape(
+	UStreetMapComponent* StreetMapComponent, 
+	const FStreetMapLandscapeBuildSettings& BuildSettings, 
+	const FTransform& Transform, 
+	const TArray<uint16>& ElevationData, 
+	FScopedSlowTask& SlowTask)
 {
 	FScopedTransaction Transaction(LOCTEXT("Undo", "Creating New Landscape"));
 
@@ -786,7 +773,7 @@ static ALandscape* CreateLandscape(UStreetMapComponent* StreetMapComponent, cons
 			{
 				// Fill the blend weights based on land use for the other layers
 				TArray<const FStreetMapMiscWay*> Polygons;
-				GetPolygonWaysForLayer(UIImportLayer.LayerName, StreetMap, Polygons);
+				GetPolygonWaysForLayer(UIImportLayer.LayerName, StreetMap, BuildSettings, Polygons);
 
 				FMemory::Memset(WeightData, 0, Size * Size);
 				if(Polygons.Num() > 0)

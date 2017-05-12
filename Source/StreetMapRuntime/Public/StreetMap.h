@@ -6,6 +6,24 @@
 #include "StreetMap.generated.h"
 
 
+/** Types of miscellaneous ways */
+UENUM(BlueprintType)
+enum EStreetMapMiscWayType
+{
+	/** unknown type */
+	Unknown,
+
+	/** The leisure tag is for places people go in their spare time (e.g. parks, pitches). */
+	Leisure,
+
+	/** Used to describe natural and physical land features (e.g. wood, beach, water). */
+	Natural,
+
+	/** Used to describe the primary use of land by humans (e.g. grass, meadow, forest). */
+	LandUse,
+};
+
+
 USTRUCT(BlueprintType)
 struct STREETMAPRUNTIME_API FStreetMapCollisionSettings
 {
@@ -119,6 +137,58 @@ public:
 };
 
 
+/** Identifies a specific type of way */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FWayMatch
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+
+	/** The OSM type this way is marked as */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		TEnumAsByte<EStreetMapMiscWayType> Type;
+
+	// Minimal size of the Landscape in each direction around the center of the OpenStreetMap in meters.
+	UPROPERTY(Category = "Landscape", EditAnywhere)
+		FString Category;
+
+	FWayMatch()
+		: Type(EStreetMapMiscWayType::Unknown)
+		, Category(TEXT(""))
+	{
+	}
+
+	FWayMatch(EStreetMapMiscWayType Type, const FString& Category)
+		: Type(Type)
+		, Category(Category)
+	{
+	}
+};
+
+
+/** Maps multiple types of ways to a specific Landscae layer */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FLayerWayMapping
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+
+	// The Layer's name this mapping is used for
+	UPROPERTY(Category = "Landscape", VisibleAnywhere)
+		FName LayerName;
+
+	// Types of ways that make this layer up
+	UPROPERTY(Category = "Landscape", EditAnywhere)
+		TArray<FWayMatch> Matches;
+
+	FLayerWayMapping()
+	{
+	}
+};
+
+
 /** Landscape generation settings */
 USTRUCT(BlueprintType)
 struct STREETMAPRUNTIME_API FStreetMapLandscapeBuildSettings
@@ -146,6 +216,10 @@ public:
 	UPROPERTY(Category = "Landscape", EditAnywhere, NonTransactional, EditFixedSize, meta = (DisplayName = "Layers", ShowForTools = "Landscape"))
 		TArray<FLandscapeImportLayerInfo> Layers;
 
+	// WayTypes corresponding to each layer. Only layer names referenced in the material assigned above are shown here. Modify the material to add more layers.
+	UPROPERTY(Category = "Landscape", EditAnywhere, NonTransactional, EditFixedSize, meta = (DisplayName = "Layer Ways", ShowForTools = "Landscape"))
+		TArray<FLayerWayMapping> LayerWayMapping;
+	
 	FStreetMapLandscapeBuildSettings() 
 		: QuadSize(4.0f)
 		, Radius(8192)
@@ -408,23 +482,6 @@ struct STREETMAPRUNTIME_API FStreetMapBuilding
 	FVector2D BoundsMax;
 };
 
-
-/** Types of miscellaneous ways */
-UENUM(BlueprintType)
-enum EStreetMapMiscWayType
-{
-	/** unknown type */
-	Unknown,
-
-	/** The leisure tag is for places people go in their spare time (e.g. parks, pitches). */
-	Leisure,
-
-	/** Used to describe natural and physical land features (e.g. wood, beach, water). */
-	Natural,
-
-	/** Used to describe the primary use of land by humans (e.g. grass, meadow, forest). */
-	LandUse,
-};
 
 /** A miscellaneous way */
 USTRUCT(BlueprintType)
