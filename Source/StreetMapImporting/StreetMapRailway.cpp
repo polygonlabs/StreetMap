@@ -26,10 +26,10 @@ public:
 		return Landscape->SplineComponent;
 	}
 
-	ULandscapeSplineControlPoint* AddControlPoint(	ULandscapeSplinesComponent* SplinesComponent,
-													const FVector& LocalLocation,
-													const FStreetMapRailwayBuildSettings& BuildSettings,
-													ULandscapeSplineControlPoint* PreviousPoint = nullptr)
+	void AddControlPoint(ULandscapeSplinesComponent* SplinesComponent, 
+						 const FVector& LocalLocation,
+						 const FStreetMapRailwayBuildSettings& BuildSettings,
+						 ULandscapeSplineControlPoint* PreviousPoint = nullptr)
 	{
 		SplinesComponent->Modify();
 
@@ -64,12 +64,34 @@ public:
 		{
 			SplinesComponent->MarkRenderStateDirty();
 		}
-
-		return NewControlPoint;
 	}
 
-	ULandscapeSplineSegment* AddSegment(ULandscapeSplineControlPoint* Start, ULandscapeSplineControlPoint* End, bool bAutoRotateStart, bool bAutoRotateEnd)
+	void AddSegment(ULandscapeSplineControlPoint* Start, ULandscapeSplineControlPoint* End, bool bAutoRotateStart, bool bAutoRotateEnd)
 	{
+		FScopedTransaction Transaction(LOCTEXT("LandscapeSpline_AddSegment", "Add Landscape Spline Segment"));
+
+		if (Start == End)
+		{
+			//UE_LOG( TEXT("Can't join spline control point to itself.") );
+			return;
+		}
+
+		if (Start->GetOuterULandscapeSplinesComponent() != End->GetOuterULandscapeSplinesComponent())
+		{
+			//UE_LOG( TEXT("Can't join spline control points across different terrains.") );
+			return;
+		}
+
+		for (const FLandscapeSplineConnection& Connection : Start->ConnectedSegments)
+		{
+			// if the *other* end on the connected segment connects to the "end" control point...
+			if (Connection.GetFarConnection().ControlPoint == End)
+			{
+				//UE_LOG( TEXT("Spline control points already joined connected!") );
+				return;
+			}
+		}
+
 		ULandscapeSplinesComponent* SplinesComponent = Start->GetOuterULandscapeSplinesComponent();
 		SplinesComponent->Modify();
 		Start->Modify();
@@ -155,43 +177,21 @@ public:
 		{
 			NewSegment->UpdateSplinePoints();
 		}
-
-		return NewSegment;
 	}
 
 	void Build(class UStreetMapComponent* StreetMapComponent, const FStreetMapRailwayBuildSettings& BuildSettings)
 	{
 		ULandscapeSplinesComponent* SplineComponent = CreateSplineComponent(BuildSettings.Landscape, FVector(1.0f));
-		
-		const TArray<FStreetMapRailway>& Railways = StreetMapComponent->GetStreetMap()->GetRailways();
 
-		for(const FStreetMapRailway& Railway : Railways)
+		/*for ()
 		{
-			ULandscapeSplineControlPoint* PreviousPoint = nullptr;
-			const int32 NumPoints = Railway.Points.Num();
-			for (int32 PointIndex = 0; PointIndex < NumPoints; PointIndex++)
-			{
-				ULandscapeSplineControlPoint* NewPoint = AddControlPoint(SplineComponent, FVector(Railway.Points[PointIndex], 0.0f), BuildSettings, PreviousPoint);
+			AddControlPoint()
+		}*/
 
-				if (PreviousPoint)
-				{
-					ULandscapeSplineSegment* NewSegment = AddSegment(PreviousPoint, NewPoint, true, true);
-
-					if(PointIndex == 1)
-					{
-						/*NewSegment->LayerName = CopyFromSegment->LayerName;
-						NewSegment->SplineMeshes = CopyFromSegment->SplineMeshes;
-						NewSegment->LDMaxDrawDistance = CopyFromSegment->LDMaxDrawDistance;
-						NewSegment->bRaiseTerrain = CopyFromSegment->bRaiseTerrain;
-						NewSegment->bLowerTerrain = CopyFromSegment->bLowerTerrain;
-						NewSegment->bPlaceSplineMeshesInStreamingLevels = CopyFromSegment->bPlaceSplineMeshesInStreamingLevels;
-						NewSegment->bEnableCollision = CopyFromSegment->bEnableCollision;
-						NewSegment->bCastShadow = CopyFromSegment->bCastShadow;*/
-					}
-				}
-				PreviousPoint = NewPoint;
-			}
-		}
+		/*for (ULandscapeSplineControlPoint* ControlPoint : SelectedSplineControlPoints)
+		{
+			//AddSegment(ControlPoint, NewControlPoint, bAutoRotateOnJoin, true);
+		}*/
 	}
 };
 
