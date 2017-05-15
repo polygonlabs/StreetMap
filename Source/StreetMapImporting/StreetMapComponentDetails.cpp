@@ -532,7 +532,9 @@ FReply FStreetMapComponentDetails::OnBuildRailwayClicked()
 
 bool FStreetMapComponentDetails::BuildRailwayIsEnabled() const
 {
-	if (!SelectedStreetMapComponent || !SelectedStreetMapComponent->RailwaySettings.RailwayLineMesh)
+	if (!SelectedStreetMapComponent || 
+		!SelectedStreetMapComponent->RailwaySettings.RailwayLineMesh ||
+		!SelectedStreetMapComponent->RailwaySettings.Landscape)
 	{
 		return false;
 	}

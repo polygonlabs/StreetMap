@@ -236,13 +236,19 @@ struct STREETMAPRUNTIME_API FStreetMapRailwayBuildSettings
 	GENERATED_USTRUCT_BODY()
 
 public:
-	
+
+	// Landscape where to put the railways onto
+	UPROPERTY(Category = "Railway", EditAnywhere)
+		ALandscapeProxy* Landscape;
+
 	// Track segment used to build the railroad line via Landscape Spline Meshes.
 	UPROPERTY(Category = "Railway", EditAnywhere)
 		UStaticMesh* RailwayLineMesh;
 
+
 	FStreetMapRailwayBuildSettings()
-		: RailwayLineMesh(nullptr)
+		: Landscape(nullptr)
+		, RailwayLineMesh(nullptr)
 	{
 	}
 };
@@ -568,6 +574,18 @@ public:
 	TArray<FStreetMapBuilding>& GetBuildings()
 	{
 		return Buildings;
+	}
+
+	/** Gets all of the railways (read only) */
+	const TArray<FStreetMapRailway>& GetRailways() const
+	{
+		return Railways;
+	}
+
+	/** Gets all of the railways */
+	TArray<FStreetMapRailway>& GetRailways()
+	{
+		return Railways;
 	}
 
 	/** Gets all of the miscellaneous ways (read only) */
