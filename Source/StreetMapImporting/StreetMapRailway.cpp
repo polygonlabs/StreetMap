@@ -4,6 +4,7 @@
 
 #include "LandscapeProxy.h"
 #include "LandscapeSplinesComponent.h"
+#include "LandscapeHeightfieldCollisionComponent.h"
 #include "LandscapeSplineSegment.h"
 #include "LandscapeSplineControlPoint.h"
 #include "ControlPointMeshComponent.h"
@@ -26,10 +27,10 @@ public:
 		return Landscape->SplineComponent;
 	}
 
-	void AddControlPoint(ULandscapeSplinesComponent* SplinesComponent, 
-						 const FVector& LocalLocation,
-						 const FStreetMapRailwayBuildSettings& BuildSettings,
-						 ULandscapeSplineControlPoint* PreviousPoint = nullptr)
+	ULandscapeSplineControlPoint* AddControlPoint(	ULandscapeSplinesComponent* SplinesComponent,
+													const FVector& LocalLocation,
+													const FStreetMapRailwayBuildSettings& BuildSettings,
+													ULandscapeSplineControlPoint* PreviousPoint = nullptr)
 	{
 		SplinesComponent->Modify();
 
@@ -64,34 +65,12 @@ public:
 		{
 			SplinesComponent->MarkRenderStateDirty();
 		}
+
+		return NewControlPoint;
 	}
 
-	void AddSegment(ULandscapeSplineControlPoint* Start, ULandscapeSplineControlPoint* End, bool bAutoRotateStart, bool bAutoRotateEnd)
+	ULandscapeSplineSegment* AddSegment(ULandscapeSplineControlPoint* Start, ULandscapeSplineControlPoint* End, bool bAutoRotateStart, bool bAutoRotateEnd)
 	{
-		FScopedTransaction Transaction(LOCTEXT("LandscapeSpline_AddSegment", "Add Landscape Spline Segment"));
-
-		if (Start == End)
-		{
-			//UE_LOG( TEXT("Can't join spline control point to itself.") );
-			return;
-		}
-
-		if (Start->GetOuterULandscapeSplinesComponent() != End->GetOuterULandscapeSplinesComponent())
-		{
-			//UE_LOG( TEXT("Can't join spline control points across different terrains.") );
-			return;
-		}
-
-		for (const FLandscapeSplineConnection& Connection : Start->ConnectedSegments)
-		{
-			// if the *other* end on the connected segment connects to the "end" control point...
-			if (Connection.GetFarConnection().ControlPoint == End)
-			{
-				//UE_LOG( TEXT("Spline control points already joined connected!") );
-				return;
-			}
-		}
-
 		ULandscapeSplinesComponent* SplinesComponent = Start->GetOuterULandscapeSplinesComponent();
 		SplinesComponent->Modify();
 		Start->Modify();
@@ -177,21 +156,86 @@ public:
 		{
 			NewSegment->UpdateSplinePoints();
 		}
+
+		return NewSegment;
+	}
+
+	float GetLandscapeElevation(const ALandscapeProxy* Landscape, const FVector2D& Location) const
+	{
+		UWorld* World = Landscape->GetWorld();
+		const FVector RayOrigin(Location,    1000000.0f);
+		const FVector RayEndPoint(Location, -1000000.0f);
+
+		static FName TraceTag = FName(TEXT("LandscapeTrace"));
+		TArray<FHitResult> Results;
+		// Each landscape component has 2 collision shapes, 1 of them is specific to landscape editor
+		// Trace only ECC_Visibility channel, so we do hit only Editor specific shape
+		World->LineTraceMultiByObjectType(Results, RayOrigin, RayEndPoint, FCollisionObjectQueryParams(ECollisionChannel::ECC_Visibility), FCollisionQueryParams(TraceTag, true));
+
+		bool bHitLandscape = false;
+		FVector FinalHitLocation;
+		for (const FHitResult& HitResult : Results)
+		{
+			ULandscapeHeightfieldCollisionComponent* CollisionComponent = Cast<ULandscapeHeightfieldCollisionComponent>(HitResult.Component.Get());
+			if (CollisionComponent)
+			{
+				ALandscapeProxy* HitLandscape = CollisionComponent->GetLandscapeProxy();
+				if (HitLandscape)
+				{
+					FinalHitLocation = HitResult.Location;
+					bHitLandscape = true;
+					break;
+				}
+			}
+		}
+
+		if (bHitLandscape)
+		{
+			return FinalHitLocation.Z;
+		}
+
+		return 0.0f;
 	}
 
 	void Build(class UStreetMapComponent* StreetMapComponent, const FStreetMapRailwayBuildSettings& BuildSettings)
 	{
 		ULandscapeSplinesComponent* SplineComponent = CreateSplineComponent(BuildSettings.Landscape, FVector(1.0f));
+		
+		const TArray<FStreetMapRailway>& Railways = StreetMapComponent->GetStreetMap()->GetRailways();
 
-		/*for ()
+		for(const FStreetMapRailway& Railway : Railways)
 		{
-			AddControlPoint()
-		}*/
+			ULandscapeSplineControlPoint* PreviousPoint = nullptr;
+			const int32 NumPoints = Railway.Points.Num();
+			for (int32 PointIndex = 0; PointIndex < NumPoints; PointIndex++)
+			{
+				const FVector2D& PointLocation = Railway.Points[PointIndex];
+				const float WorldElevation = GetLandscapeElevation(BuildSettings.Landscape, PointLocation);
+				ULandscapeSplineControlPoint* NewPoint = AddControlPoint(SplineComponent, FVector(PointLocation, WorldElevation), BuildSettings, PreviousPoint);
 
-		/*for (ULandscapeSplineControlPoint* ControlPoint : SelectedSplineControlPoints)
-		{
-			//AddSegment(ControlPoint, NewControlPoint, bAutoRotateOnJoin, true);
-		}*/
+				if (PreviousPoint)
+				{
+					ULandscapeSplineSegment* NewSegment = AddSegment(PreviousPoint, NewPoint, true, true);
+
+					if(PointIndex == 1)
+					{
+						FLandscapeSplineMeshEntry MeshEntry;
+						MeshEntry.Mesh = BuildSettings.RailwayLineMesh;
+						MeshEntry.bScaleToWidth = false;
+
+						NewSegment->LayerName = "gravel";
+						NewSegment->SplineMeshes.Add(MeshEntry);
+						NewSegment->LDMaxDrawDistance = 100000.0f;
+						NewSegment->bRaiseTerrain = true;
+						NewSegment->bLowerTerrain = true;
+						NewSegment->bPlaceSplineMeshesInStreamingLevels = true;
+						NewSegment->bEnableCollision = false;
+						NewSegment->bCastShadow = true;
+					}
+				}
+				PreviousPoint = NewPoint;
+			}
+		}
 	}
 };
 
