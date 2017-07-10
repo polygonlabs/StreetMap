@@ -1,6 +1,6 @@
 #include "StreetMapImporting.h"
 #include "StreetMapComponent.h"
-#include "StreetMapRailway.h"
+#include "StreetMapRoad.h"
 
 #include "LandscapeProxy.h"
 #include "LandscapeSplinesComponent.h"
@@ -13,7 +13,7 @@
 
 #define LOCTEXT_NAMESPACE "StreetMapImporting"
 
-class StreetMapRailwayBuilder
+class StreetMapRoadBuilder
 {
 private:
 	float WorldToCentimeterScale = 100.0f;
@@ -31,8 +31,9 @@ public:
 	}
 
 	ULandscapeSplineControlPoint* AddControlPoint(	ULandscapeSplinesComponent* SplinesComponent,
+													const float& RoadWidth,
 													const FVector& LocalLocation,
-													const FStreetMapRailwayBuildSettings& BuildSettings,
+													const FStreetMapRoadBuildSettings& BuildSettings,
 													ULandscapeSplineControlPoint* PreviousPoint = nullptr)
 	{
 		SplinesComponent->Modify();
@@ -45,10 +46,11 @@ public:
 		float ScaleXY = LandscapeToWorld.GetScale3D().X;
 
 		NewControlPoint->Location = LocalLocation; // has been scaled before calling this function
-		NewControlPoint->Width = 100.0f / ScaleXY;
-		NewControlPoint->SideFalloff = 150.0f / ScaleXY;
-		NewControlPoint->EndFalloff = 300.0f / ScaleXY;
+		NewControlPoint->Width = RoadWidth / ScaleXY;
+		NewControlPoint->SideFalloff = 1.5f * RoadWidth / ScaleXY;
+		NewControlPoint->EndFalloff = 3.0f * RoadWidth/ ScaleXY;
 		NewControlPoint->LayerName = "Soil";
+		NewControlPoint->SegmentMeshOffset = BuildSettings.RoadZOffset;
 
 		if (PreviousPoint)
 		{
@@ -208,25 +210,40 @@ public:
 		return 0.0f;
 	}
 
-	void Build(class UStreetMapComponent* StreetMapComponent, const FStreetMapRailwayBuildSettings& BuildSettings)
+	void Build(class UStreetMapComponent* StreetMapComponent, const FStreetMapRoadBuildSettings& BuildSettings, const FStreetMapMeshBuildSettings& MeshBuildSettings)
 	{
 		ULandscapeSplinesComponent* SplineComponent = CreateSplineComponent(BuildSettings.Landscape, FVector(1.0f));
 		FTransform LandscapeToWorld = BuildSettings.Landscape->ActorToWorld();
 
-		const TArray<FStreetMapRailway>& Railways = StreetMapComponent->GetStreetMap()->GetRailways();
+		const TArray<FStreetMapRoad>& Roads = StreetMapComponent->GetStreetMap()->GetRoads();
 
-		for(const FStreetMapRailway& Railway : Railways)
+		for(const FStreetMapRoad& Road : Roads)
 		{
 			ULandscapeSplineControlPoint* PreviousPoint = nullptr;
-			const int32 NumPoints = Railway.Points.Num();
+			const int32 NumPoints = Road.RoadPoints.Num();
+			
+			// Width of the Road depends on type - TODO: look up German rules of standard road geometries
+			float RoadWidth = 100.0;
+			switch (Road.RoadType)
+			{
+			case EStreetMapRoadType::Highway: 
+				RoadWidth = MeshBuildSettings.HighwayThickness; break;
+			case EStreetMapRoadType::MajorRoad:
+				RoadWidth = MeshBuildSettings.MajorRoadThickness; break;
+			case EStreetMapRoadType::Street:
+				RoadWidth = MeshBuildSettings.StreetThickness; break;
+			case EStreetMapRoadType::Other:
+				RoadWidth = 100.0f; break;
+			}
+
 			for (int32 PointIndex = 0; PointIndex < NumPoints; PointIndex++)
 			{
-				const FVector2D& PointLocation = Railway.Points[PointIndex];
+				const FVector2D& PointLocation = Road.RoadPoints[PointIndex];
 				const float WorldElevation = GetLandscapeElevation(BuildSettings.Landscape, PointLocation);
 				const float ScaledWorldElevation = WorldElevation / LandscapeToWorld.GetScale3D().Z;
 				const FVector2D& ScaledPointLocation = PointLocation / LandscapeToWorld.GetScale3D().X;
 
-				ULandscapeSplineControlPoint* NewPoint = AddControlPoint(SplineComponent, FVector(ScaledPointLocation, ScaledWorldElevation), BuildSettings, PreviousPoint);
+				ULandscapeSplineControlPoint* NewPoint = AddControlPoint(SplineComponent, RoadWidth, FVector(ScaledPointLocation, ScaledWorldElevation), BuildSettings, PreviousPoint);
 
 				if (PreviousPoint)
 				{
@@ -235,7 +252,7 @@ public:
 					if(PointIndex == 1)
 					{
 						FLandscapeSplineMeshEntry MeshEntry;
-						MeshEntry.Mesh = BuildSettings.RailwayLineMesh;
+						MeshEntry.Mesh = BuildSettings.RoadMesh;
 						MeshEntry.bScaleToWidth = true;
 
 						NewSegment->LayerName = "soil";
@@ -254,11 +271,11 @@ public:
 	}
 };
 
-void BuildRailway(class UStreetMapComponent* StreetMapComponent, const FStreetMapRailwayBuildSettings& BuildSettings)
+void BuildRoads(class UStreetMapComponent* StreetMapComponent, const FStreetMapRoadBuildSettings& BuildSettings, const FStreetMapMeshBuildSettings& MeshBuildSettings)
 {
-	FScopedTransaction Transaction(LOCTEXT("Undo", "Creating Railways"));
+	FScopedTransaction Transaction(LOCTEXT("Undo", "Creating Roads"));
 
-	StreetMapRailwayBuilder Builder;
+	StreetMapRoadBuilder Builder;
 
-	Builder.Build(StreetMapComponent, BuildSettings);
+	Builder.Build(StreetMapComponent, BuildSettings, MeshBuildSettings);
 }

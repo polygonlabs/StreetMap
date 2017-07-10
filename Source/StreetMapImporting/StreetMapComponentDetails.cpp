@@ -24,6 +24,7 @@
 #include "StreetMapComponent.h"
 #include "GISUtils/Elevation.h"
 #include "StreetMapRailway.h"
+#include "StreetMapRoad.h"
 
 #define LOCTEXT_NAMESPACE "StreetMapComponentDetails"
 
@@ -233,6 +234,30 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 			[
 				SNew(STextBlock)
 				.Text(LOCTEXT("BuildRailway", "Build Railway"))
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+			]
+			]
+			];
+	}
+
+	// Roads settings
+	{
+		IDetailCategoryBuilder& RoadCategory = DetailBuilder.EditCategory("Roads", FText::GetEmpty(), ECategoryPriority::Important);
+		RoadCategory.InitiallyCollapsed(false);
+
+		RoadCategory.AddCustomRow(FText::GetEmpty(), false)
+			[
+				SAssignNew(TempHorizontalBox, SHorizontalBox)
+				+ SHorizontalBox::Slot()
+			[
+				SNew(SButton)
+				.ToolTipText(LOCTEXT("BuildRoads_Tooltip", "Generate roads onto the Landscape based on the OpenStreetMap data."))
+			.OnClicked(this, &FStreetMapComponentDetails::OnBuildRoadsClicked)
+			.IsEnabled(this, &FStreetMapComponentDetails::BuildRoadsIsEnabled)
+			.HAlign(HAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("BuildRoads", "Build Roads"))
 			.Font(IDetailLayoutBuilder::GetDetailFont())
 			]
 			]
@@ -535,6 +560,32 @@ bool FStreetMapComponentDetails::BuildRailwayIsEnabled() const
 	if (!SelectedStreetMapComponent || 
 		!SelectedStreetMapComponent->RailwaySettings.RailwayLineMesh ||
 		!SelectedStreetMapComponent->RailwaySettings.Landscape)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+
+FReply FStreetMapComponentDetails::OnBuildRoadsClicked()
+{
+	if (SelectedStreetMapComponent != nullptr)
+	{
+		BuildRoads(SelectedStreetMapComponent, SelectedStreetMapComponent->RoadSettings, SelectedStreetMapComponent->MeshBuildSettings);
+
+		// regenerates details panel layouts, to take in consideration new changes.
+		RefreshDetails();
+	}
+
+	return FReply::Handled();
+}
+
+bool FStreetMapComponentDetails::BuildRoadsIsEnabled() const
+{
+	if (!SelectedStreetMapComponent ||
+		!SelectedStreetMapComponent->RoadSettings.RoadMesh ||
+		!SelectedStreetMapComponent->RoadSettings.Landscape)
 	{
 		return false;
 	}
