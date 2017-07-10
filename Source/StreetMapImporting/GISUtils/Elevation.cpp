@@ -450,7 +450,7 @@ public:
 			const FIntPoint NorthEastTileXY = TiledMap.GetTileXY(East, North, LevelIndex);
 
 			// since we may not know the direction of tile order the source uses we need to order them
-			// additionally download padded frame around needed area to cover enoúgh for the lanczos filter
+			// additionally download padded frame around needed area to cover enoï¿½gh for the lanczos filter
 			const int32 MinX = FMath::Max(FMath::Min(SouthWestTileXY.X, NorthEastTileXY.X) - 1, 0);
 			const int32 MinY = FMath::Max(FMath::Min(SouthWestTileXY.Y, NorthEastTileXY.Y) - 1, 0);
 			const int32 MaxX = FMath::Min(FMath::Max(SouthWestTileXY.X, NorthEastTileXY.X) + 1, NumTiles - 1);
