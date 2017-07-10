@@ -49,6 +49,12 @@ public:
 	/** Returns whether railway can be created or not */
 	bool BuildRailwayIsEnabled() const;
 
+	/** Handles build railway button clicking */
+	FReply OnBuildRoadsClicked();
+
+	/** Returns whether railway can be created or not */
+	bool BuildRoadsIsEnabled() const;
+
 protected:
 	/** Holds Selected Street Map Component */
 	 class UStreetMapComponent* SelectedStreetMapComponent;

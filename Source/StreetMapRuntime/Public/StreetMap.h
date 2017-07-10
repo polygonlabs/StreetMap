@@ -253,6 +253,34 @@ public:
 	}
 };
 
+
+/** Roads as LandscapeSpline generation settings */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapRoadBuildSettings
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+
+	// Landscape where to put the roads onto
+	UPROPERTY(Category = "Road", EditAnywhere)
+		ALandscapeProxy* Landscape;
+
+	// Track segment used to build the roads via Landscape Spline Meshes.
+	UPROPERTY(Category = "Road", EditAnywhere)
+		UStaticMesh* RoadMesh;
+
+	// Offset of the LandscapeSpline above the ground - helps to eliminate clipping issues by rising the ground below the whole spline
+	UPROPERTY(Category = "Road", EditAnywhere)
+		float RoadZOffset;
+
+	FStreetMapRoadBuildSettings()
+		: Landscape(nullptr)
+		, RoadMesh(nullptr)
+	{
+	}
+};
+
 /** Types of roads */
 UENUM( BlueprintType )
 enum EStreetMapRoadType
@@ -438,7 +466,7 @@ struct STREETMAPRUNTIME_API FStreetMapRailway
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		TEnumAsByte<EStreetMapRailwayType> Type;
 
-	/** List of all of the points on this raiway */
+	/** List of all of the points on this railway */
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		TArray<FVector2D> Points;
 
