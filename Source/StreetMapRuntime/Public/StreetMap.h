@@ -3,8 +3,8 @@
 #pragma once
 
 #include "LandscapeProxy.h"
+#include "Components/SplineMeshComponent.h"
 #include "StreetMap.generated.h"
-
 
 /** Types of miscellaneous ways */
 UENUM(BlueprintType)
@@ -245,10 +245,19 @@ public:
 	UPROPERTY(Category = "Railway", EditAnywhere)
 		UStaticMesh* RailwayLineMesh;
 
+	/** Chooses the forward axis for the spline mesh orientation */
+	UPROPERTY(Category = "Railway", EditAnywhere)
+	TEnumAsByte<ESplineMeshAxis::Type> ForwardAxis;
+
+	/** Chooses the up axis for the spline mesh orientation */
+	UPROPERTY(Category = "Railway", EditAnywhere)
+	TEnumAsByte<ESplineMeshAxis::Type> UpAxis;
 
 	FStreetMapRailwayBuildSettings()
 		: Landscape(nullptr)
 		, RailwayLineMesh(nullptr)
+		, ForwardAxis(ESplineMeshAxis::X)
+		, UpAxis(ESplineMeshAxis::Z)
 	{
 	}
 };

@@ -42,12 +42,11 @@ public:
 
 		// Apply scaling between world and landscape
 		FTransform LandscapeToWorld = BuildSettings.Landscape->ActorToWorld();
-		float ScaleXY = LandscapeToWorld.GetScale3D().X;
 
 		NewControlPoint->Location = LocalLocation; // has been scaled before calling this function
-		NewControlPoint->Width = 100.0f / ScaleXY;
-		NewControlPoint->SideFalloff = 150.0f / ScaleXY;
-		NewControlPoint->EndFalloff = 300.0f / ScaleXY;
+		NewControlPoint->Width = 1.0f;
+		NewControlPoint->SideFalloff = 1.5f;
+		NewControlPoint->EndFalloff = 3.0f;
 		NewControlPoint->LayerName = "Soil";
 
 		if (PreviousPoint)
@@ -212,6 +211,7 @@ public:
 	{
 		ULandscapeSplinesComponent* SplineComponent = CreateSplineComponent(BuildSettings.Landscape, FVector(1.0f));
 		FTransform LandscapeToWorld = BuildSettings.Landscape->ActorToWorld();
+		FVector MeshScaleXYZ = FVector(1.0f, 1.0f, 1.0f) / LandscapeToWorld.GetScale3D();
 
 		const TArray<FStreetMapRailway>& Railways = StreetMapComponent->GetStreetMap()->GetRailways();
 
@@ -236,7 +236,10 @@ public:
 					{
 						FLandscapeSplineMeshEntry MeshEntry;
 						MeshEntry.Mesh = BuildSettings.RailwayLineMesh;
-						MeshEntry.bScaleToWidth = true;
+						MeshEntry.bScaleToWidth = false;
+						MeshEntry.ForwardAxis = BuildSettings.ForwardAxis;
+						MeshEntry.UpAxis = BuildSettings.UpAxis;
+						MeshEntry.Scale = MeshScaleXYZ;
 
 						NewSegment->LayerName = "soil";
 						NewSegment->SplineMeshes.Add(MeshEntry);
