@@ -532,6 +532,7 @@ void FStreetMapComponentDetails::RefreshLandscapeLayersList()
 			{
 				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("forest")));
 				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("wood")));
+				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("scrub")));
 				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("nature_reserve")));
 			}
 		}

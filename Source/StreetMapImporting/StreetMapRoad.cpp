@@ -212,8 +212,9 @@ public:
 
 	void Build(class UStreetMapComponent* StreetMapComponent, const FStreetMapRoadBuildSettings& BuildSettings, const FStreetMapMeshBuildSettings& MeshBuildSettings)
 	{
-		ULandscapeSplinesComponent* SplineComponent = CreateSplineComponent(BuildSettings.Landscape, FVector(1.0f));
-		FTransform LandscapeToWorld = BuildSettings.Landscape->ActorToWorld();
+		const FTransform LandscapeToWorld = BuildSettings.Landscape->ActorToWorld();
+		const FVector SplineScaleXYZ = FVector(1.0f) / LandscapeToWorld.GetScale3D();
+		ULandscapeSplinesComponent* SplineComponent = CreateSplineComponent(BuildSettings.Landscape, SplineScaleXYZ);
 
 		const TArray<FStreetMapRoad>& Roads = StreetMapComponent->GetStreetMap()->GetRoads();
 
@@ -240,8 +241,8 @@ public:
 			{
 				const FVector2D& PointLocation = Road.RoadPoints[PointIndex];
 				const float WorldElevation = GetLandscapeElevation(BuildSettings.Landscape, PointLocation);
-				const float ScaledWorldElevation = WorldElevation / LandscapeToWorld.GetScale3D().Z;
-				const FVector2D& ScaledPointLocation = PointLocation / LandscapeToWorld.GetScale3D().X;
+				const float ScaledWorldElevation = WorldElevation;
+				const FVector2D& ScaledPointLocation = PointLocation;
 
 				ULandscapeSplineControlPoint* NewPoint = AddControlPoint(SplineComponent, RoadWidth, FVector(ScaledPointLocation, ScaledWorldElevation), BuildSettings, PreviousPoint);
 
@@ -253,7 +254,8 @@ public:
 					{
 						FLandscapeSplineMeshEntry MeshEntry;
 						MeshEntry.Mesh = BuildSettings.RoadMesh;
-						MeshEntry.bScaleToWidth = true;
+						MeshEntry.bScaleToWidth = false;
+						MeshEntry.Scale = FVector(1.0f);
 
 						NewSegment->LayerName = "soil";
 						NewSegment->SplineMeshes.Add(MeshEntry);

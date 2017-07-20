@@ -209,9 +209,9 @@ public:
 
 	void Build(class UStreetMapComponent* StreetMapComponent, const FStreetMapRailwayBuildSettings& BuildSettings)
 	{
-		ULandscapeSplinesComponent* SplineComponent = CreateSplineComponent(BuildSettings.Landscape, FVector(1.0f));
-		FTransform LandscapeToWorld = BuildSettings.Landscape->ActorToWorld();
-		FVector MeshScaleXYZ = FVector(1.0f, 1.0f, 1.0f) / LandscapeToWorld.GetScale3D();
+		const FTransform LandscapeToWorld = BuildSettings.Landscape->ActorToWorld();
+		const FVector SplineScaleXYZ = FVector(1.0f) / LandscapeToWorld.GetScale3D();
+		ULandscapeSplinesComponent* SplineComponent = CreateSplineComponent(BuildSettings.Landscape, SplineScaleXYZ);
 
 		const TArray<FStreetMapRailway>& Railways = StreetMapComponent->GetStreetMap()->GetRailways();
 
@@ -223,8 +223,8 @@ public:
 			{
 				const FVector2D& PointLocation = Railway.Points[PointIndex];
 				const float WorldElevation = GetLandscapeElevation(BuildSettings.Landscape, PointLocation);
-				const float ScaledWorldElevation = WorldElevation / LandscapeToWorld.GetScale3D().Z;
-				const FVector2D& ScaledPointLocation = PointLocation / LandscapeToWorld.GetScale3D().X;
+				const float ScaledWorldElevation = WorldElevation;
+				const FVector2D& ScaledPointLocation = PointLocation;
 
 				ULandscapeSplineControlPoint* NewPoint = AddControlPoint(SplineComponent, FVector(ScaledPointLocation, ScaledWorldElevation), BuildSettings, PreviousPoint);
 
@@ -239,7 +239,7 @@ public:
 						MeshEntry.bScaleToWidth = false;
 						MeshEntry.ForwardAxis = BuildSettings.ForwardAxis;
 						MeshEntry.UpAxis = BuildSettings.UpAxis;
-						MeshEntry.Scale = MeshScaleXYZ;
+						MeshEntry.Scale = FVector(1.0f);
 
 						NewSegment->LayerName = "soil";
 						NewSegment->SplineMeshes.Add(MeshEntry);
