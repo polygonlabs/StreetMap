@@ -247,17 +247,22 @@ public:
 
 	/** Chooses the forward axis for the spline mesh orientation */
 	UPROPERTY(Category = "Railway", EditAnywhere)
-	TEnumAsByte<ESplineMeshAxis::Type> ForwardAxis;
+		TEnumAsByte<ESplineMeshAxis::Type> ForwardAxis;
 
 	/** Chooses the up axis for the spline mesh orientation */
 	UPROPERTY(Category = "Railway", EditAnywhere)
-	TEnumAsByte<ESplineMeshAxis::Type> UpAxis;
+		TEnumAsByte<ESplineMeshAxis::Type> UpAxis;
+
+	/** Width of the generated splines */
+	UPROPERTY(Category = "Railway", EditAnywhere)
+		float Width;
 
 	FStreetMapRailwayBuildSettings()
 		: Landscape(nullptr)
 		, RailwayLineMesh(nullptr)
 		, ForwardAxis(ESplineMeshAxis::X)
 		, UpAxis(ESplineMeshAxis::Z)
+		, Width(200.0f)
 	{
 	}
 };

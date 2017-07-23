@@ -44,7 +44,7 @@ public:
 		FTransform LandscapeToWorld = BuildSettings.Landscape->ActorToWorld();
 
 		NewControlPoint->Location = LocalLocation; // has been scaled before calling this function
-		NewControlPoint->Width = 1.0f;
+		NewControlPoint->Width = BuildSettings.Width;
 		NewControlPoint->SideFalloff = 1.5f;
 		NewControlPoint->EndFalloff = 3.0f;
 		NewControlPoint->LayerName = "Soil";
