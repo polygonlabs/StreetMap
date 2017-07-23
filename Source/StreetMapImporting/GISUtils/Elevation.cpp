@@ -15,6 +15,7 @@
 #include "TiledMap.h"
 #include "LandscapeInfo.h"
 #include "Polygon2DView.h"
+#include "LandscapeDataAccess.h"
 
 #define LOCTEXT_NAMESPACE "StreetMapImporting"
 
@@ -394,14 +395,14 @@ int32 FCachedElevationFile::NumPendingDownloads = 0;
 static int32 GetNumVerticesForRadius(const FStreetMapLandscapeBuildSettings& BuildSettings, int32& OutSubsectionSizeQuads)
 {
 	int32 Size = FMath::RoundToInt(BuildSettings.Radius / BuildSettings.QuadSize);
-	OutSubsectionSizeQuads = FMath::RoundUpToPowerOfTwo(Size) / 16 - 1;
+	OutSubsectionSizeQuads = FMath::RoundUpToPowerOfTwo(Size / (64 / BuildSettings.QuadSize))  - 1;
 	Size = FMath::DivideAndRoundUp(Size, OutSubsectionSizeQuads) * OutSubsectionSizeQuads;
 	return Size;
 }
 
-// @todo: replace these by the real engine values
-static const float DefaultLandscapeScaleXY = 128.0f;
-static const float DefaultLandscapeScaleZ = 256.0f;
+
+static const float DefaultLandscapeScaleXY = LANDSCAPE_INV_XYOFFSET_SCALE * 0.5f;
+static const float DefaultLandscapeScaleZ = LANDSCAPE_INV_ZSCALE * 2.0f;
 static const float OSMToCentimetersScaleFactor = 100.0f;
 
 /** Loads and transforms elevation data for desired region. */
