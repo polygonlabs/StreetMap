@@ -395,7 +395,7 @@ int32 FCachedElevationFile::NumPendingDownloads = 0;
 static int32 GetNumVerticesForRadius(const FStreetMapLandscapeBuildSettings& BuildSettings, int32& OutSubsectionSizeQuads)
 {
 	int32 Size = FMath::RoundToInt(BuildSettings.Radius / BuildSettings.QuadSize);
-	OutSubsectionSizeQuads = FMath::RoundUpToPowerOfTwo(Size / (64 / BuildSettings.QuadSize))  - 1;
+	OutSubsectionSizeQuads = FMath::Max<int32>(FMath::RoundUpToPowerOfTwo(Size / 16)  - 1, 1);
 	Size = FMath::DivideAndRoundUp(Size, OutSubsectionSizeQuads) * OutSubsectionSizeQuads;
 	return Size;
 }
