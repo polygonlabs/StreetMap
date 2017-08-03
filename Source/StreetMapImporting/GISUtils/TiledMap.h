@@ -43,7 +43,11 @@ public:
 		const double RelativeX = (X - Bounds.MinX) / (Bounds.MaxX - Bounds.MinX);
 		const double RelativeY = (Y - Bounds.MinY) / (Bounds.MaxY - Bounds.MinY);
 		const uint32 NumTiles = 1 << LevelIndex;
-		return FIntPoint((int32)(RelativeX * NumTiles), (int32)(RelativeY * NumTiles));
+		const double AbsoluteX = RelativeX * NumTiles;
+		const double AbsoluteY = RelativeY * NumTiles;
+		const FIntPoint TileXY = FIntPoint((int32)AbsoluteX, (int32)AbsoluteY);
+
+		return TileXY;
 	}
 
 	FIntPoint GetTileXY(double X, double Y, uint32 LevelIndex, FVector2D& OutPixelXY) const
@@ -55,12 +59,10 @@ public:
 		const double AbsoluteY = RelativeY * NumTiles;
 		const FIntPoint TileXY = FIntPoint((int32)AbsoluteX, (int32)AbsoluteY);
 
-		OutPixelXY.X = (AbsoluteX - TileXY.X) * TileWidth;
-		OutPixelXY.Y = (AbsoluteY - TileXY.Y) * TileHeight;
+		OutPixelXY.X = (AbsoluteX - (double)TileXY.X) * (double)TileWidth;
+		OutPixelXY.Y = (AbsoluteY - (double)TileXY.Y) * (double)TileHeight;
 
 		return TileXY;
 	}
 };
-
-
 
