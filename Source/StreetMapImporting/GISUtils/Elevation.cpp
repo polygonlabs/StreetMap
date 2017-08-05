@@ -622,11 +622,10 @@ private:
 	{
 		const float FilterSizeFloat = FilterSize;
 
-		// we don't need this since we never sample outside of the window
-		//if (x <= -FilterSizeFloat || x >= FilterSizeFloat)
-		//{
-		//	return 0.0f;  // Outside of the window
-		//}
+		if (X <= -FilterSizeFloat || X >= FilterSizeFloat)
+		{
+			return 0.0f;  // Outside of the window
+		}
 
 		if (X > -0.0001 &&
 			X <  0.0001)
@@ -654,39 +653,25 @@ private:
 		const float X = PixelXY.X - ElevationX;
 		const float Y = PixelXY.Y - ElevationY;
 
-		/*const float InvX = 1.0f - X;
-		const float InvY = 1.0f - Y;
+		double ElevationValue = 0.0f;
+		double LanczosWeightSum = 0.0f;
 
-		const float ElevationTapValue00 = ElevationData[DataWidth * (ElevationY + 0) + ElevationX + 0];
-		const float ElevationTapValue10 = ElevationData[DataWidth * (ElevationY + 0) + ElevationX + 1];
-		const float ElevationTapValue01 = ElevationData[DataWidth * (ElevationY + 1) + ElevationX + 0];
-		const float ElevationTapValue11 = ElevationData[DataWidth * (ElevationY + 1) + ElevationX + 1];
-
-		const float ElevationTapValue = (ElevationTapValue00 * InvX + ElevationTapValue10 * X) * InvY
-									  + (ElevationTapValue01 * InvX + ElevationTapValue11 * X) * Y;
-
-		return ElevationTapValue;*/
-
-		float ElevationValue = 0.0f;
-		float LanczosWeightSum = 0.0f;
-
+		constexpr float LanczosFilterSizeSqr = LanczosFilterSize * LanczosFilterSize;
 		for (int32 Tap_Y = -LanczosFilterSize; Tap_Y <= LanczosFilterSize; Tap_Y++)
 		for (int32 Tap_X = -LanczosFilterSize; Tap_X <= LanczosFilterSize; Tap_X++)
 		{
 			const float TapX = Tap_X - X;
 			const float TapY = Tap_Y - Y;
-			const float Distance = FMath::Sqrt(TapX * TapX + TapY * TapY);
 
-			if(Distance < LanczosFilterSize)
-			{
-				const float LanczosWeight = EvalLanczos<LanczosFilterSize>(Distance);
-				const int32 TX = ElevationX + Tap_X;
-				const int32 TY = ElevationY + Tap_Y;
-				const float ElevationTapValue = ElevationData[DataWidth * TY + TX];
+			const float LanczosWeight = EvalLanczos<LanczosFilterSize>(TapX) * 
+										EvalLanczos<LanczosFilterSize>(TapY);
 
-				ElevationValue += ElevationTapValue * LanczosWeight;
-				LanczosWeightSum += LanczosWeight;
-			}
+			const int32 TX = ElevationX + Tap_X;
+			const int32 TY = ElevationY + Tap_Y;
+			const float ElevationTapValue = ElevationData[DataWidth * TY + TX];
+
+			ElevationValue += ElevationTapValue * LanczosWeight;
+			LanczosWeightSum += LanczosWeight;
 		}
 
 		return ElevationValue / LanczosWeightSum;
