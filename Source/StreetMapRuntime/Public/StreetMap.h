@@ -405,8 +405,24 @@ struct STREETMAPRUNTIME_API FStreetMapRoadRef
 	int32 RoadPointIndex;
 };
 
+/** Nodes have a list of railway refs, one for each railway that intersects this node.  Each railway ref references a railway and also the
+point along that railway where this node exists. */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapRailwayRef
+{
+	GENERATED_USTRUCT_BODY()
 
-/** Describes a node on a road.  Nodes usually connect at least two roads together, but they might also exist at the end of a dead-end street.  They are sort of like an "intersection". */
+	/** Index of railway in the list of all railway in this street map */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+	int32 RailwayIndex;
+
+	/** Index of the point along railway where this node exists */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+	int32 RailwayPointIndex;
+};
+
+
+/** Describes a node on a road or railway. Nodes usually connect at least two roads/railways together, but they might also exist at the end of a dead-end street/railroad.  They are sort of like an "intersection". */
 USTRUCT( BlueprintType )
 struct STREETMAPRUNTIME_API FStreetMapNode
 {
@@ -416,6 +432,11 @@ struct STREETMAPRUNTIME_API FStreetMapNode
 	    road where this node exists */
 	UPROPERTY( Category=StreetMap, EditAnywhere )
 	TArray<FStreetMapRoadRef> RoadRefs;
+
+	/** All of the Railways that intersect this node.  We have references to each of these railways, as well as the point along each
+		railway where this node exists */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+	TArray<FStreetMapRailwayRef> RailwayRefs;
 
 	/** Returns this node's index */
 	inline int32 GetNodeIndex( const UStreetMap& StreetMap ) const;
@@ -479,6 +500,10 @@ struct STREETMAPRUNTIME_API FStreetMapRailway
 	/** Type of railway */
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		TEnumAsByte<EStreetMapRailwayType> Type;
+
+	/** Nodes along this railway, one at each point in the Points list */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		TArray<int32> NodeIndices;
 
 	/** List of all of the points on this railway */
 	UPROPERTY(Category = StreetMap, EditAnywhere)
@@ -948,8 +973,14 @@ inline bool FStreetMapNode::IsDeadEnd( const UStreetMap& StreetMap ) const
 
 inline FVector2D FStreetMapNode::GetLocation( const UStreetMap& StreetMap ) const
 {
-	const FStreetMapRoadRef& MyFirstRoadRef = RoadRefs[ 0 ];
-	const FVector2D Location = StreetMap.GetRoads()[ MyFirstRoadRef.RoadIndex ].RoadPoints[ MyFirstRoadRef.RoadPointIndex ];
+	if (RoadRefs.Num() > 0)
+	{
+		const FStreetMapRoadRef& MyFirstRoadRef = RoadRefs[0];
+		const FVector2D Location = StreetMap.GetRoads()[MyFirstRoadRef.RoadIndex].RoadPoints[MyFirstRoadRef.RoadPointIndex];
+		return Location;
+	}
+	const FStreetMapRailwayRef& MyFirstRailwayRef = RailwayRefs[0];
+	const FVector2D Location = StreetMap.GetRailways()[MyFirstRailwayRef.RailwayIndex].Points[MyFirstRailwayRef.RailwayPointIndex];
 	return Location;
 }
 

@@ -251,7 +251,8 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 	auto AddRailwayForWay = [OSMToCentimetersScaleFactor](
 		const FOSMFile& OSMFile,
 		UStreetMap& StreetMapRef,
-		const FOSMFile::FOSMWayInfo& OSMWay) -> bool
+		const FOSMFile::FOSMWayInfo& OSMWay,
+		int32& OutRailwayIndex) -> bool
 	{
 		EStreetMapRailwayType RailwayType = EStreetMapRailwayType::OtherRailway;
 		if (OSMWay.Category == TEXT("rail"))
@@ -278,6 +279,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		}
 
 		// Create a railway for this way
+		OutRailwayIndex = StreetMapRef.Railways.Num();
 		FStreetMapRailway& NewRailway = *new(StreetMapRef.Railways)FStreetMapRailway();
 
 		FVector2D BoundsMin(TNumericLimits<float>::Max(), TNumericLimits<float>::Max());
@@ -285,6 +287,14 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 
 		NewRailway.Points.AddUninitialized(OSMWay.Nodes.Num());
 		int32 CurRailwayPoint = 0;
+
+		// Set defaults for each node index on this railway.  INDEX_NONE means the node is not valid, which may be the case
+		// for nodes that we filter out entirely.  This will be filled in by valid indices to nodes later on.
+		NewRailway.NodeIndices.AddUninitialized(OSMWay.Nodes.Num());
+		for (int32& NodeIndex : NewRailway.NodeIndices)
+		{
+			NodeIndex = INDEX_NONE;
+		}
 
 		for (const FOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes)
 		{
@@ -442,8 +452,9 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 	//        in integral grid cells with coordinates relative to their cell.  Of course, there will be many
 	//        other considerations for handling huge maps (loading, rendering, collision, etc.)
 
-	// Maps OSMWayInfos to the RoadIndex we created for that way
+	// Maps OSMWayInfos to the (Road/Railway)-Index we created for that way
 	TMap< const FOSMFile::FOSMWayInfo*, int32 > OSMWayToRoadIndexMap;
+	TMap< const FOSMFile::FOSMWayInfo*, int32 > OSMWayToRailwayIndexMap;
 
 	StreetMap->BoundsMin = FVector2D( TNumericLimits<float>::Max(), TNumericLimits<float>::Max() );
 	StreetMap->BoundsMax = FVector2D( TNumericLimits<float>::Lowest(), TNumericLimits<float>::Lowest() );
@@ -468,9 +479,10 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		}
 		else if (OSMWay->WayType == FOSMFile::EOSMWayType::Railway)
 		{
-			if (AddRailwayForWay(OSMFile, *StreetMap, *OSMWay))
+			int32 RailwayIndex = INDEX_NONE;
+			if (AddRailwayForWay(OSMFile, *StreetMap, *OSMWay, RailwayIndex))
 			{
-				// ...
+				OSMWayToRailwayIndexMap.Add(OSMWay, RailwayIndex);
 			}
 		}
 		else if (AddMiscWay(OSMFile, *StreetMap, *OSMWay))
@@ -479,38 +491,54 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		}
 	}
 
-	for( const auto& NodeMapHashPair : OSMFile.NodeMap )
+
+	for (const auto& NodeMapHashPair : OSMFile.NodeMap)
 	{
 		const FOSMFile::FOSMNodeInfo& OSMNode = *NodeMapHashPair.Value;
 
 		// Any ways touching this node?
-		if( OSMNode.WayRefs.Num() > 0 )
+		if (OSMNode.WayRefs.Num() > 0)
 		{
 			FStreetMapNode NewNode;
 
-			for( const FOSMFile::FOSMWayRef& OSMWayRef : OSMNode.WayRefs )
+			for (const FOSMFile::FOSMWayRef& OSMWayRef : OSMNode.WayRefs)
 			{
-				const int32* FoundRoundIndexPtr = OSMWayToRoadIndexMap.Find( OSMWayRef.Way );
-				if( FoundRoundIndexPtr != nullptr )
+				const int32* FoundRoadIndexPtr = OSMWayToRoadIndexMap.Find(OSMWayRef.Way);
+				if (FoundRoadIndexPtr != nullptr)
 				{
-					const int32 FoundRoadIndex = *FoundRoundIndexPtr;
+					const int32 FoundRoadIndex = *FoundRoadIndexPtr;
 
 					FStreetMapRoadRef RoadRef;
 					RoadRef.RoadIndex = FoundRoadIndex;
 
 					const int32 RoadPointIndex = OSMWayRef.NodeIndex;
 					RoadRef.RoadPointIndex = RoadPointIndex;
-					NewNode.RoadRefs.Add( RoadRef );
+					NewNode.RoadRefs.Add(RoadRef);
+				}
+
+				const int32* FoundRailwayIndexPtr = OSMWayToRailwayIndexMap.Find(OSMWayRef.Way);
+				if (FoundRailwayIndexPtr != nullptr)
+				{
+					const int32 FoundRailwayIndex = *FoundRailwayIndexPtr;
+
+					FStreetMapRailwayRef RailwayRef;
+					RailwayRef.RailwayIndex = FoundRailwayIndex;
+
+					const int32 RailwayPointIndex = OSMWayRef.NodeIndex;
+					RailwayRef.RailwayPointIndex = RailwayPointIndex;
+					NewNode.RailwayRefs.Add(RailwayRef);
 				}
 				else
 				{
-					// Skipped ref because we didn't keep this road in our data set							
+					// Skipped ref because we didn't keep this road nor railway in our data set							
 				}
 			}
 
-			// Only store nodes that are attached to at least one road.  We must have at least a connection to a single
-			// road, otherwise we've filtered this node's road out and there's no point in wasting memory on the node itself.
-			if( NewNode.RoadRefs.Num() > 0 )
+			int32 NewNodeIndex = INDEX_NONE;
+
+			// Only store nodes that are attached to at least one road or railway.  We must have at least a connection to a single
+			// road/railway, otherwise we've filtered this node's road out and there's no point in wasting memory on the node itself.
+			if (NewNode.RoadRefs.Num() > 0)
 			{
 				// Most nodes from OpenStreetMap will only be touching a single road.  These nodes usually make up the points
 				// along the length of the road, even for roads with no intersections except at the beginning and end.  We
@@ -519,27 +547,57 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 				// In the road's NodeIndices array, any nodes we filter out here will simply have an INDEX_NONE value in that
 				// array, and we'll only store the positions of the road at these points in the road's RoadPoints array.
 
-				const FStreetMapRoadRef& FirstRoadRef = NewNode.RoadRefs[ 0 ];
-				const FStreetMapRoad& FirstRoad = StreetMap->Roads[ FirstRoadRef.RoadIndex ];
+				const FStreetMapRoadRef& FirstRoadRef = NewNode.RoadRefs[0];
+				const FStreetMapRoad& FirstRoad = StreetMap->Roads[FirstRoadRef.RoadIndex];
 
-				if( NewNode.RoadRefs.Num() > 1 ||					// Does the node connect to more than one road?
+				if (NewNode.RoadRefs.Num() > 1 ||					// Does the node connect to more than one road?
 					FirstRoadRef.RoadPointIndex == 0 ||				// Does the node connect to the beginning of the road?
-					FirstRoadRef.RoadPointIndex == ( FirstRoad.NodeIndices.Num() - 1 ) )	// Does the node connect to the end of the road?
+					FirstRoadRef.RoadPointIndex == (FirstRoad.NodeIndices.Num() - 1))	// Does the node connect to the end of the road?
 				{
-					const int32 NewNodeIndex = StreetMap->Nodes.Num();
-					StreetMap->Nodes.Add( NewNode );
+					NewNodeIndex = StreetMap->Nodes.Num();
+					StreetMap->Nodes.Add(NewNode);
 
 					// Update the roads that are overlapping this node
-					for( const FStreetMapRoadRef& RoadRef : NewNode.RoadRefs )
+					for (const FStreetMapRoadRef& RoadRef : NewNode.RoadRefs)
 					{
-						FStreetMapRoad& Road = StreetMap->Roads[ RoadRef.RoadIndex ];
-						check( Road.NodeIndices[ RoadRef.RoadPointIndex ] == INDEX_NONE );
-						Road.NodeIndices[ RoadRef.RoadPointIndex ] = NewNodeIndex;
+						FStreetMapRoad& Road = StreetMap->Roads[RoadRef.RoadIndex];
+						check(Road.NodeIndices[RoadRef.RoadPointIndex] == INDEX_NONE);
+						Road.NodeIndices[RoadRef.RoadPointIndex] = NewNodeIndex;
 					}
 				}
 				else
 				{
 					// Node has only one road that it references, and it wasn't the beginning or end of the road, so filter it out!
+				}
+			}
+
+			if (NewNode.RailwayRefs.Num() > 0)
+			{
+				// see text for roads above and replace the words roads with railways
+				const FStreetMapRailwayRef& FirstRailwayRef = NewNode.RailwayRefs[0];
+				const FStreetMapRailway& FirstRailway = StreetMap->Railways[FirstRailwayRef.RailwayIndex];
+
+				if (NewNode.RailwayRefs.Num() > 1 ||						// Does the node connect to more than one railway?
+					FirstRailwayRef.RailwayPointIndex == 0 ||				// Does the node connect to the beginning of the railway?
+					FirstRailwayRef.RailwayPointIndex == (FirstRailway.NodeIndices.Num() - 1))	// Does the node connect to the end of the railway?
+				{
+					if (NewNodeIndex == INDEX_NONE)
+					{
+						NewNodeIndex = StreetMap->Nodes.Num();
+						StreetMap->Nodes.Add(NewNode);
+					}
+
+					// Update the railways that are overlapping this node
+					for (const FStreetMapRailwayRef& RailwayRef : NewNode.RailwayRefs)
+					{
+						FStreetMapRailway& Railway = StreetMap->Railways[RailwayRef.RailwayIndex];
+						check(Railway.NodeIndices[RailwayRef.RailwayPointIndex] == INDEX_NONE);
+						Railway.NodeIndices[RailwayRef.RailwayPointIndex] = NewNodeIndex;
+					}
+				}
+				else
+				{
+					// Node has only one railway that it references, and it wasn't the beginning or end of the railway, so filter it out!
 				}
 			}
 			else
@@ -549,18 +607,28 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		}
 	}
 
-	// Validation test: Make sure that all roads have at least two nodes referencing them, one at the beginning and
-	// one at the end.
-	for( const FStreetMapRoad& Road : StreetMap->Roads )
+	// Validation test: Make sure that all roads have at least two nodes referencing them, one at the beginning and one at the end.
+	for (const FStreetMapRoad& Road : StreetMap->Roads)
 	{
-		const bool bHasNodeAtBeginning = Road.NodeIndices[ 0 ] != INDEX_NONE;
-		const bool bHasNodeAtEnd = Road.NodeIndices[ Road.NodeIndices.Num() - 1 ] != INDEX_NONE;
+		const bool bHasNodeAtBeginning = Road.NodeIndices[0] != INDEX_NONE;
+		const bool bHasNodeAtEnd = Road.NodeIndices[Road.NodeIndices.Num() - 1] != INDEX_NONE;
 
 		// All roads should have at least two nodes referencing them, one at the beginning and one at the end
-		ensure( bHasNodeAtBeginning && bHasNodeAtEnd );
+		ensure(bHasNodeAtBeginning && bHasNodeAtEnd);
+	}
+
+	// Validation test: Make sure that all railways have at least two nodes referencing them, one at the beginning and one at the end.
+	for (const FStreetMapRailway& Railway : StreetMap->Railways)
+	{
+		const bool bHasNodeAtBeginning = Railway.NodeIndices[0] != INDEX_NONE;
+		const bool bHasNodeAtEnd = Railway.NodeIndices[Railway.NodeIndices.Num() - 1] != INDEX_NONE;
+
+		// All railways should have at least two nodes referencing them, one at the beginning and one at the end
+		ensure(bHasNodeAtBeginning && bHasNodeAtEnd);
 	}
 
 	return true;
 }
+
 
 

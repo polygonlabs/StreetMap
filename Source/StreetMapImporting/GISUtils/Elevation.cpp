@@ -23,7 +23,7 @@ static const int32 LanczosFilterSize = 3;
 static const int32 TilePaddingX = LanczosFilterSize;
 static const int32 TilePaddingY = LanczosFilterSize;
 
-PRAGMA_DISABLE_OPTIMIZATION
+//PRAGMA_DISABLE_OPTIMIZATION
 
 static void ShowErrorMessage(const FText& MessageText)
 {
@@ -900,4 +900,4 @@ ALandscape* BuildLandscape(UStreetMapComponent* StreetMapComponent, const FStree
 	return CreateLandscape(StreetMapComponent, BuildSettings, ElevationModel.GetTransform(), ElevationData, SlowTask);
 }
 
-PRAGMA_ENABLE_OPTIMIZATION
+//PRAGMA_ENABLE_OPTIMIZATION
