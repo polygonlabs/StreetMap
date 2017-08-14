@@ -213,6 +213,7 @@ public:
 		const FVector SplineScaleXYZ = FVector(1.0f) / LandscapeToWorld.GetScale3D();
 		ULandscapeSplinesComponent* SplineComponent = CreateSplineComponent(BuildSettings.Landscape, SplineScaleXYZ);
 
+		TMap< int32, ULandscapeSplineControlPoint* > NodeIndexToControlPointMap;
 		const TArray<FStreetMapRailway>& Railways = StreetMapComponent->GetStreetMap()->GetRailways();
 
 		for(const FStreetMapRailway& Railway : Railways)
@@ -222,15 +223,38 @@ public:
 			for (int32 PointIndex = 0; PointIndex < NumPoints; PointIndex++)
 			{
 				const FVector2D& PointLocation = Railway.Points[PointIndex];
-				const float WorldElevation = GetLandscapeElevation(BuildSettings.Landscape, PointLocation);
-				const float ScaledWorldElevation = WorldElevation;
-				const FVector2D& ScaledPointLocation = PointLocation;
+				const int32 NodeIndex = Railway.NodeIndices[PointIndex];
 
-				ULandscapeSplineControlPoint* NewPoint = AddControlPoint(SplineComponent, FVector(ScaledPointLocation, ScaledWorldElevation), BuildSettings, PreviousPoint);
+				ULandscapeSplineControlPoint* CurrentPoint = nullptr;
+
+				// Try to find existing control point first
+				if (NodeIndex != INDEX_NONE)
+				{
+					ULandscapeSplineControlPoint** CurrentPointPtr = NodeIndexToControlPointMap.Find(NodeIndex);
+					if (CurrentPointPtr)
+					{
+						CurrentPoint = *CurrentPointPtr;
+					}
+				}
+
+				// create a new control point
+				if(CurrentPoint == nullptr)
+				{
+					const float WorldElevation = GetLandscapeElevation(BuildSettings.Landscape, PointLocation);
+					const float ScaledWorldElevation = WorldElevation;
+					const FVector2D& ScaledPointLocation = PointLocation;
+
+					CurrentPoint = AddControlPoint(SplineComponent, FVector(ScaledPointLocation, ScaledWorldElevation), BuildSettings, PreviousPoint);
+
+					if (NodeIndex != INDEX_NONE)
+					{
+						NodeIndexToControlPointMap.Add(NodeIndex, CurrentPoint);
+					}
+				}
 
 				if (PreviousPoint)
 				{
-					ULandscapeSplineSegment* NewSegment = AddSegment(PreviousPoint, NewPoint, true, true);
+					ULandscapeSplineSegment* NewSegment = AddSegment(PreviousPoint, CurrentPoint, true, true);
 
 					if(PointIndex == 1)
 					{
@@ -251,7 +275,7 @@ public:
 						NewSegment->bCastShadow = true;
 					}
 				}
-				PreviousPoint = NewPoint;
+				PreviousPoint = CurrentPoint;
 			}
 		}
 	}
