@@ -19,12 +19,16 @@ private:
 	float WorldToCentimeterScale = 100.0f;
 
 public:
-	ULandscapeSplinesComponent* CreateSplineComponent(ALandscapeProxy* Landscape, FVector Scale3D)
+	ULandscapeSplinesComponent* ConditionallyCreateSplineComponent(ALandscapeProxy* Landscape, FVector Scale3D)
 	{
 		Landscape->Modify();
-		Landscape->SplineComponent = NewObject<ULandscapeSplinesComponent>(Landscape, NAME_None, RF_Transactional);
-		Landscape->SplineComponent->RelativeScale3D = Scale3D;
-		Landscape->SplineComponent->AttachToComponent(Landscape->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+
+		if (Landscape->SplineComponent == nullptr)
+		{
+			Landscape->SplineComponent = NewObject<ULandscapeSplinesComponent>(Landscape, NAME_None, RF_Transactional);
+			Landscape->SplineComponent->RelativeScale3D = Scale3D;
+			Landscape->SplineComponent->AttachToComponent(Landscape->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+		}
 		Landscape->SplineComponent->ShowSplineEditorMesh(true);
 
 		return Landscape->SplineComponent;
@@ -207,11 +211,48 @@ public:
 		return 0.0f;
 	}
 
+	void CleanOldRailways(ULandscapeSplinesComponent* SplinesComponent, const FStreetMapRailwayBuildSettings& BuildSettings, UWorld* World)
+	{
+		TArray< ULandscapeSplineControlPoint* > SplineControlPointsToDelete;
+
+		const int32 NumSegments = SplinesComponent->Segments.Num();
+		for (int32 SegmentIndex = NumSegments - 1; SegmentIndex >= 0; SegmentIndex--)
+		{
+			ULandscapeSplineSegment* Segment = SplinesComponent->Segments[SegmentIndex];
+			if (Segment->SplineMeshes.Num() == 1 &&
+				Segment->SplineMeshes[0].Mesh == BuildSettings.RailwayLineMesh)
+			{
+				SplineControlPointsToDelete.AddUnique(Segment->Connections[0].ControlPoint);
+				SplineControlPointsToDelete.AddUnique(Segment->Connections[1].ControlPoint);
+
+				Segment->DeleteSplinePoints();
+
+				SplinesComponent->Segments.RemoveAtSwap(SegmentIndex);
+			}
+		}
+
+		SplinesComponent->ControlPoints.RemoveAllSwap([&SplineControlPointsToDelete](ULandscapeSplineControlPoint* OtherControlPoint)
+		{
+			const bool DeleteThisSplineControlPoint = SplineControlPointsToDelete.Contains(OtherControlPoint);
+			if (DeleteThisSplineControlPoint)
+			{
+				OtherControlPoint->DeleteSplinePoints();
+			}
+			return DeleteThisSplineControlPoint;
+		});
+
+		SplinesComponent->Modify();
+
+		World->ForceGarbageCollection(true);
+	}
+
 	void Build(class UStreetMapComponent* StreetMapComponent, const FStreetMapRailwayBuildSettings& BuildSettings)
 	{
 		const FTransform LandscapeToWorld = BuildSettings.Landscape->ActorToWorld();
 		const FVector SplineScaleXYZ = FVector(1.0f) / LandscapeToWorld.GetScale3D();
-		ULandscapeSplinesComponent* SplineComponent = CreateSplineComponent(BuildSettings.Landscape, SplineScaleXYZ);
+		ULandscapeSplinesComponent* SplinesComponent = ConditionallyCreateSplineComponent(BuildSettings.Landscape, SplineScaleXYZ);
+
+		CleanOldRailways(SplinesComponent, BuildSettings, BuildSettings.Landscape->GetWorld());
 
 		TMap< int32, ULandscapeSplineControlPoint* > NodeIndexToControlPointMap;
 		const TArray<FStreetMapRailway>& Railways = StreetMapComponent->GetStreetMap()->GetRailways();
@@ -244,7 +285,7 @@ public:
 					const float ScaledWorldElevation = WorldElevation;
 					const FVector2D& ScaledPointLocation = PointLocation;
 
-					CurrentPoint = AddControlPoint(SplineComponent, FVector(ScaledPointLocation, ScaledWorldElevation), BuildSettings, PreviousPoint);
+					CurrentPoint = AddControlPoint(SplinesComponent, FVector(ScaledPointLocation, ScaledWorldElevation), BuildSettings, PreviousPoint);
 
 					if (NodeIndex != INDEX_NONE)
 					{
@@ -266,13 +307,17 @@ public:
 						MeshEntry.Scale = FVector(1.0f);
 
 						NewSegment->LayerName = "soil";
-						NewSegment->SplineMeshes.Add(MeshEntry);
 						NewSegment->LDMaxDrawDistance = 100000.0f;
 						NewSegment->bRaiseTerrain = true;
 						NewSegment->bLowerTerrain = true;
 						NewSegment->bPlaceSplineMeshesInStreamingLevels = true;
 						NewSegment->bEnableCollision = false;
 						NewSegment->bCastShadow = true;
+
+						if (NewSegment->SplineMeshes.Num() == 0)
+						{
+							NewSegment->SplineMeshes.Add(MeshEntry);
+						}
 					}
 				}
 				PreviousPoint = CurrentPoint;
