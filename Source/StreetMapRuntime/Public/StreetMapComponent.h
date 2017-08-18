@@ -25,6 +25,7 @@ public:
 	UStreetMapComponent(const class FObjectInitializer& ObjectInitializer);
 
 	/** @return Gets the street map object associated with this component */
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 	UStreetMap* GetStreetMap()
 	{
 		return StreetMap;

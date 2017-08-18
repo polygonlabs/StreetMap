@@ -422,6 +422,22 @@ struct STREETMAPRUNTIME_API FStreetMapRailwayRef
 };
 
 
+/** OSM Tag kept for later use */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapTag
+{
+	GENERATED_USTRUCT_BODY()
+
+	/** Key of the OSM Tag */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FName Key;
+
+	/** Value of the OSM Tag */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FName Value;
+};
+
+
 /** Describes a node on a road or railway. Nodes usually connect at least two roads/railways together, but they might also exist at the end of a dead-end street/railroad.  They are sort of like an "intersection". */
 USTRUCT( BlueprintType )
 struct STREETMAPRUNTIME_API FStreetMapNode
@@ -431,19 +447,23 @@ struct STREETMAPRUNTIME_API FStreetMapNode
 	/** All of the roads that intersect this node.  We have references to each of these roads, as well as the point along each
 	    road where this node exists */
 	UPROPERTY( Category=StreetMap, EditAnywhere )
-	TArray<FStreetMapRoadRef> RoadRefs;
+		TArray<FStreetMapRoadRef> RoadRefs;
 
 	/** All of the Railways that intersect this node.  We have references to each of these railways, as well as the point along each
 		railway where this node exists */
 	UPROPERTY(Category = StreetMap, EditAnywhere)
-	TArray<FStreetMapRailwayRef> RailwayRefs;
+		TArray<FStreetMapRailwayRef> RailwayRefs;
+
+	/** All Tags of this Node. Usually empty */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		TArray<FStreetMapTag> Tags;
+
+	/** 2D location of this node */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FVector2D Location;
 
 	/** Returns this node's index */
 	inline int32 GetNodeIndex( const UStreetMap& StreetMap ) const;
-
-	/** Gets the location of this node */
-	inline FVector2D GetLocation( const UStreetMap& StreetMap ) const;
-
 
 	///
 	/// Utility functions which may be useful for pathfinding algorithms (not used internally.)
@@ -620,6 +640,7 @@ public:
 	}
 	
 	/** Gets the nodes on the map (read only.)  Nodes describe intersections between roads */
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 	const TArray<FStreetMapNode>& GetNodes() const
 	{
 		return Nodes;
@@ -968,20 +989,6 @@ inline bool FStreetMapNode::IsDeadEnd( const UStreetMap& StreetMap ) const
 	}
 
 	return false;
-}
-
-
-inline FVector2D FStreetMapNode::GetLocation( const UStreetMap& StreetMap ) const
-{
-	if (RoadRefs.Num() > 0)
-	{
-		const FStreetMapRoadRef& MyFirstRoadRef = RoadRefs[0];
-		const FVector2D Location = StreetMap.GetRoads()[MyFirstRoadRef.RoadIndex].RoadPoints[MyFirstRoadRef.RoadPointIndex];
-		return Location;
-	}
-	const FStreetMapRailwayRef& MyFirstRailwayRef = RailwayRefs[0];
-	const FVector2D Location = StreetMap.GetRailways()[MyFirstRailwayRef.RailwayIndex].Points[MyFirstRailwayRef.RailwayPointIndex];
-	return Location;
 }
 
 

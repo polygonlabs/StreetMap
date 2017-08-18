@@ -58,15 +58,20 @@ public:
 		int32 NodeIndex;
 	};
 
-		
+	struct FOSMTag
+	{
+		FName Key;
+		FName Value;
+	};
+
 	struct FOSMNodeInfo
 	{
 		double Latitude;
 		double Longitude;
+		TArray<FOSMTag> Tags;
 		TArray<FOSMWayRef> WayRefs;
 	};
 		
-
 	struct FOSMWayInfo
 	{
 		FString Name;
@@ -124,6 +129,7 @@ protected:
 	{
 		Root,
 		Node,
+		Node_Tag,
 		Way,
 		Way_NodeRef,
 		Way_Tag
@@ -143,6 +149,9 @@ protected:
 		
 	// Current way's tag key string
 	const TCHAR* CurrentWayTagKey;
+
+	// Current nodes's tag key string
+	const TCHAR* CurrentNodeTagKey;
 };
 
 

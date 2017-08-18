@@ -111,6 +111,13 @@ bool FOSMFile::ProcessElement( const TCHAR* ElementName, const TCHAR* ElementDat
 			//        be included in our data set.  It might be nice to make this an import option.
 		}
 	}
+	else if (ParsingState == ParsingState::Node)
+	{
+		if (!FCString::Stricmp(ElementName, TEXT("tag")))
+		{
+			ParsingState = ParsingState::Node_Tag;
+		}
+	}
 	else if( ParsingState == ParsingState::Way )
 	{
 		if( !FCString::Stricmp( ElementName, TEXT( "nd" ) ) )
@@ -168,6 +175,20 @@ bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* Attrib
 			{
 				MaxLongitude = CurrentNodeInfo->Longitude;
 			}
+		}
+	}
+	else if (ParsingState == ParsingState::Node_Tag)
+	{
+		if (!FCString::Stricmp(AttributeName, TEXT("k")))
+		{
+			CurrentNodeTagKey = AttributeValue;
+		}
+		else if (!FCString::Stricmp(AttributeName, TEXT("v")))
+		{
+			FOSMTag Tag;
+			Tag.Key = FName::FName(CurrentNodeTagKey);
+			Tag.Value = FName::FName(AttributeValue);
+			CurrentNodeInfo->Tags.Add(Tag);
 		}
 	}
 	else if( ParsingState == ParsingState::Way )
@@ -295,6 +316,11 @@ bool FOSMFile::ProcessClose( const TCHAR* Element )
 		CurrentNodeInfo = nullptr;
 				
 		ParsingState = ParsingState::Root;
+	}
+	else if (ParsingState == ParsingState::Node_Tag)
+	{
+		CurrentNodeTagKey = TEXT("");
+		ParsingState = ParsingState::Node;
 	}
 	else if( ParsingState == ParsingState::Way )
 	{
