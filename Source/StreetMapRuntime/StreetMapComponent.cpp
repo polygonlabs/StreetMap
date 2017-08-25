@@ -194,9 +194,7 @@ void UStreetMapComponent::GenerateCollision()
 	}
 
 	// Rebuild the body setup
-#if WITH_EDITOR || WITH_RUNTIME_PHYSICS_COOKING
 	StreetMapBodySetup->InvalidatePhysicsData();
-#endif
 	StreetMapBodySetup->CreatePhysicsMeshes();
 
 	UpdateNavigationIfNeeded();
@@ -208,9 +206,7 @@ void UStreetMapComponent::ClearCollision()
 
 	if (StreetMapBodySetup != nullptr)
 	{
-#if WITH_RUNTIME_PHYSICS_COOKING || WITH_EDITOR
 		StreetMapBodySetup->InvalidatePhysicsData();
-#endif
 		StreetMapBodySetup = nullptr;
 	}
 
