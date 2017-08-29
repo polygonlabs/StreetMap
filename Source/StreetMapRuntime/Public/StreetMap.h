@@ -245,6 +245,10 @@ public:
 	UPROPERTY(Category = "Railway", EditAnywhere)
 		UStaticMesh* RailwayLineMesh;
 
+	// Offset of the LandscapeSpline above the ground
+	UPROPERTY(Category = "Railway", EditAnywhere)
+		float ZOffset;
+
 	/** Chooses the forward axis for the spline mesh orientation */
 	UPROPERTY(Category = "Railway", EditAnywhere)
 		TEnumAsByte<ESplineMeshAxis::Type> ForwardAxis;
@@ -260,6 +264,7 @@ public:
 	FStreetMapRailwayBuildSettings()
 		: Landscape(nullptr)
 		, RailwayLineMesh(nullptr)
+		, ZOffset(0.0f)
 		, ForwardAxis(ESplineMeshAxis::X)
 		, UpAxis(ESplineMeshAxis::Z)
 		, Width(200.0f)
@@ -284,13 +289,24 @@ public:
 	UPROPERTY(Category = "Road", EditAnywhere)
 		UStaticMesh* RoadMesh;
 
-	// Offset of the LandscapeSpline above the ground - helps to eliminate clipping issues by rising the ground below the whole spline
+	// Offset of the LandscapeSpline above the ground
 	UPROPERTY(Category = "Road", EditAnywhere)
-		float RoadZOffset;
+		float ZOffset;
+
+	/** Chooses the forward axis for the spline mesh orientation */
+	UPROPERTY(Category = "Road", EditAnywhere)
+		TEnumAsByte<ESplineMeshAxis::Type> ForwardAxis;
+
+	/** Chooses the up axis for the spline mesh orientation */
+	UPROPERTY(Category = "Road", EditAnywhere)
+		TEnumAsByte<ESplineMeshAxis::Type> UpAxis;
 
 	FStreetMapRoadBuildSettings()
 		: Landscape(nullptr)
 		, RoadMesh(nullptr)
+		, ZOffset(0.0f)
+		, ForwardAxis(ESplineMeshAxis::X)
+		, UpAxis(ESplineMeshAxis::Z)
 	{
 	}
 };
