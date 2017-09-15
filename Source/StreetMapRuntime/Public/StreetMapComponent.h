@@ -167,6 +167,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Roads")
 		FStreetMapRoadBuildSettings RoadSettings;
 
+	UPROPERTY(EditAnywhere, Category = "Splines")
+		FStreetMapSplineBuildSettings SplineSettings;
+
 	//** Physics data for mesh collision. */
 	UPROPERTY(Transient)
 		UBodySetup* StreetMapBodySetup;

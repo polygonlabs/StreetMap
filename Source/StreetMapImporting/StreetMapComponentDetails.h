@@ -55,6 +55,12 @@ public:
 	/** Returns whether railway can be created or not */
 	bool BuildRoadsIsEnabled() const;
 
+	/** Handles build splines button clicking */
+	FReply OnBuildSplinesClicked();
+
+	/** Returns whether splines can be created or not */
+	bool BuildSplinesIsEnabled() const;
+
 protected:
 	/** Holds Selected Street Map Component */
 	 class UStreetMapComponent* SelectedStreetMapComponent;

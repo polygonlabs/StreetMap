@@ -1,4 +1,10 @@
 #pragma once
+#include "LandscapeProxy.h"
+#include "LandscapeSplinesComponent.h"
+#include "LandscapeHeightfieldCollisionComponent.h"
+#include "LandscapeSplineSegment.h"
+#include "LandscapeSplineControlPoint.h"
+#include "ControlPointMeshComponent.h"
 
 class FStreetMapSplineTools
 {
@@ -19,3 +25,6 @@ public:
 		const UStaticMesh* Mesh,
 		UWorld* World);
 };
+
+
+void BuildSplines(class UStreetMapComponent* StreetMapComponent, const FStreetMapSplineBuildSettings& BuildSettings);

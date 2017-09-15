@@ -2,12 +2,6 @@
 #include "StreetMapComponent.h"
 #include "StreetMapRoad.h"
 
-#include "LandscapeProxy.h"
-#include "LandscapeSplinesComponent.h"
-#include "LandscapeHeightfieldCollisionComponent.h"
-#include "LandscapeSplineSegment.h"
-#include "LandscapeSplineControlPoint.h"
-#include "ControlPointMeshComponent.h"
 #include "StreetMapSplineTools.h"
 
 #include "ScopedTransaction.h"

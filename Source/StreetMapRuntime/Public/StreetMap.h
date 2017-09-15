@@ -311,6 +311,49 @@ public:
 	}
 };
 
+
+/** Types of Splines to generate */
+UENUM(BlueprintType)
+enum EStreetMapSplineBuildType
+{
+	/** Cinematic Rig Rail */
+	CinematicRigRail,
+};
+
+
+/** Generic Spline generation settings */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapSplineBuildSettings
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+
+	// Start Actor reference where to look for landscape spline references nearby to start the generated spline
+	UPROPERTY(Category = "Spline", EditAnywhere)
+		AActor* Start;
+
+	// End Actor reference where to look for landscape spline references nearby to end the generated spline
+	UPROPERTY(Category = "Spline", EditAnywhere)
+		AActor* End;
+
+	// Vertical offset of the spline above the landscape splines
+	UPROPERTY(Category = "Spline", EditAnywhere)
+		float ZOffset;
+
+	/** What type of Spline Actor should be generated */
+	UPROPERTY(Category = "Spline", EditAnywhere)
+		TEnumAsByte<EStreetMapSplineBuildType> Type;
+
+	FStreetMapSplineBuildSettings()
+		: Start(nullptr)
+		, End(nullptr)
+		, ZOffset(0.0f)
+		, Type(EStreetMapSplineBuildType::CinematicRigRail)
+	{
+	}
+};
+
 /** Types of roads */
 UENUM( BlueprintType )
 enum EStreetMapRoadType

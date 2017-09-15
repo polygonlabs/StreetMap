@@ -1,15 +1,5 @@
-#include "StreetMapImporting.h"
-#include "StreetMapComponent.h"
-#include "StreetMapRailway.h"
-
-#include "LandscapeProxy.h"
-#include "LandscapeSplinesComponent.h"
-#include "LandscapeHeightfieldCollisionComponent.h"
-#include "LandscapeSplineSegment.h"
-#include "LandscapeSplineControlPoint.h"
-#include "ControlPointMeshComponent.h"
-
 #include "StreetMapSplineTools.h"
+#include "StreetMapComponent.h"
 
 ULandscapeSplinesComponent* FStreetMapSplineTools::ConditionallyCreateSplineComponent(ALandscapeProxy* Landscape, FVector Scale3D)
 {
@@ -241,4 +231,10 @@ void FStreetMapSplineTools::CleanSplines(ULandscapeSplinesComponent* SplinesComp
 	SplinesComponent->Modify();
 
 	World->ForceGarbageCollection(true);
+}
+
+
+void BuildSplines(class UStreetMapComponent* StreetMapComponent, const FStreetMapSplineBuildSettings& BuildSettings)
+{
+
 }

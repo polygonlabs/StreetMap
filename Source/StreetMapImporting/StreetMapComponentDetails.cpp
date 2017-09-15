@@ -25,6 +25,7 @@
 #include "GISUtils/Elevation.h"
 #include "StreetMapRailway.h"
 #include "StreetMapRoad.h"
+#include "StreetMapSplineTools.h"
 
 #define LOCTEXT_NAMESPACE "StreetMapComponentDetails"
 
@@ -258,6 +259,30 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 			[
 				SNew(STextBlock)
 				.Text(LOCTEXT("BuildRoads", "Build Roads"))
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+			]
+			]
+			];
+	}
+
+	// Spline settings
+	{
+		IDetailCategoryBuilder& RailwayCategory = DetailBuilder.EditCategory("Splines", FText::GetEmpty(), ECategoryPriority::Important);
+		RailwayCategory.InitiallyCollapsed(false);
+
+		RailwayCategory.AddCustomRow(FText::GetEmpty(), false)
+			[
+				SAssignNew(TempHorizontalBox, SHorizontalBox)
+				+ SHorizontalBox::Slot()
+			[
+				SNew(SButton)
+				.ToolTipText(LOCTEXT("BuildSplines_Tooltip", "Generate Spline Actors along the shortest path connected Landscape Splines."))
+			.OnClicked(this, &FStreetMapComponentDetails::OnBuildSplinesClicked)
+			.IsEnabled(this, &FStreetMapComponentDetails::BuildSplinesIsEnabled)
+			.HAlign(HAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("BuildSplines", "Build Splines"))
 			.Font(IDetailLayoutBuilder::GetDetailFont())
 			]
 			]
@@ -587,6 +612,32 @@ bool FStreetMapComponentDetails::BuildRoadsIsEnabled() const
 	if (!SelectedStreetMapComponent ||
 		!SelectedStreetMapComponent->RoadSettings.RoadMesh ||
 		!SelectedStreetMapComponent->RoadSettings.Landscape)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+
+FReply FStreetMapComponentDetails::OnBuildSplinesClicked()
+{
+	if (SelectedStreetMapComponent != nullptr)
+	{
+		BuildSplines(SelectedStreetMapComponent, SelectedStreetMapComponent->SplineSettings);
+
+		// regenerates details panel layouts, to take in consideration new changes.
+		RefreshDetails();
+	}
+
+	return FReply::Handled();
+}
+
+bool FStreetMapComponentDetails::BuildSplinesIsEnabled() const
+{
+	if (!SelectedStreetMapComponent ||
+		!SelectedStreetMapComponent->SplineSettings.Start ||
+		!SelectedStreetMapComponent->SplineSettings.End)
 	{
 		return false;
 	}
