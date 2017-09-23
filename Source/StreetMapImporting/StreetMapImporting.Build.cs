@@ -30,6 +30,7 @@ namespace UnrealBuildTool.Rules
                     "ImageWrapper",
                     "DesktopPlatform",
                     "Landscape",
+                    "CinematicCamera"
                 }
             );
 

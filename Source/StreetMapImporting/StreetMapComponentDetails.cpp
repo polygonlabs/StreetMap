@@ -624,7 +624,10 @@ FReply FStreetMapComponentDetails::OnBuildSplinesClicked()
 {
 	if (SelectedStreetMapComponent != nullptr)
 	{
-		BuildSplines(SelectedStreetMapComponent, SelectedStreetMapComponent->SplineSettings);
+		BuildSplines(
+			SelectedStreetMapComponent, 
+			SelectedStreetMapComponent->SplineSettings,
+			SelectedStreetMapComponent->RailwaySettings.Landscape);
 
 		// regenerates details panel layouts, to take in consideration new changes.
 		RefreshDetails();
@@ -637,7 +640,9 @@ bool FStreetMapComponentDetails::BuildSplinesIsEnabled() const
 {
 	if (!SelectedStreetMapComponent ||
 		!SelectedStreetMapComponent->SplineSettings.Start ||
-		!SelectedStreetMapComponent->SplineSettings.End)
+		!SelectedStreetMapComponent->SplineSettings.End ||
+		!SelectedStreetMapComponent->RailwaySettings.Landscape ||
+		!SelectedStreetMapComponent->RailwaySettings.Landscape->SplineComponent)
 	{
 		return false;
 	}

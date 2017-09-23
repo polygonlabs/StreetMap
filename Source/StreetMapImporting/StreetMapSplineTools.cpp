@@ -3,6 +3,10 @@
 #include "StreetMapSplineTools.h"
 #include "StreetMapComponent.h"
 
+#include "GraphAStar.h"
+#include "CameraRig_Rail.h"
+#include "Components/SplineComponent.h"
+
 ULandscapeSplinesComponent* FStreetMapSplineTools::ConditionallyCreateSplineComponent(ALandscapeProxy* Landscape, FVector Scale3D)
 {
 	Landscape->Modify();
@@ -12,7 +16,7 @@ ULandscapeSplinesComponent* FStreetMapSplineTools::ConditionallyCreateSplineComp
 		Landscape->SplineComponent = NewObject<ULandscapeSplinesComponent>(Landscape, NAME_None, RF_Transactional);
 		Landscape->SplineComponent->RelativeScale3D = Scale3D;
 		Landscape->SplineComponent->AttachToComponent(Landscape->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
-	}
+	}  
 	Landscape->SplineComponent->ShowSplineEditorMesh(true);
 
 	return Landscape->SplineComponent;
@@ -236,7 +240,182 @@ void FStreetMapSplineTools::CleanSplines(ULandscapeSplinesComponent* SplinesComp
 }
 
 
-void BuildSplines(class UStreetMapComponent* StreetMapComponent, const FStreetMapSplineBuildSettings& BuildSettings)
+PRAGMA_DISABLE_OPTIMIZATION
+ULandscapeSplineControlPoint* FStreetMapSplineTools::FindNearestSplineControlPoint(const AActor* Actor, ALandscapeProxy* Landscape)
 {
+	const FTransform LandscapeTransform = Landscape->GetActorTransform();
+	const FVector ActorLocation = Actor->GetTransform().GetLocation();
 
+	float DistSquaredMin = TNumericLimits<float>::Max();
+	ULandscapeSplineControlPoint* NearestControlPoint = nullptr;
+
+	const int32 NumControlPoints = Landscape->SplineComponent->ControlPoints.Num();
+	for (int32 ControlPointIndex = 0; ControlPointIndex < NumControlPoints; ControlPointIndex++)
+	{
+		ULandscapeSplineControlPoint* ControlPoint = Landscape->SplineComponent->ControlPoints[ControlPointIndex];
+		const FVector ControlPointInWorldSpace = LandscapeTransform.TransformPositionNoScale(ControlPoint->Location);
+
+		float DistSquared = FVector::DistSquared(ActorLocation, ControlPointInWorldSpace);
+
+		if (DistSquaredMin > DistSquared)
+		{
+			DistSquaredMin = DistSquared;
+			NearestControlPoint = ControlPoint;
+		}
+	}
+
+	return NearestControlPoint;
 }
+
+
+template<typename TGraph>
+struct FGraphAStarNode
+{
+	typedef typename TGraph::FNodeRef FGraphNodeRef;
+
+	const FGraphNodeRef NodeRef;
+	FGraphNodeRef ParentRef;
+	float TraversalCost;
+	float TotalCost;
+	int32 SearchNodeIndex;
+	int32 ParentNodeIndex;
+	uint8 bIsOpened : 1;
+	uint8 bIsClosed : 1;
+
+	FGraphAStarNode(const FGraphNodeRef& InNodeRef)
+		: NodeRef(InNodeRef)
+		, ParentRef(nullptr)
+		, TraversalCost(FLT_MAX)
+		, TotalCost(FLT_MAX)
+		, SearchNodeIndex(INDEX_NONE)
+		, ParentNodeIndex(INDEX_NONE)
+		, bIsOpened(false)
+		, bIsClosed(false)
+	{}
+
+	FORCEINLINE void MarkOpened() { bIsOpened = true; }
+	FORCEINLINE void MarkNotOpened() { bIsOpened = false; }
+	FORCEINLINE void MarkClosed() { bIsClosed = true; }
+	FORCEINLINE void MarkNotClosed() { bIsClosed = false; }
+	FORCEINLINE bool IsOpened() const { return bIsOpened; }
+	FORCEINLINE bool IsClosed() const { return bIsClosed; }
+};
+
+/**
+ *	TQueryFilter (FindPath's parameter) filter class is what decides which graph edges can be used and at what cost. It needs to implement following functions:
+ *		float GetHeuristicScale() const;														- used as GetHeuristicCost's multiplier
+ *		float GetHeuristicCost(const FNodeRef StartNodeRef, const FNodeRef EndNodeRef) const;	- estimate of cost from StartNodeRef to EndNodeRef
+ *		float GetTraversalCost(const FNodeRef StartNodeRef, const FNodeRef EndNodeRef) const;	- real cost of traveling from StartNodeRef directly to EndNodeRef
+ *		bool IsTraversalAllowed(const FNodeRef NodeA, const FNodeRef NodeB) const;				- whether traversing given edge is allowed
+ *		bool WantsPartialSolution() const;														- whether to accept solutions that do not reach the goal
+ */
+struct FLandscapeSplineQueryFilter
+{
+	typedef const ULandscapeSplineControlPoint* FNodeRef;
+
+	FLandscapeSplineQueryFilter() {}
+
+	float GetHeuristicScale() const
+	{
+		return 1.0f;
+	}
+
+	float GetHeuristicCost(const FNodeRef StartNodeRef, const FNodeRef EndNodeRef) const
+	{
+		return GetTraversalCost(StartNodeRef, EndNodeRef);
+	}
+
+	float GetTraversalCost(const FNodeRef StartNodeRef, const FNodeRef EndNodeRef) const
+	{
+		return FVector::Distance(StartNodeRef->Location, EndNodeRef->Location);
+	}
+
+	bool IsTraversalAllowed(const FNodeRef NodeA, const FNodeRef NodeB) const
+	{
+		return true; // only traversable neigbours are disclosed by the graph
+	}
+
+	bool WantsPartialSolution() const
+	{
+		return true; // if not possible otherwise take best result
+	}
+};
+
+struct FLandscapeSplineGraph // implements FGraphAStar: TGraph
+{
+	typedef const ULandscapeSplineControlPoint* FNodeRef;
+
+	int32 GetNeighbourCount(FNodeRef NodeRef) const 
+	{ 
+		return NodeRef->ConnectedSegments.Num();
+	}
+
+	bool IsValidRef(FNodeRef NodeRef) const 
+	{ 
+		return NodeRef != nullptr; 
+	}
+
+	FNodeRef GetNeighbour(const FNodeRef NodeRef, const int32 NeiIndex) const
+	{
+		return NodeRef->ConnectedSegments[NeiIndex].GetFarConnection().ControlPoint;
+	}
+};
+
+TArray<const ULandscapeSplineControlPoint*> FStreetMapSplineTools::FindShortestRoute(
+	ALandscapeProxy* Landscape, 
+	const ULandscapeSplineControlPoint* Start, 
+	const ULandscapeSplineControlPoint* End)
+{
+	TArray<const ULandscapeSplineControlPoint*> PathCoords;
+	FLandscapeSplineGraph LandscapeSplineGraph;
+
+	// use AStar to find shortest route
+	FGraphAStar<FLandscapeSplineGraph, FGraphAStarDefaultPolicy, FGraphAStarNode<FLandscapeSplineGraph>> Pathfinder(LandscapeSplineGraph);
+	Pathfinder.FindPath(Start, End, FLandscapeSplineQueryFilter(), PathCoords);
+
+	return PathCoords;
+}
+
+void BuildSplines(class UStreetMapComponent* StreetMapComponent, const FStreetMapSplineBuildSettings& BuildSettings, ALandscapeProxy* Landscape)
+{
+	const ULandscapeSplineControlPoint* Start = FStreetMapSplineTools::FindNearestSplineControlPoint(BuildSettings.Start, Landscape);
+	const ULandscapeSplineControlPoint* End   = FStreetMapSplineTools::FindNearestSplineControlPoint(BuildSettings.End, Landscape);
+
+	const TArray<const ULandscapeSplineControlPoint*> ShortestRoute = FStreetMapSplineTools::FindShortestRoute(Landscape, Start, End);
+
+	
+	if(ShortestRoute.Num() > 1)
+	{
+		FVector ActorLocation = ShortestRoute[0]->Location;
+
+		FActorSpawnParameters ActorSpawnParameters;
+		ActorSpawnParameters.OverrideLevel = BuildSettings.Start->GetLevel();
+		ACameraRig_Rail* CameraRigRail = BuildSettings.Start->GetWorld()->SpawnActor<ACameraRig_Rail>(ActorLocation, FRotator(0.0f), ActorSpawnParameters);
+
+		USplineComponent* SplineComponent = CameraRigRail->GetRailSplineComponent();
+
+		TArray<FSplinePoint> Points;
+		Points.Reserve(ShortestRoute.Num());
+		for (int32 ControlPointIndex = 0; ControlPointIndex < ShortestRoute.Num(); ControlPointIndex++)
+		{
+			const ULandscapeSplineControlPoint* SplineControlPoint = ShortestRoute[ControlPointIndex];
+
+			FVector ArriveTangent = SplineControlPoint->Rotation.Vector() * SplineControlPoint->ConnectedSegments[0].GetNearConnection().TangentLen;
+			FVector LeaveTangent = -ArriveTangent;
+
+			Points.Add(FSplinePoint(ControlPointIndex,
+									SplineControlPoint->Location - ActorLocation,
+									ArriveTangent, LeaveTangent,
+									SplineControlPoint->Rotation));
+		}
+
+		SplineComponent->ClearSplinePoints();
+		SplineComponent->AddPoints(Points);
+	}
+	else
+	{
+		GWarn->Logf(ELogVerbosity::Error, TEXT("BuildSplines: Was unable to find a path between the given points."));
+	}
+}
+
+PRAGMA_ENABLE_OPTIMIZATION

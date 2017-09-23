@@ -24,7 +24,13 @@ public:
 	static void CleanSplines(ULandscapeSplinesComponent* SplinesComponent,
 		const UStaticMesh* Mesh,
 		UWorld* World);
+
+	static ULandscapeSplineControlPoint* FindNearestSplineControlPoint(const AActor* Actor, ALandscapeProxy* Landscape);
+	static TArray<const ULandscapeSplineControlPoint*> FindShortestRoute(ALandscapeProxy* Landscape, const ULandscapeSplineControlPoint* Start, const ULandscapeSplineControlPoint* End);
 };
 
 
-void BuildSplines(class UStreetMapComponent* StreetMapComponent, const FStreetMapSplineBuildSettings& BuildSettings);
+void BuildSplines(
+	class UStreetMapComponent* StreetMapComponent, 
+	const FStreetMapSplineBuildSettings& BuildSettings,
+	ALandscapeProxy* Landscape);
