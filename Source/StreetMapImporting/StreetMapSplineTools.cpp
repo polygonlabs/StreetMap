@@ -376,16 +376,38 @@ TArray<const ULandscapeSplineControlPoint*> FStreetMapSplineTools::FindShortestR
 	return PathCoords;
 }
 
+float GetTangentLength(const TArray<const ULandscapeSplineControlPoint*>& SplinePoints, int32 Index, int32 Offset)
+{
+	if ((Index + Offset < 0) || (Index + Offset >= SplinePoints.Num()))
+	{
+		return 0.0f;
+	}
+
+	const ULandscapeSplineControlPoint* ConnectedSplineControlPoint = SplinePoints[Index + Offset];
+	const TArray<FLandscapeSplineConnection>& Connections = SplinePoints[Index]->ConnectedSegments;
+
+	for (int32 ConnectionIndex = 0; ConnectionIndex < Connections.Num(); ConnectionIndex++)
+	{
+		if (Connections[ConnectionIndex].GetFarConnection().ControlPoint == ConnectedSplineControlPoint)
+		{
+			return FMath::Abs(Connections[ConnectionIndex].GetNearConnection().TangentLen);
+		}
+	}
+
+	return 0.0f;
+}
+
 void BuildSplines(class UStreetMapComponent* StreetMapComponent, const FStreetMapSplineBuildSettings& BuildSettings, ALandscapeProxy* Landscape)
 {
 	const ULandscapeSplineControlPoint* Start = FStreetMapSplineTools::FindNearestSplineControlPoint(BuildSettings.Start, Landscape);
 	const ULandscapeSplineControlPoint* End   = FStreetMapSplineTools::FindNearestSplineControlPoint(BuildSettings.End, Landscape);
 
-	const TArray<const ULandscapeSplineControlPoint*> ShortestRoute = FStreetMapSplineTools::FindShortestRoute(Landscape, Start, End);
-
+	TArray<const ULandscapeSplineControlPoint*> ShortestRoute = FStreetMapSplineTools::FindShortestRoute(Landscape, Start, End);
 	
-	if(ShortestRoute.Num() > 1)
+	if(ShortestRoute.Num() > 0)
 	{
+		ShortestRoute.Insert(Start, 0);
+
 		FVector ActorLocation = ShortestRoute[0]->Location;
 
 		FActorSpawnParameters ActorSpawnParameters;
@@ -394,23 +416,41 @@ void BuildSplines(class UStreetMapComponent* StreetMapComponent, const FStreetMa
 
 		USplineComponent* SplineComponent = CameraRigRail->GetRailSplineComponent();
 
+		// ensure we rotate the first point if we start off in opposite direction
+		FRotator PreviousRotation = ShortestRoute[0]->Rotation;
+		FVector InitialDirection = (ShortestRoute[1]->Location - ShortestRoute[0]->Location).GetSafeNormal();
+		if (FVector::DotProduct(PreviousRotation.Vector(), InitialDirection) < 0.0f)
+		{
+			PreviousRotation += FRotator(0.0f, 180.0f, 0.0f); 
+		}
+
 		TArray<FSplinePoint> Points;
 		Points.Reserve(ShortestRoute.Num());
 		for (int32 ControlPointIndex = 0; ControlPointIndex < ShortestRoute.Num(); ControlPointIndex++)
 		{
 			const ULandscapeSplineControlPoint* SplineControlPoint = ShortestRoute[ControlPointIndex];
 
-			FVector ArriveTangent = SplineControlPoint->Rotation.Vector() * SplineControlPoint->ConnectedSegments[0].GetNearConnection().TangentLen;
-			FVector LeaveTangent = -ArriveTangent;
+			FRotator CurrentRotation = SplineControlPoint->Rotation;
+			FVector RotationDelta = (CurrentRotation - PreviousRotation).Vector();
+
+			if (RotationDelta.X < 0.0)
+			{
+				CurrentRotation = CurrentRotation + FRotator(0.0f, 180.0f, 0.0f);
+			}
+
+			const FVector Direction = CurrentRotation.Vector();
+			FVector LeaveTangent = Direction * GetTangentLength(ShortestRoute, ControlPointIndex, 1);
+			FVector ArriveTangent = Direction * GetTangentLength(ShortestRoute, ControlPointIndex, -1);
 
 			Points.Add(FSplinePoint(ControlPointIndex,
 									SplineControlPoint->Location - ActorLocation,
-									ArriveTangent, LeaveTangent,
-									SplineControlPoint->Rotation));
+									ArriveTangent, LeaveTangent, CurrentRotation));
+
+			PreviousRotation = CurrentRotation;
 		}
 
 		SplineComponent->ClearSplinePoints();
-		SplineComponent->AddPoints(Points);
+		SplineComponent->AddPoints(Points, true);
 	}
 	else
 	{
