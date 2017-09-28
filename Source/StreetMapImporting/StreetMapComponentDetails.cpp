@@ -525,45 +525,62 @@ void FStreetMapComponentDetails::RefreshLandscapeLayersList()
 	{
 		const FName& LayerName = LayerNames[i];
 
-		bool bFound = false;
-		FLandscapeImportLayerInfo NewImportLayer;
-		FLayerWayMapping NewLayerWayMapping;
-		for (int32 j = 0; j < OldLayersList.Num() && j < OldLayerWayMapping.Num(); j++)
+		// Find or recreate this layer.
 		{
-			if (OldLayersList[j].LayerName == LayerName &&
-				OldLayerWayMapping[j].LayerName == LayerName)
+			bool bFound = false;
+			FLandscapeImportLayerInfo NewImportLayer;
+			for (int32 j = 0; j < OldLayersList.Num(); j++)
 			{
-				NewImportLayer = OldLayersList[j];
-				NewLayerWayMapping = OldLayerWayMapping[j];
-				bFound = true;
-				break;
+				if (OldLayersList[j].LayerName == LayerName)
+				{
+					NewImportLayer = OldLayersList[j];
+					bFound = true;
+					break;
+				}
 			}
+			if (!bFound)
+			{
+				NewImportLayer.LayerName = LayerName;
+			}
+			SelectedStreetMapComponent->LandscapeSettings.Layers.Add(MoveTemp(NewImportLayer));
 		}
 
-		if (!bFound)
+		// Find or recreate the way mapping for this layer.
 		{
-			NewImportLayer.LayerName = LayerName;
-			NewLayerWayMapping.LayerName = LayerName;
+			bool bFound = false;
+			FLayerWayMapping NewLayerWayMapping;
+			for (int32 j = 0; j < OldLayerWayMapping.Num(); j++)
+			{
+				if (OldLayerWayMapping[j].LayerName == LayerName)
+				{
+					NewLayerWayMapping = OldLayerWayMapping[j];
+					bFound = true;
+					break;
+				}
+			}
 
-			if (LayerName == "Grass")
+			if (!bFound)
 			{
-				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("grass")));
-				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("village_green")));
-				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("meadow")));
-				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("farmland")));
-				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Leisure, TEXT("park")));
+				NewLayerWayMapping.LayerName = LayerName;
+
+				if (LayerName == "Grass")
+				{
+					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("grass")));
+					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("village_green")));
+					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("meadow")));
+					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("farmland")));
+					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Leisure, TEXT("park")));
+				}
+				else if (LayerName == "Wood")
+				{
+					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("forest")));
+					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("wood")));
+					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("scrub")));
+					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("nature_reserve")));
+				}
 			}
-			else if (LayerName == "Wood")
-			{
-				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("forest")));
-				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("wood")));
-				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("scrub")));
-				NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("nature_reserve")));
-			}
+			SelectedStreetMapComponent->LandscapeSettings.LayerWayMapping.Add(MoveTemp(NewLayerWayMapping));
 		}
-
-		SelectedStreetMapComponent->LandscapeSettings.Layers.Add(MoveTemp(NewImportLayer));
-		SelectedStreetMapComponent->LandscapeSettings.LayerWayMapping.Add(MoveTemp(NewLayerWayMapping));
 	}
 }
 

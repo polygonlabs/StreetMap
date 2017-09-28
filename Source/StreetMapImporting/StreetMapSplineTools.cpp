@@ -240,7 +240,6 @@ void FStreetMapSplineTools::CleanSplines(ULandscapeSplinesComponent* SplinesComp
 }
 
 
-PRAGMA_DISABLE_OPTIMIZATION
 ULandscapeSplineControlPoint* FStreetMapSplineTools::FindNearestSplineControlPoint(const AActor* Actor, ALandscapeProxy* Landscape)
 {
 	const FTransform LandscapeTransform = Landscape->GetActorTransform();
@@ -457,5 +456,3 @@ void BuildSplines(class UStreetMapComponent* StreetMapComponent, const FStreetMa
 		GWarn->Logf(ELogVerbosity::Error, TEXT("BuildSplines: Was unable to find a path between the given points."));
 	}
 }
-
-PRAGMA_ENABLE_OPTIMIZATION
