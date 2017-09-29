@@ -48,6 +48,51 @@ public:
 		Other,
 	};
 
+	/** Types of a relations we support - there are many, but most are not yet relevant */
+	enum class 	EOSMRelationType
+	{
+		///** Route - like a street network, e.g. highway A5 as a whole with all ways making up the route */
+		//Route,
+
+		/** Boundary - marking non renderable lines defining borders of land zones, city borders, etc. - useful to switch rendering modes */
+		Boundary,
+
+		/** Multipolygon - has one outer and unrestricted amount of inners - a forest might be modeled like that */
+		Multipolygon,
+
+		/** Currently ignored types - Route (can be enabled, but bloats the imported file), TMC, Turn-Restrictions, Election, RouteMaster, Network */
+		Other,
+	};
+
+	/** Types of a relations member - node, way or another relation */
+	enum class EOSMRelationMemberType
+	{
+		/** Node */
+		Node,
+
+		/** Way */
+		Way,
+
+		/** Relation */
+		Relation,
+
+		/** Unrecognized */
+		Other,
+	};
+
+	/** Types of a relations role - outer or inner */
+	enum class EOSMRelationMemberRole
+	{
+		/** Outer */
+		Outer,
+
+		/** Inner */
+		Inner,
+
+		/** Unrecognized */
+		Other,
+	};
+
 
 	struct FOSMWayRef
 	{
@@ -76,7 +121,8 @@ public:
 	{
 		FString Name;
 		FString Ref;
-		
+		int64 Id;
+
 		TArray<FOSMNodeInfo*> Nodes;
 		EOSMWayType WayType;
 		/** subtype according to WayType */
@@ -95,6 +141,20 @@ public:
 		uint8 bIsOneWay : 1;
 	};
 
+	struct FOSMRelationMember
+	{
+		EOSMRelationMemberType Type;
+		EOSMRelationMemberRole Role;
+		int64 Ref;
+	};
+
+	struct FOSMRelation
+	{
+		EOSMRelationType Type;
+		TArray<FOSMRelationMember*> Members;
+		TArray<FOSMTag> Tags;
+	};
+
 	// Minimum latitude/longitude bounds
 	double MinLatitude = MAX_dbl;
 	double MinLongitude = MAX_dbl;
@@ -109,9 +169,15 @@ public:
 
 	// All ways we've parsed
 	TArray<FOSMWayInfo*> Ways;
+
+	// All relations we've parsed
+	TArray<FOSMRelation*> Relations;
 		
 	// Maps node IDs to info about each node
 	TMap<int64, FOSMNodeInfo*> NodeMap;
+
+	// Maps node IDs to info about each node
+	TMap<int64, FOSMWayInfo*> WayMap;
 
 protected:
 
@@ -132,7 +198,10 @@ protected:
 		Node_Tag,
 		Way,
 		Way_NodeRef,
-		Way_Tag
+		Way_Tag,
+		Relation,
+		Relation_Member,
+		Relation_Tag
 	};
 		
 	// Current state of parser
@@ -140,18 +209,33 @@ protected:
 		
 	// ID of node that is currently being parsed
 	int64 CurrentNodeID;
-		
+
+	// ID of way that is currently being parsed
+	int64 CurrentWayID;
+
+	// ID of relation that is currently being parsed
+	int64 CurrentRelationID;
+
 	// Node that is currently being parsed
 	FOSMNodeInfo* CurrentNodeInfo;
 		
 	// Way that is currently being parsed
 	FOSMWayInfo* CurrentWayInfo;
-		
+
+	// Relation that is currently being parsed
+	FOSMRelation* CurrentRelation;
+
+	// Relation meber that is currently being parsed
+	FOSMRelationMember* CurrentRelationMember;
+
 	// Current way's tag key string
 	const TCHAR* CurrentWayTagKey;
 
 	// Current nodes's tag key string
 	const TCHAR* CurrentNodeTagKey;
+
+	// Current relation's tag key string
+	const TCHAR* CurrentRelationTagKey;
 };
 
 

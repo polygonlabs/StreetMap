@@ -10,10 +10,13 @@ class FStreetMapSplineTools
 {
 public:
 	static ULandscapeSplinesComponent* ConditionallyCreateSplineComponent(ALandscapeProxy* Landscape, FVector Scale3D);
+	static ULandscapeSplinesComponent* CreateLinkSplineComponent(ALandscapeProxy* Landscape, FVector Scale3D);
 	static ULandscapeSplineControlPoint* AddControlPoint(ULandscapeSplinesComponent* SplinesComponent,
 			const FVector& LocalLocation,
 			const float& Width,
 			const float& ZOffset,
+			const float& SideFalloff,
+			const float& EndFalloff,
 			const ALandscapeProxy* Landscape,
 			ULandscapeSplineControlPoint* PreviousPoint = nullptr);
 

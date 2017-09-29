@@ -67,7 +67,8 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 			(OSMWay.Category == TEXT("tertiary")) ||	// ~4% of all highways
 			(OSMWay.Category == TEXT("secondary")) ||	// ~2% of all highways
 			(OSMWay.Category == TEXT("secondary_link")) ||
-			(OSMWay.Category == TEXT("tertiary_link")))
+			(OSMWay.Category == TEXT("tertiary_link")) ||
+			(OSMWay.Category == TEXT("raceway")))
 			RoadType = EStreetMapRoadType::MajorRoad;
 		else if( 
 			(OSMWay.Category == TEXT("primary")) || // ~2% of all highways
@@ -433,6 +434,64 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		return true;
 	};
 
+	// Adds multipolygons recognized as MiscWays - the ways are actually already present but with 
+	auto AddMultipolygon = [OSMToCentimetersScaleFactor, AddMiscWay](
+		const FOSMFile& OSMFile,
+		UStreetMap& StreetMapRef,
+		const FOSMFile::FOSMRelation& OSMRelation) -> bool
+	{
+		if (OSMRelation.Type == FOSMFile::EOSMRelationType::Multipolygon)
+		{
+			// TODO: could already parse the relation type in osmfile.cpp analog to ways types (landuse, leisure, etc)
+			bool bHasLandUseTag = false;
+			FString TagValue;
+			for (const FOSMFile::FOSMTag& Tag : OSMRelation.Tags)
+			{
+				if (Tag.Key.IsEqual(FName("landuse")))
+				{
+					bHasLandUseTag = true;
+					TagValue = Tag.Value.ToString();
+					break;
+				}
+			}
+
+			// if its a multipolygon and has a landuse tag, we can modify the corresponding outer way with this information
+			if (bHasLandUseTag)
+			{
+				for (const FOSMFile::FOSMRelationMember* Member : OSMRelation.Members)
+				{
+					if (Member->Role == FOSMFile::EOSMRelationMemberRole::Outer)
+					{
+						FOSMFile::FOSMWayInfo* ReferencedWay = OSMFile.WayMap.FindRef(Member->Ref);
+						if (ReferencedWay)
+						{
+							// match - modify MiscWay with the multipolygon outer information
+							ReferencedWay->Category = TagValue;
+							if (ReferencedWay->WayType == FOSMFile::EOSMWayType::Other)
+							{
+								ReferencedWay->WayType = FOSMFile::EOSMWayType::LandUse;
+								// it its definately not part of the misc ways yet, so add it
+								AddMiscWay(OSMFile, StreetMapRef, *ReferencedWay);
+							}
+							return true;
+						}
+					}
+					else if (Member->Role == FOSMFile::EOSMRelationMemberRole::Inner)
+					{
+						// TODO: seems like inners have their own landuse tags, so they should get painted correctly, too
+						// maybe just a problem of order remaining?!
+					}
+				}
+			}
+
+		// TODO: we can create misc ways but have to keep the outer and inner relations somehow for advanced cases
+		// all inner polygons having influence on the layer painting. it should work as inner ways are added later and repaint the area - or not???
+		// or we add a special drawing function to the CreateLandscape() function on how to handle multipolygons
+		}
+
+		return false;
+	};
+
 
 	// Load up the OSM file.  It's in XML format.
 	FOSMFile OSMFile;
@@ -488,6 +547,19 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		else if (AddMiscWay(OSMFile, *StreetMap, *OSMWay))
 		{
 			// ...
+		}
+	}
+
+	for (const FOSMFile::FOSMRelation* OSMRelation : OSMFile.Relations)
+	{
+		// TODO ....
+		// Handle multipolgyons
+		if (OSMRelation->Type == FOSMFile::EOSMRelationType::Multipolygon)
+		{
+			if (AddMultipolygon(OSMFile, *StreetMap, *OSMRelation))
+			{
+				// ...
+			}
 		}
 	}
 

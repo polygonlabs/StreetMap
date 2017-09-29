@@ -52,6 +52,8 @@ static void BuildStreetMapRailways(class UStreetMapComponent* StreetMapComponent
 											FVector(ScaledPointLocation, ScaledWorldElevation), 
 											BuildSettings.Width, 
 											BuildSettings.ZOffset,
+											BuildSettings.SideFalloff,
+											BuildSettings.EndFalloff,
 											BuildSettings.Landscape,
 											PreviousPoint);
 
@@ -69,7 +71,7 @@ static void BuildStreetMapRailways(class UStreetMapComponent* StreetMapComponent
 				{
 					FLandscapeSplineMeshEntry MeshEntry;
 					MeshEntry.Mesh = BuildSettings.RailwayLineMesh;
-					MeshEntry.bScaleToWidth = false;
+					MeshEntry.bScaleToWidth = BuildSettings.ScaleToWidth;
 					MeshEntry.ForwardAxis = BuildSettings.ForwardAxis;
 					MeshEntry.UpAxis = BuildSettings.UpAxis;
 					MeshEntry.Scale = FVector(1.0f);

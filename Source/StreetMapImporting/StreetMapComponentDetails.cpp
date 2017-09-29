@@ -570,6 +570,11 @@ void FStreetMapComponentDetails::RefreshLandscapeLayersList()
 					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("meadow")));
 					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("farmland")));
 					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Leisure, TEXT("park")));
+					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("plant_nursery")));
+					// might be inappropiate - in one usecase the area is marked industrial (should default to concrete) but grass fits it better
+					// TODO: make LayerWayMapping better configurable in editor
+					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("industrial")));
+			
 				}
 				else if (LayerName == "Wood")
 				{
@@ -577,6 +582,10 @@ void FStreetMapComponentDetails::RefreshLandscapeLayersList()
 					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("wood")));
 					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("scrub")));
 					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("nature_reserve")));
+				}
+				else if (LayerName == "Water")
+				{
+					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::Natural, TEXT("water")));
 				}
 			}
 			SelectedStreetMapComponent->LandscapeSettings.LayerWayMapping.Add(MoveTemp(NewLayerWayMapping));
