@@ -22,10 +22,29 @@ ULandscapeSplinesComponent* FStreetMapSplineTools::ConditionallyCreateSplineComp
 	return Landscape->SplineComponent;
 }
 
+// For ways / links we want to add separate ULandscapeSplinesComponents for better control for editing 
+ULandscapeSplinesComponent* FStreetMapSplineTools::CreateLinkSplineComponent(ALandscapeProxy* Landscape, FVector Scale3D)
+{
+	Landscape->Modify();
+
+	if (Landscape->SplineComponent != nullptr)
+	{
+		ULandscapeSplinesComponent * LinkSpline = NewObject<ULandscapeSplinesComponent>(Landscape, NAME_None, RF_Transactional);
+		Landscape->SplineComponent->RelativeScale3D = Scale3D;
+		LinkSpline->AttachToComponent(Landscape->SplineComponent, FAttachmentTransformRules::KeepRelativeTransform);
+		Landscape->SplineComponent->ShowSplineEditorMesh(true);
+
+		return LinkSpline;
+	}
+	return nullptr;
+}
+
 ULandscapeSplineControlPoint* FStreetMapSplineTools::AddControlPoint(ULandscapeSplinesComponent* SplinesComponent,
 	const FVector& LocalLocation,
 	const float& Width,
 	const float& ZOffset,
+	const float& SideFalloff,
+	const float& EndFalloff,
 	const ALandscapeProxy* Landscape,
 	ULandscapeSplineControlPoint* PreviousPoint)
 {
@@ -39,8 +58,8 @@ ULandscapeSplineControlPoint* FStreetMapSplineTools::AddControlPoint(ULandscapeS
 
 	NewControlPoint->Location = LocalLocation; // has been scaled before calling this function
 	NewControlPoint->Width = Width;
-	NewControlPoint->SideFalloff = 1.5f;
-	NewControlPoint->EndFalloff = 3.0f;
+	NewControlPoint->SideFalloff = SideFalloff;
+	NewControlPoint->EndFalloff = EndFalloff;
 	NewControlPoint->LayerName = "Soil";
 	NewControlPoint->SegmentMeshOffset = ZOffset;
 

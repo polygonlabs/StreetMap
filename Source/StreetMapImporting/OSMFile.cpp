@@ -110,6 +110,12 @@ bool FOSMFile::ProcessElement( const TCHAR* ElementName, const TCHAR* ElementDat
 			// @todo: We're currently ignoring the "visible" tag on ways, which means that roads will always
 			//        be included in our data set.  It might be nice to make this an import option.
 		}
+		else if (!FCString::Stricmp(ElementName, TEXT("relation")))
+		{
+			ParsingState = ParsingState::Relation;
+			CurrentRelation = new FOSMRelation();
+			CurrentRelation->Type = EOSMRelationType::Other;
+		}
 	}
 	else if (ParsingState == ParsingState::Node)
 	{
@@ -127,6 +133,20 @@ bool FOSMFile::ProcessElement( const TCHAR* ElementName, const TCHAR* ElementDat
 		else if( !FCString::Stricmp( ElementName, TEXT( "tag" ) ) )
 		{
 			ParsingState = ParsingState::Way_Tag;
+		}
+	}
+	else if (ParsingState == ParsingState::Relation)
+	{
+		if (!FCString::Stricmp(ElementName, TEXT("member")))
+		{
+			ParsingState = ParsingState::Relation_Member;
+			CurrentRelationMember = new FOSMRelationMember();
+			CurrentRelationMember->Type = EOSMRelationMemberType::Other;
+			CurrentRelationMember->Role = EOSMRelationMemberRole::Other;
+		}
+		else if (!FCString::Stricmp(ElementName, TEXT("tag")))
+		{
+			ParsingState = ParsingState::Relation_Tag;
 		}
 	}
 
@@ -193,7 +213,10 @@ bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* Attrib
 	}
 	else if( ParsingState == ParsingState::Way )
 	{
-		// ...
+		if (!FCString::Stricmp(AttributeName, TEXT("id")))
+		{
+			CurrentWayID = FPlatformString::Atoi64(AttributeValue);
+		}
 	}
 	else if( ParsingState == ParsingState::Way_NodeRef )
 	{
@@ -302,6 +325,72 @@ bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* Attrib
 			}
 		}
 	}
+	else if (ParsingState == ParsingState::Relation)
+ 	{
+		if (!FCString::Stricmp(AttributeName, TEXT("id")))
+		{
+			CurrentRelationID = FPlatformString::Atoi64(AttributeValue);
+		}
+	}
+	else if (ParsingState == ParsingState::Relation_Member)
+	{
+		if (!FCString::Stricmp(AttributeName, TEXT("type")))
+		{
+			if (!FCString::Stricmp(AttributeValue, TEXT("node")))
+			{
+				CurrentRelationMember->Type = EOSMRelationMemberType::Node;
+			}
+			else if (!FCString::Stricmp(AttributeValue, TEXT("way")))
+			{
+				CurrentRelationMember->Type = EOSMRelationMemberType::Way;
+			}
+			else if (!FCString::Stricmp(AttributeValue, TEXT("relation")))
+			{
+				CurrentRelationMember->Type = EOSMRelationMemberType::Relation;
+			}
+		}
+		else if (!FCString::Stricmp(AttributeName, TEXT("ref")))
+		{
+			CurrentRelationMember->Ref = FPlatformString::Atoi64(AttributeValue); // TODO: decide if int64 or FString is better
+		}
+		else if (!FCString::Stricmp(AttributeName, TEXT("role")))
+		{
+			if (!FCString::Stricmp(AttributeValue, TEXT("outer")))
+			{
+				CurrentRelationMember->Role = EOSMRelationMemberRole::Outer;
+			}
+			else if (!FCString::Stricmp(AttributeValue, TEXT("inner")))
+			{
+				CurrentRelationMember->Role = EOSMRelationMemberRole::Inner;
+			}
+		}
+	}
+	else if (ParsingState == ParsingState::Relation_Tag)
+	{
+		if (!FCString::Stricmp(AttributeName, TEXT("k")))
+		{
+			CurrentRelationTagKey = AttributeValue;
+		}
+		else if (!FCString::Stricmp(AttributeName, TEXT("v")))
+		{
+			FOSMTag Tag;
+			Tag.Key = FName::FName(CurrentRelationTagKey);
+			Tag.Value = FName::FName(AttributeValue);
+			CurrentRelation->Tags.Add(Tag);
+
+			if (!FCString::Stricmp(CurrentRelationTagKey, TEXT("type")))
+			{
+				if (!FCString::Stricmp(AttributeValue, TEXT("boundary")))
+				{
+					CurrentRelation->Type = EOSMRelationType::Boundary;
+				}
+				else if (!FCString::Stricmp(AttributeValue, TEXT("multipolygon")))
+				{
+					CurrentRelation->Type = EOSMRelationType::Multipolygon;
+				}
+			}
+		}
+	}
 
 	return true;
 }
@@ -324,6 +413,8 @@ bool FOSMFile::ProcessClose( const TCHAR* Element )
 	}
 	else if( ParsingState == ParsingState::Way )
 	{
+		WayMap.Add(CurrentWayID, CurrentWayInfo );
+		CurrentWayID = 0;
 		Ways.Add( CurrentWayInfo );
 		CurrentWayInfo = nullptr;
 				
@@ -337,6 +428,21 @@ bool FOSMFile::ProcessClose( const TCHAR* Element )
 	{
 		CurrentWayTagKey = TEXT( "" );
 		ParsingState = ParsingState::Way;
+	}
+	else if (ParsingState == ParsingState::Relation)
+	{
+		Relations.Add( CurrentRelation );
+		ParsingState = ParsingState::Root;
+	}
+	else if (ParsingState == ParsingState::Relation_Member)
+	{
+		CurrentRelation->Members.Add(CurrentRelationMember);
+		ParsingState = ParsingState::Relation;
+	}
+	else if (ParsingState == ParsingState::Relation_Tag)
+	{
+		CurrentWayTagKey = TEXT("");
+		ParsingState = ParsingState::Relation;
 	}
 
 	return true;

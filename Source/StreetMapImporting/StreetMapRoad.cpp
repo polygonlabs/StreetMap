@@ -68,6 +68,8 @@ static void BuildStreetMapRoads(class UStreetMapComponent* StreetMapComponent,
 					FVector(ScaledPointLocation, ScaledWorldElevation),
 					RoadWidth,
 					BuildSettings.ZOffset,
+					BuildSettings.SideFalloff,
+					BuildSettings.EndFalloff,
 					BuildSettings.Landscape,
 					PreviousPoint);
 
@@ -85,7 +87,7 @@ static void BuildStreetMapRoads(class UStreetMapComponent* StreetMapComponent,
 				{
 					FLandscapeSplineMeshEntry MeshEntry;
 					MeshEntry.Mesh = BuildSettings.RoadMesh;
-					MeshEntry.bScaleToWidth = false;
+					MeshEntry.bScaleToWidth = BuildSettings.ScaleToWidth;
 					MeshEntry.ForwardAxis = BuildSettings.ForwardAxis;
 					MeshEntry.UpAxis = BuildSettings.UpAxis;
 					MeshEntry.Scale = FVector(1.0f);

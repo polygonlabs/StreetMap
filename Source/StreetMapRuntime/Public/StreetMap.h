@@ -74,7 +74,11 @@ public:
 	*/
 	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Building Level Floor Factor")
 		float BuildingLevelFloorFactor = 300.0f;
-
+	
+	/** Default building height in centimeters - used if no height info is available */
+	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Building Level Floor Factor")
+		float BuildDefaultZ = 300.0f;
+	
 	/**
 	* If true, buildings mesh will receive light information.
 	* Lit buildings can't share vertices beyond quads (all quads have their own face normals), so this uses a lot more geometry.
@@ -245,9 +249,21 @@ public:
 	UPROPERTY(Category = "Railway", EditAnywhere)
 		UStaticMesh* RailwayLineMesh;
 
+	// Scales mesh to width of landscape spline
+	UPROPERTY(Category = "Road", EditAnywhere)
+		bool ScaleToWidth = false;
+
 	// Offset of the LandscapeSpline above the ground
 	UPROPERTY(Category = "Railway", EditAnywhere)
 		float ZOffset;
+
+	// Falloff to the side of the LandscapeSpline
+	UPROPERTY(Category = "Road", EditAnywhere)
+		float SideFalloff;
+
+	// Falloff at the end of the LandscapeSpline
+	UPROPERTY(Category = "Road", EditAnywhere)
+		float EndFalloff;
 
 	/** Chooses the forward axis for the spline mesh orientation */
 	UPROPERTY(Category = "Railway", EditAnywhere)
@@ -265,6 +281,8 @@ public:
 		: Landscape(nullptr)
 		, RailwayLineMesh(nullptr)
 		, ZOffset(0.0f)
+		, SideFalloff(1.5f)
+		, EndFalloff(3.0f)
 		, ForwardAxis(ESplineMeshAxis::X)
 		, UpAxis(ESplineMeshAxis::Z)
 		, Width(200.0f)
@@ -289,9 +307,21 @@ public:
 	UPROPERTY(Category = "Road", EditAnywhere)
 		UStaticMesh* RoadMesh;
 
+	// Scales mesh to width of landscape spline
+	UPROPERTY(Category = "Road", EditAnywhere)
+		bool ScaleToWidth = false;
+
 	// Offset of the LandscapeSpline above the ground
 	UPROPERTY(Category = "Road", EditAnywhere)
 		float ZOffset;
+
+	// Falloff to the side of the LandscapeSpline
+	UPROPERTY(Category = "Road", EditAnywhere)
+		float SideFalloff;
+
+	// Falloff at the end of the LandscapeSpline
+	UPROPERTY(Category = "Road", EditAnywhere)
+		float EndFalloff;
 
 	/** Chooses the forward axis for the spline mesh orientation */
 	UPROPERTY(Category = "Road", EditAnywhere)
@@ -305,6 +335,8 @@ public:
 		: Landscape(nullptr)
 		, RoadMesh(nullptr)
 		, ZOffset(0.0f)
+		, SideFalloff(1.5f)
+		, EndFalloff(3.0f)
 		, ForwardAxis(ESplineMeshAxis::X)
 		, UpAxis(ESplineMeshAxis::Z)
 	{

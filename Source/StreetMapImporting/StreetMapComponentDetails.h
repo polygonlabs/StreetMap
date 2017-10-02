@@ -49,10 +49,10 @@ public:
 	/** Returns whether railway can be created or not */
 	bool BuildRailwayIsEnabled() const;
 
-	/** Handles build railway button clicking */
+	/** Handles build roads button clicking */
 	FReply OnBuildRoadsClicked();
 
-	/** Returns whether railway can be created or not */
+	/** Returns whether roads can be created or not */
 	bool BuildRoadsIsEnabled() const;
 
 	/** Handles build splines button clicking */
