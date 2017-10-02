@@ -330,7 +330,7 @@ void UStreetMapComponent::GenerateMesh()
 
 				// calculate fill Z for buildings
 				// either use the defined height or extrapolate from building level count
-				float BuildingFillZ = 0.0f;
+				float BuildingFillZ = MeshBuildSettings.BuildDefaultZ;
 				if (bWant3DBuildings) {
 					if (Building.Height > 0) {
 						BuildingFillZ = Building.Height;
@@ -350,7 +350,7 @@ void UStreetMapComponent::GenerateMesh()
 					AddTriangles( TempPoints, TriangulatedVertexIndices, FVector::ForwardVector, FVector::UpVector, BuildingFillColor, MeshBoundingBox );
 				}
 
-				if( bWant3DBuildings && (Building.Height > KINDA_SMALL_NUMBER || Building.BuildingLevels > 0) )
+				if( bWant3DBuildings && (Building.Height > KINDA_SMALL_NUMBER || Building.BuildingLevels > 0 || MeshBuildSettings.BuildDefaultZ > 0.0) )
 				{
 					// NOTE: Lit buildings can't share vertices beyond quads (all quads have their own face normals), so this uses a lot more geometry!
 					if( bWantLitBuildings )
