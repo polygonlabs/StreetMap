@@ -30,6 +30,11 @@ public:
 	{
 		return StreetMap;
 	}
+	UStreetMap* GetStreetMap() const
+	{
+		return StreetMap;
+	}
+
 
 	/** Returns StreetMap asset object name  */
 	FString GetStreetMapAssetName() const;
@@ -127,6 +132,16 @@ public:
 
 	/** Rebuilds the graphics and physics mesh representation if we don't have one right now.  Designed to be called on demand. */
 	void BuildMesh();
+
+#if WITH_EDITORONLY_DATA
+	/** Color for selected element */
+	UPROPERTY(EditAnywhere, Category = "Editor")
+		FColor EditorSelectedColor;
+
+	/** Color for unselected element */
+	UPROPERTY(EditAnywhere, Category = "Editor")
+		FColor EditorUnselectedColor;
+#endif
 
 protected:
 

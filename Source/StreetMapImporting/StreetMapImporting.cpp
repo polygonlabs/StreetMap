@@ -38,6 +38,19 @@ void FStreetMapImportingModule::StartupModule()
 	FPropertyEditorModule& PropertyModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	PropertyModule.RegisterCustomClassLayout("StreetMapComponent", FOnGetDetailCustomizationInstance::CreateStatic(&FStreetMapComponentDetails::MakeInstance));
 	PropertyModule.NotifyCustomizationModuleChanged();
+
+	// Registering Visualizer
+	if (GUnrealEd != NULL)
+	{
+		TSharedPtr<FComponentVisualizer> Visualizer = MakeShareable(new FStreetMapComponentVisualizer());
+
+		if (Visualizer.IsValid())
+		{
+			GUnrealEd->RegisterComponentVisualizer(UStreetMapComponent::StaticClass()->GetFName(), Visualizer);
+			Visualizer->OnRegister();
+		}
+
+	}
 }
 
 
@@ -59,5 +72,11 @@ void FStreetMapImportingModule::ShutdownModule()
 		FPropertyEditorModule& PropertyModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor");
 		PropertyModule.UnregisterCustomClassLayout("StreetMapComponent");
 		PropertyModule.NotifyCustomizationModuleChanged();
+	}
+
+	// Unregister Visualizer
+	if (GUnrealEd != NULL)
+	{
+		GUnrealEd->UnregisterComponentVisualizer(UStreetMapComponent::StaticClass()->GetFName());
 	}
 }
