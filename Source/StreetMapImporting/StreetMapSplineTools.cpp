@@ -223,14 +223,15 @@ float FStreetMapSplineTools::GetLandscapeElevation(const ALandscapeProxy* Landsc
 
 void FStreetMapSplineTools::CleanSplines(ULandscapeSplinesComponent* SplinesComponent,
 					const UStaticMesh* Mesh,
-					UWorld* World)
+					UWorld* World,
+					bool ClearOrpahntControlPoints)
 {
 	TArray< ULandscapeSplineControlPoint* > SplineControlPointsToDelete;
 
 	const int32 NumSegments = SplinesComponent->Segments.Num();
-	for (int32 SegmentIndex = NumSegments - 1; SegmentIndex >= 0; SegmentIndex--)
+	for (int32 ControlPointIndex = NumSegments - 1; ControlPointIndex >= 0; ControlPointIndex--)
 	{
-		ULandscapeSplineSegment* Segment = SplinesComponent->Segments[SegmentIndex];
+		ULandscapeSplineSegment* Segment = SplinesComponent->Segments[ControlPointIndex];
 		if (Segment->SplineMeshes.Num() == 1 &&
 			Segment->SplineMeshes[0].Mesh == Mesh)
 		{
@@ -239,7 +240,20 @@ void FStreetMapSplineTools::CleanSplines(ULandscapeSplinesComponent* SplinesComp
 
 			Segment->DeleteSplinePoints();
 
-			SplinesComponent->Segments.RemoveAtSwap(SegmentIndex);
+			SplinesComponent->Segments.RemoveAtSwap(ControlPointIndex);
+		}
+	}
+
+	// remove orphant control points also
+	if (ClearOrpahntControlPoints)
+	{
+		const int32 NumControlPoints = SplinesComponent->ControlPoints.Num();
+		for (int32 ControlPointIndex = NumControlPoints - 1; ControlPointIndex >= 0; ControlPointIndex--)
+		{
+			ULandscapeSplineControlPoint* ControlPoint = SplinesComponent->ControlPoints[ControlPointIndex];
+			SplineControlPointsToDelete.AddUnique(ControlPoint);
+			ControlPoint->DeleteSplinePoints();
+			SplinesComponent->ControlPoints.RemoveAtSwap(ControlPointIndex);
 		}
 	}
 

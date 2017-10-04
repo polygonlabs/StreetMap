@@ -16,7 +16,7 @@ static void BuildStreetMapRoads(class UStreetMapComponent* StreetMapComponent,
 	const FVector SplineScaleXYZ = FVector(1.0f) / LandscapeToWorld.GetScale3D();
 	ULandscapeSplinesComponent* SplinesComponent = FStreetMapSplineTools::ConditionallyCreateSplineComponent(BuildSettings.Landscape, SplineScaleXYZ);
 
-	FStreetMapSplineTools::CleanSplines(SplinesComponent, BuildSettings.RoadMesh, BuildSettings.Landscape->GetWorld());
+	FStreetMapSplineTools::CleanSplines(SplinesComponent, BuildSettings.RoadMesh, BuildSettings.Landscape->GetWorld(), false);
 
 	TMap< int32, ULandscapeSplineControlPoint* > NodeIndexToControlPointMap;
 	const TArray<FStreetMapRoad>& Roads = StreetMapComponent->GetStreetMap()->GetRoads();

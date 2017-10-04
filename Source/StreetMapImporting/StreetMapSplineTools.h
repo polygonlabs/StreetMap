@@ -26,7 +26,8 @@ public:
 
 	static void CleanSplines(ULandscapeSplinesComponent* SplinesComponent,
 		const UStaticMesh* Mesh,
-		UWorld* World);
+		UWorld* World,
+		bool ClearOrphantControlPoints);
 
 	static ULandscapeSplineControlPoint* FindNearestSplineControlPoint(const AActor* Actor, ALandscapeProxy* Landscape);
 	static TArray<const ULandscapeSplineControlPoint*> FindShortestRoute(ALandscapeProxy* Landscape, const ULandscapeSplineControlPoint* Start, const ULandscapeSplineControlPoint* End);

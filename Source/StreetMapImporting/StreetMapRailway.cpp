@@ -14,7 +14,7 @@ static void BuildStreetMapRailways(class UStreetMapComponent* StreetMapComponent
 	const FVector SplineScaleXYZ = FVector(1.0f) / LandscapeToWorld.GetScale3D();
 	ULandscapeSplinesComponent* SplinesComponent = FStreetMapSplineTools::ConditionallyCreateSplineComponent(BuildSettings.Landscape, SplineScaleXYZ);
 
-	FStreetMapSplineTools::CleanSplines(SplinesComponent, BuildSettings.RailwayLineMesh, BuildSettings.Landscape->GetWorld());
+	FStreetMapSplineTools::CleanSplines(SplinesComponent, BuildSettings.RailwayLineMesh, BuildSettings.Landscape->GetWorld(), false);
 
 	TMap< int32, ULandscapeSplineControlPoint* > NodeIndexToControlPointMap;
 	const TArray<FStreetMapRailway>& Railways = StreetMapComponent->GetStreetMap()->GetRailways();
