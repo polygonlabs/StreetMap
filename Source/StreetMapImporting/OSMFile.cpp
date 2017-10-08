@@ -216,6 +216,7 @@ bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* Attrib
 		if (!FCString::Stricmp(AttributeName, TEXT("id")))
 		{
 			CurrentWayID = FPlatformString::Atoi64(AttributeValue);
+			CurrentWayInfo->Id = CurrentWayID;
 		}
 	}
 	else if( ParsingState == ParsingState::Way_NodeRef )
@@ -414,8 +415,8 @@ bool FOSMFile::ProcessClose( const TCHAR* Element )
 	else if( ParsingState == ParsingState::Way )
 	{
 		WayMap.Add(CurrentWayID, CurrentWayInfo );
-		CurrentWayID = 0;
 		Ways.Add( CurrentWayInfo );
+		CurrentWayID = 0;
 		CurrentWayInfo = nullptr;
 				
 		ParsingState = ParsingState::Root;
