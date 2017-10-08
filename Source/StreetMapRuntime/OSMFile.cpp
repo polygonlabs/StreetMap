@@ -1,17 +1,17 @@
 // Copyright 2017 Mike Fricker. All Rights Reserved.
 
-#include "StreetMapImporting.h"
+#include "StreetMapRuntime.h"
 #include "OSMFile.h"
 
 
-FOSMFile::FOSMFile()
+UOSMFile::UOSMFile()
 	: ParsingState( ParsingState::Root )
-	, SpatialReferenceSystem( 0, 0 )
 {
+	SpatialReferenceSystem = CreateDefaultSubobject<USpatialReferenceSystem>(TEXT("SpatialReferenceSystem"));
 }
 		
 
-FOSMFile::~FOSMFile()
+UOSMFile::~UOSMFile()
 {
 	// Clean up time
 	{
@@ -31,7 +31,7 @@ FOSMFile::~FOSMFile()
 }
 
 
-bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePathActuallyTextBuffer, FFeedbackContext* FeedbackContext )
+bool UOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePathActuallyTextBuffer, FFeedbackContext* FeedbackContext )
 {
 	const bool bShowSlowTaskDialog = true;
 	const bool bShowCancelButton = true;
@@ -386,14 +386,16 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 		{
 			AverageLatitude = (MinLatitude + MaxLatitude) / 2;
 			AverageLongitude = (MinLongitude + MaxLongitude) / 2;
-			SpatialReferenceSystem = FSpatialReferenceSystem(AverageLongitude, AverageLatitude);
+			SpatialReferenceSystem->SetOriginLatitude(AverageLatitude);
+			SpatialReferenceSystem->SetOriginLongitude(AverageLongitude);
 		}
 		else if (NodeMap.Num() > 0)
 		{
 			AverageLatitude /= NodeMap.Num();
 			AverageLongitude /= NodeMap.Num();
 
-			SpatialReferenceSystem = FSpatialReferenceSystem(AverageLongitude, AverageLatitude);
+			SpatialReferenceSystem->SetOriginLatitude(AverageLatitude);
+			SpatialReferenceSystem->SetOriginLongitude(AverageLongitude);
 		}
 		else
 		{
@@ -402,7 +404,7 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 		}
 
 		// TODO: just as a test to see if writing works
-		SaveOpenStreetMapFile();
+		//SaveOpenStreetMapFile();
 		return true;
 	}
 	else
@@ -413,7 +415,7 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 	return false;
 }
 
-bool FOSMFile::SaveOpenStreetMapFile()
+bool UOSMFile::SaveOpenStreetMapFile()
 {
 	if (OsmXmlFile.IsValid())
 	{

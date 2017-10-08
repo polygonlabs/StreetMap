@@ -15,6 +15,7 @@ namespace UnrealBuildTool.Rules
 					"RenderCore",
 					"ShaderCore",
                     "Landscape",
+					"XmlParser",
                 }
 			);
         }

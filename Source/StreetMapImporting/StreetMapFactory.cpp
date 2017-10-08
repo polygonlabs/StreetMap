@@ -22,12 +22,18 @@ UStreetMapFactory::UStreetMapFactory(const FObjectInitializer& ObjectInitializer
 UObject* UStreetMapFactory::FactoryCreateText( UClass* Class, UObject* Parent, FName Name, EObjectFlags Flags, UObject* Context, const TCHAR* Type, const TCHAR*& Buffer, const TCHAR* BufferEnd, FFeedbackContext* Warn )
 {
 	UStreetMap* StreetMap = NewObject<UStreetMap>( Parent, Name, Flags | RF_Transactional );
+	FString OSMFileName(Name.ToString() + "_OSM");	
+	UOSMFile* OSMFile = NewObject<UOSMFile>(Parent, *OSMFileName, Flags | RF_Transactional);
+	if (OSMFile == nullptr || StreetMap == nullptr)
+	{
+		return nullptr;
+	}
 
 	StreetMap->AssetImportData->Update( this->GetCurrentFilename() );
 
 	FString FilePath = this->GetCurrentFilename();
 	const bool bIsFilePathActuallyTextBuffer = false;
-	const bool bLoadedOkay = LoadFromOpenStreetMapXMLFile( StreetMap, FilePath, bIsFilePathActuallyTextBuffer, Warn );
+	const bool bLoadedOkay = LoadFromOpenStreetMapXMLFile( StreetMap, OSMFile, FilePath, bIsFilePathActuallyTextBuffer, Warn );
 
 	if( !bLoadedOkay )
 	{
@@ -39,7 +45,7 @@ UObject* UStreetMapFactory::FactoryCreateText( UClass* Class, UObject* Parent, F
 }
 
 
-bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FString& OSMFilePath, const bool bIsFilePathActuallyTextBuffer, FFeedbackContext* FeedbackContext )
+bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOSMFile* OSMFile, FString& OSMFilePath, const bool bIsFilePathActuallyTextBuffer, FFeedbackContext* FeedbackContext )
 {
 	// OSM data is stored in meters.  This is the scale factor to convert those units into UE4's native units (cm)
 	// Keep in mind that if this is changed, UStreetMapComponent sizes for roads may need to be updated too!
@@ -48,9 +54,9 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 
 	// Adds a road to the street map using the OpenStreetMap data, flattening the road's coordinates into our map's space
 	auto AddRoadForWay = [OSMToCentimetersScaleFactor](
-		const FOSMFile& OSMFile, 
+		const UOSMFile& OSMFile, 
 		UStreetMap& StreetMapRef, 
-		const FOSMFile::FOSMWayInfo& OSMWay, 
+		const UOSMFile::FOSMWayInfo& OSMWay, 
 		int32& OutRoadIndex ) -> bool
 	{
 		EStreetMapRoadType RoadType = EStreetMapRoadType::Other;
@@ -108,10 +114,10 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		}
 
 
-		for( const FOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes )
+		for( const UOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes )
 		{
-			const FOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
-			const FVector2D NodePos = OSMFile.SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+			const UOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
+			const FVector2D NodePos = OSMFile.SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 
 			// Update bounding box
 			{
@@ -160,9 +166,9 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 
 	// Adds a building to the street map using the OpenStreetMap data, flattening the road's coordinates into our map's space
 	auto AddBuildingForWay = [OSMToCentimetersScaleFactor]( 
-		const FOSMFile& OSMFile, 
+		const UOSMFile& OSMFile, 
 		UStreetMap& StreetMapRef, 
-		const FOSMFile::FOSMWayInfo& OSMWay ) -> bool
+		const UOSMFile::FOSMWayInfo& OSMWay ) -> bool
 	{
 		// Require at least three points so that we don't have degenerate polygon!
 		if (OSMWay.Nodes.Num() < 3)
@@ -181,10 +187,10 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		NewBuilding.BuildingPoints.AddUninitialized( OSMWay.Nodes.Num() );
 		int32 CurBuildingPoint = 0;
 
-		for( const FOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes )
+		for( const UOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes )
 		{
-			const FOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
-			const FVector2D NodePos = OSMFile.SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+			const UOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
+			const FVector2D NodePos = OSMFile.SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 
 			// Update bounding box
 			{
@@ -246,9 +252,9 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 
 	// Adds a railway to the street map using the OpenStreetMap data, flattening the railway's coordinates into our map's space
 	auto AddRailwayForWay = [OSMToCentimetersScaleFactor](
-		const FOSMFile& OSMFile,
+		const UOSMFile& OSMFile,
 		UStreetMap& StreetMapRef,
-		const FOSMFile::FOSMWayInfo& OSMWay,
+		const UOSMFile::FOSMWayInfo& OSMWay,
 		int32& OutRailwayIndex) -> bool
 	{
 		EStreetMapRailwayType RailwayType = EStreetMapRailwayType::OtherRailway;
@@ -293,10 +299,10 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 			NodeIndex = INDEX_NONE;
 		}
 
-		for (const FOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes)
+		for (const UOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes)
 		{
-			const FOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
-			const FVector2D NodePos = OSMFile.SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+			const UOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
+			const FVector2D NodePos = OSMFile.SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 
 			// Update bounding box
 			{
@@ -342,11 +348,11 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 
 	// Adds a remaining recognized ways to the street map using the OpenStreetMap data
 	auto AddMiscWay = [OSMToCentimetersScaleFactor](
-		const FOSMFile& OSMFile,
+		const UOSMFile& OSMFile,
 		UStreetMap& StreetMapRef,
-		const FOSMFile::FOSMWayInfo& OSMWay) -> bool
+		const UOSMFile::FOSMWayInfo& OSMWay) -> bool
 	{
-		if (OSMWay.WayType == FOSMFile::EOSMWayType::Other)
+		if (OSMWay.WayType == UOSMFile::EOSMWayType::Other)
 		{
 			return false;
 		}
@@ -360,10 +366,10 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		NewMiscWay.Points.AddUninitialized(OSMWay.Nodes.Num());
 		int32 CurBuildingPoint = 0;
 
-		for (const FOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes)
+		for (const UOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes)
 		{
-			const FOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
-			const FVector2D NodePos = OSMFile.SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+			const UOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
+			const FVector2D NodePos = OSMFile.SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 
 			// Update bounding box
 			{
@@ -405,9 +411,9 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		NewMiscWay.Type = EStreetMapMiscWayType::Unknown;
 		switch (OSMWay.WayType)
 		{
-			case FOSMFile::EOSMWayType::Leisure: NewMiscWay.Type = EStreetMapMiscWayType::Leisure; break;
-			case FOSMFile::EOSMWayType::Natural: NewMiscWay.Type = EStreetMapMiscWayType::Natural; break;
-			case FOSMFile::EOSMWayType::LandUse: NewMiscWay.Type = EStreetMapMiscWayType::LandUse; break;
+			case UOSMFile::EOSMWayType::Leisure: NewMiscWay.Type = EStreetMapMiscWayType::Leisure; break;
+			case UOSMFile::EOSMWayType::Natural: NewMiscWay.Type = EStreetMapMiscWayType::Natural; break;
+			case UOSMFile::EOSMWayType::LandUse: NewMiscWay.Type = EStreetMapMiscWayType::LandUse; break;
 		}
 
 		NewMiscWay.Name = OSMWay.Name;
@@ -432,16 +438,16 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 
 	// Adds multipolygons recognized as MiscWays - the ways are actually already present but with 
 	auto AddMultipolygon = [OSMToCentimetersScaleFactor, AddMiscWay](
-		const FOSMFile& OSMFile,
+		const UOSMFile& OSMFile,
 		UStreetMap& StreetMapRef,
-		const FOSMFile::FOSMRelation& OSMRelation) -> bool
+		const UOSMFile::FOSMRelation& OSMRelation) -> bool
 	{
-		if (OSMRelation.Type == FOSMFile::EOSMRelationType::Multipolygon)
+		if (OSMRelation.Type == UOSMFile::EOSMRelationType::Multipolygon)
 		{
-			// TODO: could already parse the relation type in osmfile.cpp analog to ways types (landuse, leisure, etc)
+			// TODO: could already parse the relation type in OSMFile->cpp analog to ways types (landuse, leisure, etc)
 			bool bHasLandUseTag = false;
 			FString TagValue;
-			for (const FOSMFile::FOSMTag& Tag : OSMRelation.Tags)
+			for (const UOSMFile::FOSMTag& Tag : OSMRelation.Tags)
 			{
 				if (Tag.Key.IsEqual(FName("landuse")))
 				{
@@ -454,25 +460,25 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 			// if its a multipolygon and has a landuse tag, we can modify the corresponding outer way with this information
 			if (bHasLandUseTag)
 			{
-				for (const FOSMFile::FOSMRelationMember* Member : OSMRelation.Members)
+				for (const UOSMFile::FOSMRelationMember* Member : OSMRelation.Members)
 				{
-					if (Member->Role == FOSMFile::EOSMRelationMemberRole::Outer)
+					if (Member->Role == UOSMFile::EOSMRelationMemberRole::Outer)
 					{
-						FOSMFile::FOSMWayInfo* ReferencedWay = OSMFile.WayMap.FindRef(Member->Ref);
+						UOSMFile::FOSMWayInfo* ReferencedWay = OSMFile.WayMap.FindRef(Member->Ref);
 						if (ReferencedWay)
 						{
 							// match - modify MiscWay with the multipolygon outer information
 							ReferencedWay->Category = TagValue;
-							if (ReferencedWay->WayType == FOSMFile::EOSMWayType::Other)
+							if (ReferencedWay->WayType == UOSMFile::EOSMWayType::Other)
 							{
-								ReferencedWay->WayType = FOSMFile::EOSMWayType::LandUse;
+								ReferencedWay->WayType = UOSMFile::EOSMWayType::LandUse;
 								// it its definately not part of the misc ways yet, so add it
 								AddMiscWay(OSMFile, StreetMapRef, *ReferencedWay);
 							}
 							return true;
 						}
 					}
-					else if (Member->Role == FOSMFile::EOSMRelationMemberRole::Inner)
+					else if (Member->Role == UOSMFile::EOSMRelationMemberRole::Inner)
 					{
 						// TODO: seems like inners have their own landuse tags, so they should get painted correctly, too
 						// maybe just a problem of order remaining?!
@@ -490,15 +496,15 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 
 
 	// Load up the OSM file.  It's in XML format.
-	FOSMFile OSMFile;
-	if( !OSMFile.LoadOpenStreetMapFile( OSMFilePath, bIsFilePathActuallyTextBuffer, FeedbackContext ) )
+	if( !OSMFile->LoadOpenStreetMapFile( OSMFilePath, bIsFilePathActuallyTextBuffer, FeedbackContext ) )
 	{
 		// Loading failed.  The actual error message will be sent to the FeedbackContext's log.
 		return false;
 	}
 
-	StreetMap->OriginLongitude = OSMFile.SpatialReferenceSystem.GetOriginLongitude();
-	StreetMap->OriginLatitude = OSMFile.SpatialReferenceSystem.GetOriginLatitude();
+	StreetMap->OSMFile = OSMFile;
+	StreetMap->OriginLongitude = OSMFile->SpatialReferenceSystem->GetOriginLongitude();
+	StreetMap->OriginLatitude = OSMFile->SpatialReferenceSystem->GetOriginLatitude();
 
 	// @todo: The loaded OSMFile stores data in double precision, but our runtime representation (UStreetMap)
 	//        truncates everything to single precision, after transposing coordinates to be relative to the
@@ -508,51 +514,50 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 	//        other considerations for handling huge maps (loading, rendering, collision, etc.)
 
 	// Maps OSMWayInfos to the (Road/Railway)-Index we created for that way
-	TMap< const FOSMFile::FOSMWayInfo*, int32 > OSMWayToRoadIndexMap;
-	TMap< const FOSMFile::FOSMWayInfo*, int32 > OSMWayToRailwayIndexMap;
+	TMap< const UOSMFile::FOSMWayInfo*, int32 > OSMWayToRoadIndexMap;
+	TMap< const UOSMFile::FOSMWayInfo*, int32 > OSMWayToRailwayIndexMap;
 
 	StreetMap->BoundsMin = FVector2D( TNumericLimits<float>::Max(), TNumericLimits<float>::Max() );
 	StreetMap->BoundsMax = FVector2D( TNumericLimits<float>::Lowest(), TNumericLimits<float>::Lowest() );
 
-	for( const FOSMFile::FOSMWayInfo* OSMWay : OSMFile.Ways )
+	for( const UOSMFile::FOSMWayInfo* OSMWay : OSMFile->Ways )
 	{
 		// Handle buildings differently than roads
-		if( OSMWay->WayType == FOSMFile::EOSMWayType::Building )
+		if( OSMWay->WayType == UOSMFile::EOSMWayType::Building )
 		{
-			if( AddBuildingForWay( OSMFile, *StreetMap, *OSMWay ) )
+			if( AddBuildingForWay( *OSMFile, *StreetMap, *OSMWay ) )
 			{
 				// ...
 			}
 		}
-		else if( OSMWay->WayType == FOSMFile::EOSMWayType::Highway )
+		else if( OSMWay->WayType == UOSMFile::EOSMWayType::Highway )
 		{
 			int32 RoadIndex = INDEX_NONE;
-			if( AddRoadForWay( OSMFile, *StreetMap, *OSMWay, RoadIndex ) )
+			if( AddRoadForWay( *OSMFile, *StreetMap, *OSMWay, RoadIndex ) )
 			{
 				OSMWayToRoadIndexMap.Add( OSMWay, RoadIndex );
 			}
 		}
-		else if (OSMWay->WayType == FOSMFile::EOSMWayType::Railway)
+		else if (OSMWay->WayType == UOSMFile::EOSMWayType::Railway)
 		{
 			int32 RailwayIndex = INDEX_NONE;
-			if (AddRailwayForWay(OSMFile, *StreetMap, *OSMWay, RailwayIndex))
+			if (AddRailwayForWay( *OSMFile, *StreetMap, *OSMWay, RailwayIndex))
 			{
 				OSMWayToRailwayIndexMap.Add(OSMWay, RailwayIndex);
 			}
 		}
-		else if (AddMiscWay(OSMFile, *StreetMap, *OSMWay))
+		else if (AddMiscWay( *OSMFile, *StreetMap, *OSMWay))
 		{
 			// ...
 		}
 	}
 
-	for (const FOSMFile::FOSMRelation* OSMRelation : OSMFile.Relations)
+	for (const UOSMFile::FOSMRelation* OSMRelation : OSMFile->Relations)
 	{
-		// TODO ....
 		// Handle multipolgyons
-		if (OSMRelation->Type == FOSMFile::EOSMRelationType::Multipolygon)
+		if (OSMRelation->Type == UOSMFile::EOSMRelationType::Multipolygon)
 		{
-			if (AddMultipolygon(OSMFile, *StreetMap, *OSMRelation))
+			if (AddMultipolygon( *OSMFile, *StreetMap, *OSMRelation))
 			{
 				// ...
 			}
@@ -560,13 +565,13 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 	}
 
 
-	for (const auto& NodeMapHashPair : OSMFile.NodeMap)
+	for (const auto& NodeMapHashPair : OSMFile->NodeMap)
 	{
-		const FOSMFile::FOSMNodeInfo& OSMNode = *NodeMapHashPair.Value;
+		const UOSMFile::FOSMNodeInfo& OSMNode = *NodeMapHashPair.Value;
 		FStreetMapNode NewNode;
 
 		// copy all tags first
-		for (const FOSMFile::FOSMTag& OSMNodeTag : OSMNode.Tags)
+		for (const UOSMFile::FOSMTag& OSMNodeTag : OSMNode.Tags)
 		{
 			FStreetMapTag Tag;
 			Tag.Key = OSMNodeTag.Key;
@@ -580,7 +585,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 			// Is this node important beyond any references by ways?
 			if (OSMNode.Tags.Num() > 0)
 			{
-				const FVector2D NodePos = OSMFile.SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+				const FVector2D NodePos = OSMFile->SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 				NewNode.Location.X = NodePos.X;
 				NewNode.Location.Y = NodePos.Y;
 
@@ -590,7 +595,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 			continue;
 		}
 
-		for (const FOSMFile::FOSMWayRef& OSMWayRef : OSMNode.WayRefs)
+		for (const UOSMFile::FOSMWayRef& OSMWayRef : OSMNode.WayRefs)
 		{
 			const int32* FoundRoadIndexPtr = OSMWayToRoadIndexMap.Find(OSMWayRef.Way);
 			if (FoundRoadIndexPtr != nullptr)

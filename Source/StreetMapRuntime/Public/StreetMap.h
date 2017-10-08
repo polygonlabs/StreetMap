@@ -4,6 +4,7 @@
 
 #include "LandscapeProxy.h"
 #include "Components/SplineMeshComponent.h"
+#include "OSMFile.h"
 #include "StreetMap.generated.h"
 
 /** Types of miscellaneous ways */
@@ -840,6 +841,10 @@ protected:
 	/** Importing data and options used for this mesh */
 	UPROPERTY( VisibleAnywhere, Instanced, Category=ImportSettings )
 	class UAssetImportData* AssetImportData;
+
+	/** OSM XML File */
+	UPROPERTY(VisibleAnywhere, Instanced, Category = ImportSettings)
+	UOSMFile* OSMFile;
 
 	friend class UStreetMapFactory;
 	friend class UStreetMapReimportFactory;

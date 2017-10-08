@@ -11,7 +11,7 @@
 #include "SNotificationList.h"
 #include "NotificationManager.h"
 #include "ScopedTransaction.h"
-#include "SpatialReferenceSystem.h"
+#include "GISUtils/SpatialReferenceSystem.h"
 #include "TiledMap.h"
 #include "LandscapeInfo.h"
 #include "Polygon2DView.h"
@@ -430,7 +430,7 @@ public:
 		// 1.) collect all elevation tiles needed based on StreetMap location and Landscape size
 		{
 			const UStreetMap* StreetMap = StreetMapComponent->GetStreetMap();
-			const FSpatialReferenceSystem SRS(StreetMap->GetOriginLongitude(), StreetMap->GetOriginLatitude());
+			const USpatialReferenceSystem SRS(StreetMap->GetOriginLongitude(), StreetMap->GetOriginLatitude());
 
 			int32 SubsectionSizeQuads;
 			const int32 NumVerticesForRadius = GetNumVerticesForRadius(BuildSettings, SubsectionSizeQuads);
@@ -532,7 +532,7 @@ public:
 	{
 		const FText ProgressText = LOCTEXT("ReprojectingElevationModel", "Reprojecting Elevation Model");
 		const UStreetMap* StreetMap = StreetMapComponent->GetStreetMap();
-		const FSpatialReferenceSystem SRS(StreetMap->GetOriginLongitude(), StreetMap->GetOriginLatitude());
+		const USpatialReferenceSystem SRS(StreetMap->GetOriginLongitude(), StreetMap->GetOriginLatitude());
 
 		int32 SubsectionSizeQuads;
 

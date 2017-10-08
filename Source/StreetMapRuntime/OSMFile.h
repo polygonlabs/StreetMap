@@ -3,19 +3,22 @@
 
 #include "XmlFile.h"
 #include "GISUtils/SpatialReferenceSystem.h"
+#include "OSMFile.generated.h"
 
 
 /** OpenStreetMap file loader */
-class FOSMFile
+UCLASS()
+class STREETMAPRUNTIME_API UOSMFile : public UObject
 {
-	
+	GENERATED_BODY()
+
 public:
 	
 	/** Default constructor for FOSMFile */
-	FOSMFile();
+	UOSMFile();
 
 	/** Destructor for FOSMFile */
-	virtual ~FOSMFile();
+	virtual ~UOSMFile();
 
 	/** Loads the map from an OpenStreetMap XML file. */
 	bool LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePathActuallyTextBuffer, class FFeedbackContext* FeedbackContext );
@@ -177,7 +180,7 @@ public:
 	double AverageLatitude = 0.0;
 	double AverageLongitude = 0.0;
 
-	FSpatialReferenceSystem SpatialReferenceSystem;
+	USpatialReferenceSystem* SpatialReferenceSystem;
 
 	// All ways we've parsed
 	TArray<FOSMWayInfo*> Ways;
