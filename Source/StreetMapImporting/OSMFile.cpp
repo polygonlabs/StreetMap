@@ -2,7 +2,6 @@
 
 #include "StreetMapImporting.h"
 #include "OSMFile.h"
-#include "XmlFile.h"
 
 
 FOSMFile::FOSMFile()
@@ -40,7 +39,6 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 	// TODO: make this an import option - OSM has many tags that might be interesting to display and edit, but are not needed for an UStreetMap yet
 	bool ImportUnknownTags = true;
 
-	FXmlFile OsmXmlFile;
 	if (OsmXmlFile.LoadFile(OSMFilePath))
 	{
 		auto RootNode = OsmXmlFile.GetRootNode();
@@ -49,6 +47,9 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 			UE_LOG(LogTemp, Display, TEXT("Loaded full xml tree but it is no osm file!"));
 			return false;
 		}
+		// Save file location for saving it later on
+		OSMFileLocation = OSMFilePath;
+
 		auto XmlNodes = RootNode->GetChildrenNodes();
 		for (auto XmlNode : XmlNodes)
 		{
@@ -387,14 +388,21 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 			AverageLongitude = (MinLongitude + MaxLongitude) / 2;
 			SpatialReferenceSystem = FSpatialReferenceSystem(AverageLongitude, AverageLatitude);
 		}
-		if (NodeMap.Num() > 0)
+		else if (NodeMap.Num() > 0)
 		{
 			AverageLatitude /= NodeMap.Num();
 			AverageLongitude /= NodeMap.Num();
 
 			SpatialReferenceSystem = FSpatialReferenceSystem(AverageLongitude, AverageLatitude);
 		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("OSM file does not contain any nodes, failed to init SpatialReferenceSystem!"));
+			return false;
+		}
 
+		// TODO: just as a test to see if writing works
+		SaveOpenStreetMapFile();
 		return true;
 	}
 	else
@@ -402,5 +410,25 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 		UE_LOG(LogTemp, Error, TEXT("Failed to load full xml tree"));
 	}
 
+	return false;
+}
+
+bool FOSMFile::SaveOpenStreetMapFile()
+{
+	if (OsmXmlFile.IsValid())
+	{
+		if (OsmXmlFile.Save(OSMFileLocation))
+		{
+			UE_LOG(LogTemp, Display, TEXT("Saved file successfully"));
+			return true;
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to save OSM file"));
+			return false;
+		}
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("File is not valid or not even loaded. Cannot save!"));
 	return false;
 }

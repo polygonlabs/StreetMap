@@ -1,6 +1,7 @@
 // Copyright 2017 Mike Fricker. All Rights Reserved.
 #pragma once
 
+#include "XmlFile.h"
 #include "GISUtils/SpatialReferenceSystem.h"
 
 
@@ -16,9 +17,17 @@ public:
 	/** Destructor for FOSMFile */
 	virtual ~FOSMFile();
 
-	/** Loads the map from an OpenStreetMap XML file.  Note that in the case of the file path containing the XML data, the string must be mutable for us to parse it quickly. */
+	/** Loads the map from an OpenStreetMap XML file. */
 	bool LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePathActuallyTextBuffer, class FFeedbackContext* FeedbackContext );
 
+	/** Saves the map to an OpenStreetMap XML file. */
+	bool SaveOpenStreetMapFile();
+
+	/** Last known location of the loaded file, where it will be saved to again. */
+	FString OSMFileLocation;
+
+	/** XML tree of the imported OSM file. Modified data can be saved back to the file */
+	FXmlFile OsmXmlFile;
 
 	struct FOSMWayInfo;
 
