@@ -37,29 +37,328 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 	const bool bShowSlowTaskDialog = true;
 	const bool bShowCancelButton = true;
 
+	// TODO: make this an import option - OSM has many tags that might be interesting to display and edit, but are not needed for an UStreetMap yet
+	bool ImportUnknownTags = true;
+
 	FXmlFile OsmXmlFile;
 	if (OsmXmlFile.LoadFile(OSMFilePath))
 	{
-		UE_LOG(LogTemp, Display, TEXT("Loaded full xml tree"));
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to load full xml tree"));
-	}
+		auto RootNode = OsmXmlFile.GetRootNode();
+		if (RootNode->GetTag().Compare(FString("osm")))
+		{
+			UE_LOG(LogTemp, Display, TEXT("Loaded full xml tree but it is no osm file!"));
+			return false;
+		}
+		auto XmlNodes = RootNode->GetChildrenNodes();
+		for (auto XmlNode : XmlNodes)
+		{
+			auto Name = XmlNode->GetTag();
+			auto Attributes = XmlNode->GetAttributes();
+			auto XmlNodeChildren = XmlNode->GetChildrenNodes();
 
-	FText ErrorMessage;
-	int32 ErrorLineNumber;
-	if( FFastXml::ParseXmlFile( 
-		this, 
-		bIsFilePathActuallyTextBuffer ? nullptr : *OSMFilePath, 
-		bIsFilePathActuallyTextBuffer ? OSMFilePath.GetCharArray().GetData() : nullptr, 
-		FeedbackContext, 
-		bShowSlowTaskDialog, 
-		bShowCancelButton, 
-		/* Out */ ErrorMessage, 
-		/* Out */ ErrorLineNumber ) )
-	{
-		if( NodeMap.Num() > 0 )
+			if (!Name.Compare(FString("node")))
+			{
+				CurrentNodeInfo = new FOSMNodeInfo();
+				CurrentNodeInfo->Latitude = 0.0;
+				CurrentNodeInfo->Longitude = 0.0;
+				// Process infos inside node tag
+				for (auto Attribute : Attributes)
+				{
+					if (!Attribute.GetTag().Compare(FString("id")))
+					{
+						CurrentNodeID = FPlatformString::Atoi64(*Attribute.GetValue());
+					}
+					else if (!Attribute.GetTag().Compare(FString("lat")))
+					{
+						CurrentNodeInfo->Latitude = FPlatformString::Atod(*Attribute.GetValue());
+
+						AverageLatitude += CurrentNodeInfo->Latitude;
+					}
+					else if (!Attribute.GetTag().Compare(FString("lon")))
+					{
+						CurrentNodeInfo->Longitude = FPlatformString::Atod(*Attribute.GetValue());
+
+						AverageLongitude += CurrentNodeInfo->Longitude;
+					}
+				}
+				// Process children, looking for tags
+				if (ImportUnknownTags)
+				{
+					for (auto Child : XmlNodeChildren)
+					{
+						if (!Child->GetTag().Compare(FString("tag")))
+						{
+							auto Attributes = Child->GetAttributes();
+							// assuming key, value pair
+							if (Attributes.Num() == 2)
+							{
+								auto Key = Attributes[0];
+								auto Value = Attributes[1];
+
+								if (!Key.GetTag().Compare(FString("k")) && !Value.GetTag().Compare(FString("v")))
+								{
+									FOSMTag Tag;
+									Tag.Key = FName::FName(*Key.GetValue());
+									Tag.Value = FName::FName(*Value.GetValue());
+									CurrentNodeInfo->Tags.Add(Tag);
+								}
+							}
+						}
+					}
+				}
+				NodeMap.Add(CurrentNodeID, CurrentNodeInfo);
+			}
+			else if (!Name.Compare(FString("way")))
+			{
+				CurrentWayInfo = new FOSMWayInfo();
+				CurrentWayInfo->Name.Empty();
+				CurrentWayInfo->Ref.Empty();
+				CurrentWayInfo->WayType = EOSMWayType::Other;
+				CurrentWayInfo->Height = 0.0;
+				CurrentWayInfo->bIsOneWay = false;
+				// @todo: We're currently ignoring the "visible" tag on ways, which means that roads will always
+				//        be included in our data set.  It might be nice to make this an import option.
+				
+				// Process infos inside way tag
+				for (auto Attribute : Attributes)
+				{
+					if (!Attribute.GetTag().Compare(FString("id")))
+					{
+						CurrentWayID = FPlatformString::Atoi64(*Attribute.GetValue());
+						CurrentWayInfo->Id = CurrentWayID;
+					}
+				}
+				// Process children, looking for node references and tags
+				for (auto Child : XmlNodeChildren)
+				{
+					if (!Child->GetTag().Compare(FString("nd")))
+					{
+						auto Attributes = Child->GetAttributes();
+						for (auto Attribute : Attributes)
+						{
+							if (!Attribute.GetTag().Compare(FString("ref")))
+							{
+								FOSMNodeInfo* ReferencedNode = NodeMap.FindRef(FPlatformString::Atoi64(*Attribute.GetValue()));
+								if (ReferencedNode)
+								{
+									const int NewNodeIndex = CurrentWayInfo->Nodes.Num();
+									CurrentWayInfo->Nodes.Add(ReferencedNode);
+
+									// Update the node with information about the way that is referencing it
+									{
+										FOSMWayRef NewWayRef;
+										NewWayRef.Way = CurrentWayInfo;
+										NewWayRef.NodeIndex = NewNodeIndex;
+										ReferencedNode->WayRefs.Add(NewWayRef);
+									}
+								}
+							}
+						}
+					}
+					else if (!Child->GetTag().Compare(FString("tag")))
+					{
+						auto Attributes = Child->GetAttributes();
+						// assuming key, value pair
+						if (Attributes.Num() == 2)
+						{
+							auto Key = Attributes[0];
+							auto Value = Attributes[1];
+						
+							if (!Key.GetTag().Compare(FString("k")) && !Value.GetTag().Compare(FString("v")))
+							{
+								if (!Key.GetValue().Compare(FString("name")))
+								{
+									CurrentWayInfo->Name = Value.GetValue();
+								}
+								else if (!Key.GetValue().Compare(FString("ref")))
+								{
+									CurrentWayInfo->Ref = Value.GetValue();
+								}
+								else if (!Key.GetValue().Compare(FString("highway")))
+								{
+									CurrentWayInfo->WayType = EOSMWayType::Highway;
+									CurrentWayInfo->Category = Value.GetValue();
+								}
+								else if (!Key.GetValue().Compare(FString("railway")))
+								{
+									CurrentWayInfo->WayType = EOSMWayType::Railway;
+									CurrentWayInfo->Category = Value.GetValue();
+								}
+								else if (!Key.GetValue().Compare(FString("building")))
+								{
+									CurrentWayInfo->WayType = EOSMWayType::Building;
+
+									if (!Value.GetValue().Compare(FString("yes")))
+									{
+										CurrentWayInfo->Category = Value.GetValue();
+									}
+								}
+								else if (!Key.GetValue().Compare(FString("height")))
+								{
+									// Check to see if there is a space character in the height value.  For now, we're looking
+									// for straight-up floating point values.
+									if (!FString(Value.GetValue()).Contains(TEXT(" ")))
+									{
+										// Okay, no space character.  So this has got to be a floating point number.  The OSM
+										// spec says that the height values are in meters.
+										CurrentWayInfo->Height = FPlatformString::Atod(*Value.GetValue());
+									}
+									else
+									{
+										// Looks like the height value contains units of some sort.
+										// @todo: Add support for interpreting unit strings and converting the values
+									}
+								}
+								else if (!Key.GetValue().Compare(FString("building:levels")))
+								{
+									CurrentWayInfo->BuildingLevels = FPlatformString::Atoi(*Value.GetValue());
+								}
+								else if (!Key.GetValue().Compare(FString("oneway")))
+								{
+									if (!Value.GetValue().Compare(FString(("yes"))))
+									{
+										CurrentWayInfo->bIsOneWay = true;
+									}
+									else
+									{
+										CurrentWayInfo->bIsOneWay = false;
+									}
+								}
+								else if (CurrentWayInfo->WayType == EOSMWayType::Other)
+								{
+									// if this way was not already marked as building or highway, try other types as well
+									if (!Key.GetValue().Compare(FString("leisure")))
+									{
+										CurrentWayInfo->WayType = EOSMWayType::Leisure;
+										CurrentWayInfo->Category = Value.GetValue();
+									}
+									else if (!Key.GetValue().Compare(FString("natural")))
+									{
+										CurrentWayInfo->WayType = EOSMWayType::Natural;
+										CurrentWayInfo->Category = Value.GetValue();
+									}
+									else if (!Key.GetValue().Compare(FString("landuse")))
+									{
+										CurrentWayInfo->WayType = EOSMWayType::LandUse;
+										CurrentWayInfo->Category = Value.GetValue();
+									}
+								}
+							}
+						}
+					}
+				}
+				WayMap.Add(CurrentWayID, CurrentWayInfo);
+				Ways.Add(CurrentWayInfo);
+				CurrentWayID = 0;
+				CurrentWayInfo = nullptr;
+			}
+			else if (!Name.Compare(FString("relation")))
+			{
+				CurrentRelation = new FOSMRelation();
+				CurrentRelation->Type = EOSMRelationType::Other;
+				// Process infos inside relation tag
+				for (auto Attribute : Attributes)
+				{
+					if (!Attribute.GetTag().Compare(FString("id")))
+					{
+						CurrentRelation->Id = FPlatformString::Atoi64(*Attribute.GetValue());
+					}
+				}
+
+				// Process children, looking for members and tags
+				for (auto Child : XmlNodeChildren)
+				{
+					if (!Child->GetTag().Compare(FString("member")))
+					{
+						CurrentRelationMember = new FOSMRelationMember();
+						CurrentRelationMember->Type = EOSMRelationMemberType::Other;
+						CurrentRelationMember->Role = EOSMRelationMemberRole::Other;
+
+						auto Attributes = Child->GetAttributes();
+						for (auto Attribute : Attributes)
+						{
+							if (!Attribute.GetTag().Compare(FString("type")))
+							{
+								if (!Attribute.GetValue().Compare(FString("node")))
+								{
+									CurrentRelationMember->Type = EOSMRelationMemberType::Node;
+								}
+								else if (!Attribute.GetValue().Compare(FString("way")))
+								{
+									CurrentRelationMember->Type = EOSMRelationMemberType::Way;
+								}
+								else if (!Attribute.GetValue().Compare(FString("relation")))
+								{
+									CurrentRelationMember->Type = EOSMRelationMemberType::Relation;
+								}
+							}
+							else if (!Attribute.GetTag().Compare(FString("ref")))
+							{
+								CurrentRelationMember->Ref = FPlatformString::Atoi64(*Attribute.GetValue()); // TODO: decide if int64 or FString is better
+							}
+							else if (!Attribute.GetTag().Compare(FString("role")))
+							{
+								if (!Attribute.GetValue().Compare(FString("outer")))
+								{
+									CurrentRelationMember->Role = EOSMRelationMemberRole::Outer;
+								}
+								else if (!Attribute.GetValue().Compare(FString("inner")))
+								{
+									CurrentRelationMember->Role = EOSMRelationMemberRole::Inner;
+								}
+							}
+						}
+
+						CurrentRelation->Members.Add(CurrentRelationMember);
+					}
+					else if (!Child->GetTag().Compare(FString("tag")))
+					{
+						auto Attributes = Child->GetAttributes();
+						// assuming key, value pair
+						if (Attributes.Num() == 2)
+						{
+							auto Key = Attributes[0];
+							auto Value = Attributes[1];
+
+							if (!Key.GetTag().Compare(FString("k")) && !Value.GetTag().Compare(FString("v")))
+							{
+								if (!Key.GetValue().Compare(FString("name")))
+								{
+									CurrentRelation->Name = Value.GetValue();
+								}
+								else if (!Key.GetValue().Compare(FString("ref")))
+								{
+									CurrentRelation->Ref = Value.GetValue();
+								}
+								else if (!Key.GetValue().Compare(FString("type")))
+								{
+									if (!Value.GetValue().Compare(FString("boundary")))
+									{
+										CurrentRelation->Type = EOSMRelationType::Boundary;
+									}
+									else if (!Value.GetValue().Compare(FString("multipolygon")))
+									{
+										CurrentRelation->Type = EOSMRelationType::Multipolygon;
+									}
+								}
+								else if (ImportUnknownTags)
+								{
+									// all other tags don't map to our data structure, still save them
+									FOSMTag Tag;
+									Tag.Key = FName::FName(*Key.GetValue());
+									Tag.Value = FName::FName(*Value.GetValue());
+									CurrentRelation->Tags.Add(Tag);
+
+								}
+							}
+						}
+					}
+				}
+				Relations.Add(CurrentRelation);
+			}
+		}
+
+		if (NodeMap.Num() > 0)
 		{
 			AverageLatitude /= NodeMap.Num();
 			AverageLongitude /= NodeMap.Num();
@@ -69,393 +368,10 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 
 		return true;
 	}
-
-	if( FeedbackContext != nullptr )
+	else
 	{
-		FeedbackContext->Logf(
-			ELogVerbosity::Error,
-			TEXT( "Failed to load OpenStreetMap XML file ('%s', Line %i)" ),
-			*ErrorMessage.ToString(),
-			ErrorLineNumber );
+		UE_LOG(LogTemp, Error, TEXT("Failed to load full xml tree"));
 	}
 
 	return false;
-}
-
-		
-bool FOSMFile::ProcessXmlDeclaration( const TCHAR* ElementData, int32 XmlFileLineNumber )
-{
-	// Don't care about XML declaration
-	return true;
-}
-
-
-bool FOSMFile::ProcessComment( const TCHAR* Comment )
-{
-	// Don't care about comments
-	return true;
-}
-	
-	
-bool FOSMFile::ProcessElement( const TCHAR* ElementName, const TCHAR* ElementData, int32 XmlFileLineNumber )
-{
-	if( ParsingState == ParsingState::Root )
-	{
-		if( !FCString::Stricmp( ElementName, TEXT( "node" ) ) )
-		{
-			ParsingState = ParsingState::Node;
-			CurrentNodeInfo = new FOSMNodeInfo();
-			CurrentNodeInfo->Latitude = 0.0;
-			CurrentNodeInfo->Longitude = 0.0;
-		}
-		else if( !FCString::Stricmp( ElementName, TEXT( "way" ) ) )
-		{
-			ParsingState = ParsingState::Way;
-			CurrentWayInfo = new FOSMWayInfo();
-			CurrentWayInfo->Name.Empty();
-			CurrentWayInfo->Ref.Empty();
-			CurrentWayInfo->WayType = EOSMWayType::Other;
-			CurrentWayInfo->Height = 0.0;
-			CurrentWayInfo->bIsOneWay = false;
-
-			// @todo: We're currently ignoring the "visible" tag on ways, which means that roads will always
-			//        be included in our data set.  It might be nice to make this an import option.
-		}
-		else if (!FCString::Stricmp(ElementName, TEXT("relation")))
-		{
-			ParsingState = ParsingState::Relation;
-			CurrentRelation = new FOSMRelation();
-			CurrentRelation->Type = EOSMRelationType::Other;
-		}
-	}
-	else if (ParsingState == ParsingState::Node)
-	{
-		if (!FCString::Stricmp(ElementName, TEXT("tag")))
-		{
-			ParsingState = ParsingState::Node_Tag;
-		}
-	}
-	else if( ParsingState == ParsingState::Way )
-	{
-		if( !FCString::Stricmp( ElementName, TEXT( "nd" ) ) )
-		{
-			ParsingState = ParsingState::Way_NodeRef;
-		}
-		else if( !FCString::Stricmp( ElementName, TEXT( "tag" ) ) )
-		{
-			ParsingState = ParsingState::Way_Tag;
-		}
-	}
-	else if (ParsingState == ParsingState::Relation)
-	{
-		if (!FCString::Stricmp(ElementName, TEXT("member")))
-		{
-			ParsingState = ParsingState::Relation_Member;
-			CurrentRelationMember = new FOSMRelationMember();
-			CurrentRelationMember->Type = EOSMRelationMemberType::Other;
-			CurrentRelationMember->Role = EOSMRelationMemberRole::Other;
-		}
-		else if (!FCString::Stricmp(ElementName, TEXT("tag")))
-		{
-			ParsingState = ParsingState::Relation_Tag;
-		}
-	}
-
-	return true;
-}
-
-
-bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* AttributeValue )
-{
-	if( ParsingState == ParsingState::Node )
-	{
-		if( !FCString::Stricmp( AttributeName, TEXT( "id" ) ) )
-		{
-			CurrentNodeID = FPlatformString::Atoi64( AttributeValue );
-		}
-		else if( !FCString::Stricmp( AttributeName, TEXT( "lat" ) ) )
-		{
-			CurrentNodeInfo->Latitude = FPlatformString::Atod( AttributeValue );
-
-			AverageLatitude += CurrentNodeInfo->Latitude;
-					
-			// Update minimum and maximum latitude
-			// @todo: Performance: Instead of computing our own bounding box, we could parse the "minlat" and
-			//        "minlon" tags from the OSM file
-			if( CurrentNodeInfo->Latitude < MinLatitude )
-			{
-				MinLatitude = CurrentNodeInfo->Latitude;
-			}
-			if( CurrentNodeInfo->Latitude > MaxLatitude )
-			{
-				MaxLatitude = CurrentNodeInfo->Latitude;
-			}
-		}
-		else if( !FCString::Stricmp( AttributeName, TEXT( "lon" ) ) )
-		{
-			CurrentNodeInfo->Longitude = FPlatformString::Atod( AttributeValue );
-
-			AverageLongitude += CurrentNodeInfo->Longitude;
-					
-			// Update minimum and maximum longitude
-			if( CurrentNodeInfo->Longitude < MinLongitude )
-			{
-				MinLongitude = CurrentNodeInfo->Longitude;
-			}
-			if( CurrentNodeInfo->Longitude > MaxLongitude )
-			{
-				MaxLongitude = CurrentNodeInfo->Longitude;
-			}
-		}
-	}
-	else if (ParsingState == ParsingState::Node_Tag)
-	{
-		if (!FCString::Stricmp(AttributeName, TEXT("k")))
-		{
-			CurrentNodeTagKey = AttributeValue;
-		}
-		else if (!FCString::Stricmp(AttributeName, TEXT("v")))
-		{
-			FOSMTag Tag;
-			Tag.Key = FName::FName(CurrentNodeTagKey);
-			Tag.Value = FName::FName(AttributeValue);
-			CurrentNodeInfo->Tags.Add(Tag);
-		}
-	}
-	else if( ParsingState == ParsingState::Way )
-	{
-		if (!FCString::Stricmp(AttributeName, TEXT("id")))
-		{
-			CurrentWayID = FPlatformString::Atoi64(AttributeValue);
-			CurrentWayInfo->Id = CurrentWayID;
-		}
-	}
-	else if( ParsingState == ParsingState::Way_NodeRef )
-	{
-		if( !FCString::Stricmp( AttributeName, TEXT( "ref" ) ) )
-		{
-			FOSMNodeInfo* ReferencedNode = NodeMap.FindRef( FPlatformString::Atoi64( AttributeValue ) );
-			if(ReferencedNode)
-			{
-				const int NewNodeIndex = CurrentWayInfo->Nodes.Num();
-				CurrentWayInfo->Nodes.Add( ReferencedNode );
-					
-				// Update the node with information about the way that is referencing it
-				{
-					FOSMWayRef NewWayRef;
-					NewWayRef.Way = CurrentWayInfo;
-					NewWayRef.NodeIndex = NewNodeIndex;
-					ReferencedNode->WayRefs.Add( NewWayRef );
-				}
-			}
-		}
-	}
-	else if( ParsingState == ParsingState::Way_Tag )
-	{
-		if( !FCString::Stricmp( AttributeName, TEXT( "k" ) ) )
-		{
-			CurrentWayTagKey = AttributeValue;
-		}
-		else if( !FCString::Stricmp( AttributeName, TEXT( "v" ) ) )
-		{
-			if( !FCString::Stricmp( CurrentWayTagKey, TEXT( "name" ) ) )
-			{
-				CurrentWayInfo->Name = AttributeValue;
-			}
-			else if( !FCString::Stricmp( CurrentWayTagKey, TEXT( "ref" ) ) )
-			{
-				CurrentWayInfo->Ref = AttributeValue;
-			}
-			else if( !FCString::Stricmp( CurrentWayTagKey, TEXT( "highway" ) ) )
-			{
-				CurrentWayInfo->WayType = EOSMWayType::Highway;
-				CurrentWayInfo->Category = AttributeValue;
-			}
-			else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("railway")))
-			{
-				CurrentWayInfo->WayType = EOSMWayType::Railway;
-				CurrentWayInfo->Category = AttributeValue;
-			}
-			else if( !FCString::Stricmp( CurrentWayTagKey, TEXT( "building" ) ) )
-			{
-				CurrentWayInfo->WayType = EOSMWayType::Building;
-
-				if( FCString::Stricmp( AttributeValue, TEXT( "yes" ) ) )
-				{
-					CurrentWayInfo->Category = AttributeValue;
-				}
-			}
-			else if( !FCString::Stricmp( CurrentWayTagKey, TEXT( "height" ) ) )
-			{
-				// Check to see if there is a space character in the height value.  For now, we're looking
-				// for straight-up floating point values.
-				if( !FString( AttributeValue ).Contains( TEXT( " " ) ) )
-				{
-					// Okay, no space character.  So this has got to be a floating point number.  The OSM
-					// spec says that the height values are in meters.
-					CurrentWayInfo->Height = FPlatformString::Atod( AttributeValue );
-				}
-				else
-				{
-					// Looks like the height value contains units of some sort.
-					// @todo: Add support for interpreting unit strings and converting the values
-				}
-			}
-			else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("building:levels")))
-			{
-				CurrentWayInfo->BuildingLevels = FPlatformString::Atoi(AttributeValue);
-			}
-			else if( !FCString::Stricmp( CurrentWayTagKey, TEXT( "oneway" ) ) )
-			{
-				if( !FCString::Stricmp( AttributeValue, TEXT( "yes" ) ) )
-				{
-					CurrentWayInfo->bIsOneWay = true;
-				}
-				else
-				{
-					CurrentWayInfo->bIsOneWay = false;
-				}
-			}
-			else if(CurrentWayInfo->WayType == EOSMWayType::Other)
-			{
-				// if this way was not already marked as building or highway, try other types as well
-				if (!FCString::Stricmp(CurrentWayTagKey, TEXT("leisure")))
-				{
-					CurrentWayInfo->WayType = EOSMWayType::Leisure;
-					CurrentWayInfo->Category = AttributeValue;
-				}
-				else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("natural")))
-				{
-					CurrentWayInfo->WayType = EOSMWayType::Natural;
-					CurrentWayInfo->Category = AttributeValue;
-				}
-				else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("landuse")))
-				{
-					CurrentWayInfo->WayType = EOSMWayType::LandUse;
-					CurrentWayInfo->Category = AttributeValue;
-				}
-			}
-		}
-	}
-	else if (ParsingState == ParsingState::Relation)
- 	{
-		if (!FCString::Stricmp(AttributeName, TEXT("id")))
-		{
-			CurrentRelationID = FPlatformString::Atoi64(AttributeValue);
-		}
-	}
-	else if (ParsingState == ParsingState::Relation_Member)
-	{
-		if (!FCString::Stricmp(AttributeName, TEXT("type")))
-		{
-			if (!FCString::Stricmp(AttributeValue, TEXT("node")))
-			{
-				CurrentRelationMember->Type = EOSMRelationMemberType::Node;
-			}
-			else if (!FCString::Stricmp(AttributeValue, TEXT("way")))
-			{
-				CurrentRelationMember->Type = EOSMRelationMemberType::Way;
-			}
-			else if (!FCString::Stricmp(AttributeValue, TEXT("relation")))
-			{
-				CurrentRelationMember->Type = EOSMRelationMemberType::Relation;
-			}
-		}
-		else if (!FCString::Stricmp(AttributeName, TEXT("ref")))
-		{
-			CurrentRelationMember->Ref = FPlatformString::Atoi64(AttributeValue); // TODO: decide if int64 or FString is better
-		}
-		else if (!FCString::Stricmp(AttributeName, TEXT("role")))
-		{
-			if (!FCString::Stricmp(AttributeValue, TEXT("outer")))
-			{
-				CurrentRelationMember->Role = EOSMRelationMemberRole::Outer;
-			}
-			else if (!FCString::Stricmp(AttributeValue, TEXT("inner")))
-			{
-				CurrentRelationMember->Role = EOSMRelationMemberRole::Inner;
-			}
-		}
-	}
-	else if (ParsingState == ParsingState::Relation_Tag)
-	{
-		if (!FCString::Stricmp(AttributeName, TEXT("k")))
-		{
-			CurrentRelationTagKey = AttributeValue;
-		}
-		else if (!FCString::Stricmp(AttributeName, TEXT("v")))
-		{
-			FOSMTag Tag;
-			Tag.Key = FName::FName(CurrentRelationTagKey);
-			Tag.Value = FName::FName(AttributeValue);
-			CurrentRelation->Tags.Add(Tag);
-
-			if (!FCString::Stricmp(CurrentRelationTagKey, TEXT("type")))
-			{
-				if (!FCString::Stricmp(AttributeValue, TEXT("boundary")))
-				{
-					CurrentRelation->Type = EOSMRelationType::Boundary;
-				}
-				else if (!FCString::Stricmp(AttributeValue, TEXT("multipolygon")))
-				{
-					CurrentRelation->Type = EOSMRelationType::Multipolygon;
-				}
-			}
-		}
-	}
-
-	return true;
-}
-
-
-bool FOSMFile::ProcessClose( const TCHAR* Element )
-{
-	if( ParsingState == ParsingState::Node )
-	{
-		NodeMap.Add( CurrentNodeID, CurrentNodeInfo );
-		CurrentNodeID = 0;
-		CurrentNodeInfo = nullptr;
-				
-		ParsingState = ParsingState::Root;
-	}
-	else if (ParsingState == ParsingState::Node_Tag)
-	{
-		CurrentNodeTagKey = TEXT("");
-		ParsingState = ParsingState::Node;
-	}
-	else if( ParsingState == ParsingState::Way )
-	{
-		WayMap.Add(CurrentWayID, CurrentWayInfo );
-		Ways.Add( CurrentWayInfo );
-		CurrentWayID = 0;
-		CurrentWayInfo = nullptr;
-				
-		ParsingState = ParsingState::Root;
-	}
-	else if( ParsingState == ParsingState::Way_NodeRef )
-	{
-		ParsingState = ParsingState::Way;
-	}
-	else if( ParsingState == ParsingState::Way_Tag )
-	{
-		CurrentWayTagKey = TEXT( "" );
-		ParsingState = ParsingState::Way;
-	}
-	else if (ParsingState == ParsingState::Relation)
-	{
-		Relations.Add( CurrentRelation );
-		ParsingState = ParsingState::Root;
-	}
-	else if (ParsingState == ParsingState::Relation_Member)
-	{
-		CurrentRelation->Members.Add(CurrentRelationMember);
-		ParsingState = ParsingState::Relation;
-	}
-	else if (ParsingState == ParsingState::Relation_Tag)
-	{
-		CurrentWayTagKey = TEXT("");
-		ParsingState = ParsingState::Relation;
-	}
-
-	return true;
 }

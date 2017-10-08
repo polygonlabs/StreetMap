@@ -1,12 +1,11 @@
 // Copyright 2017 Mike Fricker. All Rights Reserved.
 #pragma once
 
-#include "FastXml.h"
 #include "GISUtils/SpatialReferenceSystem.h"
 
 
 /** OpenStreetMap file loader */
-class FOSMFile : public IFastXmlCallback
+class FOSMFile
 {
 	
 public:
@@ -111,6 +110,7 @@ public:
 
 	struct FOSMNodeInfo
 	{
+		int64 Id;
 		double Latitude;
 		double Longitude;
 		TArray<FOSMTag> Tags;
@@ -150,6 +150,9 @@ public:
 
 	struct FOSMRelation
 	{
+		int64 Id;
+		FString Name;
+		FString Ref;
 		EOSMRelationType Type;
 		TArray<FOSMRelationMember*> Members;
 		TArray<FOSMTag> Tags;
@@ -178,16 +181,6 @@ public:
 
 	// Maps node IDs to info about each node
 	TMap<int64, FOSMWayInfo*> WayMap;
-
-protected:
-
-	// IFastXmlCallback overrides
-	virtual bool ProcessXmlDeclaration( const TCHAR* ElementData, int32 XmlFileLineNumber ) override;
-	virtual bool ProcessComment( const TCHAR* Comment ) override;
-	virtual bool ProcessElement( const TCHAR* ElementName, const TCHAR* ElementData, int32 XmlFileLineNumber ) override;
-	virtual bool ProcessAttribute( const TCHAR* AttributeName, const TCHAR* AttributeValue ) override;
-	virtual bool ProcessClose( const TCHAR* Element ) override;
-
 	
 protected:
 	
