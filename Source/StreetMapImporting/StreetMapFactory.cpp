@@ -570,6 +570,8 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 		const UOSMFile::FOSMNodeInfo& OSMNode = *NodeMapHashPair.Value;
 		FStreetMapNode NewNode;
 
+		FName TrafficSignTag("traffic_sign");
+
 		// copy all tags first
 		for (const UOSMFile::FOSMTag& OSMNodeTag : OSMNode.Tags)
 		{
@@ -579,6 +581,27 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 			NewNode.Tags.Add(Tag);
 		}
 
+		// If its a traffic sign, add a new entry to the UStreetMap
+		for (const FStreetMapTag& Tag : NewNode.Tags)
+		{
+			if (!Tag.Key.Compare(TrafficSignTag))
+			{
+				FStreetMapSign NewSign;
+				NewSign.Type = Tag.Value.ToString();
+				NewSign.Location = OSMFile->SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+				for (const FStreetMapTag& Tag : NewNode.Tags)
+				{
+					if (!Tag.Key.Compare(FName("name")))
+					{
+						NewSign.Name = Tag.Value.ToString();
+						break;
+					}
+				}
+				StreetMap->Signs.Add(NewSign);
+				break;
+			}
+		}
+		
 		// Any ways touching this node?
 		if (OSMNode.WayRefs.Num() == 0)
 		{

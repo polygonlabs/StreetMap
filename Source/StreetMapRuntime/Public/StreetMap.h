@@ -705,6 +705,25 @@ struct STREETMAPRUNTIME_API FStreetMapMiscWay
 		bool bIsClosed;
 };
 
+/** A traffic sign */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapSign
+{
+	GENERATED_USTRUCT_BODY()
+
+	/** Name of the sign */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FString Name;
+
+	/** Category of the sign */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FString Type;
+
+	/** points that define the the way (line or polygon) */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FVector2D Location;
+};
+
 /** A loaded street map */
 UCLASS()
 class STREETMAPRUNTIME_API UStreetMap : public UObject
@@ -780,6 +799,18 @@ public:
 		return MiscWays;
 	}
 
+	/** Gets all of the miscellaneous ways */
+	const TArray<FStreetMapSign>& GetSigns() const
+	{
+		return Signs;
+	}
+
+	/** Gets all of the miscellaneous ways */
+	TArray<FStreetMapSign>& GetSigns()
+	{
+		return Signs;
+	}
+
 
 	/** Gets the bounding box of the map */
 	FVector2D GetBoundsMin() const
@@ -821,6 +852,10 @@ protected:
 	/** List of all miscellaneous ways on the street map */
 	UPROPERTY(Category = StreetMap, VisibleAnywhere)
 	TArray<FStreetMapMiscWay> MiscWays;
+
+	/** List of all traffic sign on the street map */
+	UPROPERTY(Category = StreetMap, VisibleAnywhere)
+		TArray<FStreetMapSign> Signs;
 
 	/** 2D bounds (min) of this map's roads and buildings */
 	UPROPERTY( Category=StreetMap, VisibleAnywhere)
