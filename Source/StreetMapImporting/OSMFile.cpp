@@ -56,6 +56,29 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 			auto Attributes = XmlNode->GetAttributes();
 			auto XmlNodeChildren = XmlNode->GetChildrenNodes();
 
+			if (!Name.Compare(FString("bounds")))
+			{
+				for (auto Attribute : Attributes)
+				{
+					if (!Attribute.GetTag().Compare(FString("minlon")))
+					{
+						MinLongitude = FPlatformString::Atod(*Attribute.GetValue());
+					}
+					else if (!Attribute.GetTag().Compare(FString("minlat")))
+					{
+						MinLatitude = FPlatformString::Atod(*Attribute.GetValue());
+					}
+					else if (!Attribute.GetTag().Compare(FString("maxlat")))
+					{
+						MaxLatitude = FPlatformString::Atod(*Attribute.GetValue());
+					}
+					else if (!Attribute.GetTag().Compare(FString("maxlon")))
+					{
+						MaxLongitude = FPlatformString::Atod(*Attribute.GetValue());
+					}
+				}
+			}
+
 			if (!Name.Compare(FString("node")))
 			{
 				CurrentNodeInfo = new FOSMNodeInfo();
@@ -358,6 +381,12 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 			}
 		}
 
+		if (MinLatitude != MAX_dbl && MinLongitude != MAX_dbl && MaxLatitude != -MAX_dbl && MaxLongitude != -MAX_dbl)
+		{
+			AverageLatitude = (MinLatitude + MaxLatitude) / 2;
+			AverageLongitude = (MinLongitude + MaxLongitude) / 2;
+			SpatialReferenceSystem = FSpatialReferenceSystem(AverageLongitude, AverageLatitude);
+		}
 		if (NodeMap.Num() > 0)
 		{
 			AverageLatitude /= NodeMap.Num();
