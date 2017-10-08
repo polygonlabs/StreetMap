@@ -25,13 +25,14 @@ UObject* UStreetMapFactory::FactoryCreateText( UClass* Class, UObject* Parent, F
 
 	StreetMap->AssetImportData->Update( this->GetCurrentFilename() );
 
-	// @todo: Performance: This will copy the entire text buffer into an FString.  We need to do this
-	//        because the FFastXml parser is expecting a buffer that it can mutate as it parses.
-	const int32 CharacterCount = BufferEnd - Buffer;
-	FString MutableTextBuffer( CharacterCount, Buffer );
+	//// @todo: Performance: This will copy the entire text buffer into an FString.  We need to do this
+	////        because the FFastXml parser is expecting a buffer that it can mutate as it parses.
+	//const int32 CharacterCount = BufferEnd - Buffer;
+	//FString MutableTextBuffer( CharacterCount, Buffer );
 
-	const bool bIsFilePathActuallyTextBuffer = true;
-	const bool bLoadedOkay = LoadFromOpenStreetMapXMLFile( StreetMap, MutableTextBuffer, bIsFilePathActuallyTextBuffer, Warn );
+	FString FilePath = this->GetCurrentFilename();
+	const bool bIsFilePathActuallyTextBuffer = false;
+	const bool bLoadedOkay = LoadFromOpenStreetMapXMLFile( StreetMap, FilePath, bIsFilePathActuallyTextBuffer, Warn );
 
 	if( !bLoadedOkay )
 	{

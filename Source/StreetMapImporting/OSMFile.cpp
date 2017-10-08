@@ -2,6 +2,7 @@
 
 #include "StreetMapImporting.h"
 #include "OSMFile.h"
+#include "XmlFile.h"
 
 
 FOSMFile::FOSMFile()
@@ -35,6 +36,16 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 {
 	const bool bShowSlowTaskDialog = true;
 	const bool bShowCancelButton = true;
+
+	FXmlFile OsmXmlFile;
+	if (OsmXmlFile.LoadFile(OSMFilePath))
+	{
+		UE_LOG(LogTemp, Display, TEXT("Loaded full xml tree"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to load full xml tree"));
+	}
 
 	FText ErrorMessage;
 	int32 ErrorLineNumber;
