@@ -124,29 +124,32 @@ void FStreetMapComponentVisualizer::DrawVisualization(const UActorComponent* Com
 	//cast the component into the expected component type
 	if (const UStreetMapComponent* StreetMapComponent = Cast<UStreetMapComponent>(Component))
 	{
-		//get colors for selected and unselected targets
-		//This is an editor only uproperty of our targeting component, that way we can change the colors if we can't see them against the background
-		const FColor ReadOnlyColor = FColor(255, 0, 255, 255);
-		const float GrabHandleSize = 30.0f;
-
-		const FColor SelectedColor = StreetMapComponent->EditorSelectedColor;
-		const FColor UnselectedColor = StreetMapComponent->EditorUnselectedColor;
-
-		const FVector Locaction = StreetMapComponent->GetComponentLocation();
-
-		//Iterate over each road, drawing simple HitProxies that can be selected in editor viewport
-		auto NumberOfRoadsInfosToDraw = FMath::Min(StreetMapComponent->GetStreetMap()->GetRoads().Num(), 10);
-		for (int i = 0; i < NumberOfRoadsInfosToDraw; i++)
+		if (StreetMapComponent->GetStreetMap())
 		{
-			FColor Color = (i == SelectedRoadIndex) ? SelectedColor : UnselectedColor;
+			//get colors for selected and unselected targets
+			//This is an editor only uproperty of our targeting component, that way we can change the colors if we can't see them against the background
+			const FColor ReadOnlyColor = FColor(255, 0, 255, 255);
+			const float GrabHandleSize = 30.0f;
 
-			//Set our hit proxy
-			PDI->SetHitProxy(new HTargetProxy(Component, i));
-			// Just as a test, draw points slightly above the roads
-			FVector2D FirstRoadPoint = StreetMapComponent->GetStreetMap()->GetRoads()[i].RoadPoints[0];
-			FVector DrawPosition(FirstRoadPoint, StreetMapComponent->GetComponentLocation().Z + 100.0f);
-			PDI->DrawPoint(DrawPosition, Color, GrabHandleSize, SDPG_Foreground);
-			PDI->SetHitProxy(NULL);
+			const FColor SelectedColor = StreetMapComponent->EditorSelectedColor;
+			const FColor UnselectedColor = StreetMapComponent->EditorUnselectedColor;
+
+			const FVector Locaction = StreetMapComponent->GetComponentLocation();
+
+			//Iterate over each road, drawing simple HitProxies that can be selected in editor viewport
+			auto NumberOfRoadsInfosToDraw = FMath::Min(StreetMapComponent->GetStreetMap()->GetRoads().Num(), 10);
+			for (int i = 0; i < NumberOfRoadsInfosToDraw; i++)
+			{
+				FColor Color = (i == SelectedRoadIndex) ? SelectedColor : UnselectedColor;
+
+				//Set our hit proxy
+				PDI->SetHitProxy(new HTargetProxy(Component, i));
+				// Just as a test, draw points slightly above the roads
+				FVector2D FirstRoadPoint = StreetMapComponent->GetStreetMap()->GetRoads()[i].RoadPoints[0];
+				FVector DrawPosition(FirstRoadPoint, StreetMapComponent->GetComponentLocation().Z + 100.0f);
+				PDI->DrawPoint(DrawPosition, Color, GrabHandleSize, SDPG_Foreground);
+				PDI->SetHitProxy(NULL);
+			}
 		}
 	}
 }
