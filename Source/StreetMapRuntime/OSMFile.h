@@ -24,9 +24,11 @@ public:
 	bool LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePathActuallyTextBuffer, class FFeedbackContext* FeedbackContext );
 
 	/** Saves the map to an OpenStreetMap XML file. */
+	UFUNCTION(BlueprintCallable)
 	bool SaveOpenStreetMapFile();
 
 	/** Last known location of the loaded file, where it will be saved to again. */
+	UPROPERTY(BlueprintReadWrite)
 	FString OSMFileLocation;
 
 	/** XML tree of the imported OSM file. Modified data can be saved back to the file */

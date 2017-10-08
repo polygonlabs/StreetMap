@@ -61,6 +61,12 @@ public:
 	/** Returns whether splines can be created or not */
 	bool BuildSplinesIsEnabled() const;
 
+	/** Handles build splines button clicking */
+	FReply OnBuildTrafficSignsClicked();
+
+	/** Returns whether splines can be created or not */
+	bool BuildTrafficSignsIsEnabled() const;
+
 protected:
 	/** Holds Selected Street Map Component */
 	 class UStreetMapComponent* SelectedStreetMapComponent;

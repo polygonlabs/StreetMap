@@ -387,6 +387,27 @@ public:
 	}
 };
 
+
+/** Generic Spline generation settings */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapRoadFurnitureBuildSettings
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+	// Landscape where to put the road furniture onto
+	UPROPERTY(Category = "RoadFurniture", EditAnywhere)
+		ALandscapeProxy* Landscape;
+
+	// Build traffic signs
+	UPROPERTY(Category = "RoadFurniture", EditAnywhere)
+		bool BuildTrafficSigns = true;
+
+	FStreetMapRoadFurnitureBuildSettings()
+	{
+	}
+};
+
 /** Types of roads */
 UENUM( BlueprintType )
 enum EStreetMapRoadType
@@ -872,14 +893,15 @@ protected:
 	UPROPERTY(Category = StreetMap, VisibleAnywhere)
 	double OriginLatitude;
 
+	/** OSM XML File */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = StreetMap)
+		UOSMFile* OSMFile;
+
 #if WITH_EDITORONLY_DATA
 	/** Importing data and options used for this mesh */
 	UPROPERTY( VisibleAnywhere, Instanced, Category=ImportSettings )
 	class UAssetImportData* AssetImportData;
 
-	/** OSM XML File */
-	UPROPERTY(VisibleAnywhere, Instanced, Category = ImportSettings)
-	UOSMFile* OSMFile;
 
 	friend class UStreetMapFactory;
 	friend class UStreetMapReimportFactory;

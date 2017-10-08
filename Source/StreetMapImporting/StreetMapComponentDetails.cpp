@@ -26,6 +26,7 @@
 #include "StreetMapRailway.h"
 #include "StreetMapRoad.h"
 #include "StreetMapSplineTools.h"
+#include "StreetMapRoadFurniture.h"
 
 #define LOCTEXT_NAMESPACE "StreetMapComponentDetails"
 
@@ -283,6 +284,30 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 			[
 				SNew(STextBlock)
 				.Text(LOCTEXT("BuildSplines", "Build Splines"))
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+			]
+			]
+			];
+	}
+
+	// RoadFurniture settings
+	{
+		IDetailCategoryBuilder& RailwayCategory = DetailBuilder.EditCategory("Road Furniture", FText::GetEmpty(), ECategoryPriority::Important);
+		RailwayCategory.InitiallyCollapsed(false);
+
+		RailwayCategory.AddCustomRow(FText::GetEmpty(), false)
+			[
+				SAssignNew(TempHorizontalBox, SHorizontalBox)
+				+ SHorizontalBox::Slot()
+			[
+				SNew(SButton)
+				.ToolTipText(LOCTEXT("BuildSplines_Tooltip", "Generate Road Furniture Actors in Level. Traffic Signs only"))
+			.OnClicked(this, &FStreetMapComponentDetails::OnBuildTrafficSignsClicked)
+			.IsEnabled(this, &FStreetMapComponentDetails::BuildTrafficSignsIsEnabled)
+			.HAlign(HAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("BuildSigns", "Build Signs"))
 			.Font(IDetailLayoutBuilder::GetDetailFont())
 			]
 			]
@@ -669,6 +694,36 @@ bool FStreetMapComponentDetails::BuildSplinesIsEnabled() const
 		!SelectedStreetMapComponent->SplineSettings.End ||
 		!SelectedStreetMapComponent->RailwaySettings.Landscape ||
 		!SelectedStreetMapComponent->RailwaySettings.Landscape->SplineComponent)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+
+FReply FStreetMapComponentDetails::OnBuildTrafficSignsClicked()
+{
+	if (SelectedStreetMapComponent != nullptr)
+	{
+		BuildRoadFurniture(
+			SelectedStreetMapComponent,
+			SelectedStreetMapComponent->RoadFurnitureSettings);
+
+		// regenerates details panel layouts, to take in consideration new changes.
+		RefreshDetails();
+	}
+
+	return FReply::Handled();
+}
+
+
+bool FStreetMapComponentDetails::BuildTrafficSignsIsEnabled() const
+{
+	if (!SelectedStreetMapComponent ||
+		!SelectedStreetMapComponent->GetStreetMap() ||
+		!SelectedStreetMapComponent->GetStreetMap()->GetSigns().Num() ||
+		!SelectedStreetMapComponent->RoadFurnitureSettings.Landscape )
 	{
 		return false;
 	}
