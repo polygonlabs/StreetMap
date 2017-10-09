@@ -137,7 +137,7 @@ void FStreetMapComponentVisualizer::DrawVisualization(const UActorComponent* Com
 			const FVector Locaction = StreetMapComponent->GetComponentLocation();
 
 			//Iterate over each road, drawing simple HitProxies that can be selected in editor viewport
-			auto NumberOfRoadsInfosToDraw = FMath::Min(StreetMapComponent->GetStreetMap()->GetRoads().Num(), 10);
+			auto NumberOfRoadsInfosToDraw = FMath::Min(StreetMapComponent->GetStreetMap()->GetRoads().Num(), 0);
 			for (int i = 0; i < NumberOfRoadsInfosToDraw; i++)
 			{
 				FColor Color = (i == SelectedRoadIndex) ? SelectedColor : UnselectedColor;
