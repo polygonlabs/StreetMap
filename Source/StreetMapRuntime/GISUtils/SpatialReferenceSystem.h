@@ -1,25 +1,21 @@
 #pragma once
 
-#include "SpatialReferenceSystem.generated.h"
-
 /**
  * Transforms all points relative to the given longitude/latitude 
  * so that we get as much precision as possible and minimize projection distortion.
  * Locations/coordinates referred to as "local" are in Sanson-Flamsteed (sinusoidal) Projection (unit = meters)
  * (see http://www.progonos.com/furuti/MapProj/Normal/CartHow/HowSanson/howSanson.html)
  */
-UCLASS()
-class STREETMAPRUNTIME_API USpatialReferenceSystem : public UObject
+class STREETMAPRUNTIME_API FSpatialReferenceSystem
 {
-	GENERATED_BODY()
 
 private:
 	double OriginLongitude;
 	double OriginLatitude;
 public:
-	USpatialReferenceSystem();
+	FSpatialReferenceSystem();
 
-	USpatialReferenceSystem(const double OriginLongitude, const double OriginLatitude);
+	FSpatialReferenceSystem(const double OriginLongitude, const double OriginLatitude);
 
 	/** Converts WGS84 latitude and longitude (degrees) to local coordinates (meters). 
 	 * (see http://spatialreference.org/ref/epsg/4326/)

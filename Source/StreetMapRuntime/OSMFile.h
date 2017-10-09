@@ -182,7 +182,7 @@ public:
 	double AverageLatitude = 0.0;
 	double AverageLongitude = 0.0;
 
-	USpatialReferenceSystem* SpatialReferenceSystem;
+	FSpatialReferenceSystem SpatialReferenceSystem;
 
 	// All ways we've parsed
 	TArray<FOSMWayInfo*> Ways;

@@ -117,7 +117,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 		for( const UOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes )
 		{
 			const UOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
-			const FVector2D NodePos = OSMFile.SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+			const FVector2D NodePos = OSMFile.SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 
 			// Update bounding box
 			{
@@ -190,7 +190,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 		for( const UOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes )
 		{
 			const UOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
-			const FVector2D NodePos = OSMFile.SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+			const FVector2D NodePos = OSMFile.SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 
 			// Update bounding box
 			{
@@ -302,7 +302,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 		for (const UOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes)
 		{
 			const UOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
-			const FVector2D NodePos = OSMFile.SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+			const FVector2D NodePos = OSMFile.SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 
 			// Update bounding box
 			{
@@ -369,7 +369,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 		for (const UOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes)
 		{
 			const UOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
-			const FVector2D NodePos = OSMFile.SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+			const FVector2D NodePos = OSMFile.SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 
 			// Update bounding box
 			{
@@ -503,8 +503,8 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 	}
 
 	StreetMap->OSMFile = OSMFile;
-	StreetMap->OriginLongitude = OSMFile->SpatialReferenceSystem->GetOriginLongitude();
-	StreetMap->OriginLatitude = OSMFile->SpatialReferenceSystem->GetOriginLatitude();
+	StreetMap->OriginLongitude = OSMFile->SpatialReferenceSystem.GetOriginLongitude();
+	StreetMap->OriginLatitude = OSMFile->SpatialReferenceSystem.GetOriginLatitude();
 
 	// @todo: The loaded OSMFile stores data in double precision, but our runtime representation (UStreetMap)
 	//        truncates everything to single precision, after transposing coordinates to be relative to the
@@ -599,7 +599,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 				NewSign.NodeId = FString(CharBuffer);
 
 				NewSign.Type = Tag.Value.ToString();
-				NewSign.Location = OSMFile->SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+				NewSign.Location = OSMFile->SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 				for (const FStreetMapTag& Tag : NewNode.Tags)
 				{
 					if (!Tag.Key.Compare(FName("name")))
@@ -624,7 +624,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 						NewPowerGenerator.NodeId = FString(CharBuffer);
 
 						NewPowerGenerator.Type = Tag.Value.ToString();
-						NewPowerGenerator.Location = OSMFile->SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+						NewPowerGenerator.Location = OSMFile->SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 						for (const FStreetMapTag& Tag : NewNode.Tags)
 						{
 							if (!Tag.Key.Compare(FName("name")))
@@ -646,7 +646,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 			// Is this node important beyond any references by ways?
 			if (OSMNode.Tags.Num() > 0)
 			{
-				const FVector2D NodePos = OSMFile->SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+				const FVector2D NodePos = OSMFile->SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 				NewNode.Location.X = NodePos.X;
 				NewNode.Location.Y = NodePos.Y;
 

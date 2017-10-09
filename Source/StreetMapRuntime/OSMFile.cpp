@@ -7,7 +7,6 @@
 UOSMFile::UOSMFile()
 	: ParsingState( ParsingState::Root )
 {
-	SpatialReferenceSystem = CreateDefaultSubobject<USpatialReferenceSystem>(TEXT("SpatialReferenceSystem"));
 }
 		
 
@@ -386,16 +385,16 @@ bool UOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 		{
 			AverageLatitude = (MinLatitude + MaxLatitude) / 2;
 			AverageLongitude = (MinLongitude + MaxLongitude) / 2;
-			SpatialReferenceSystem->SetOriginLatitude(AverageLatitude);
-			SpatialReferenceSystem->SetOriginLongitude(AverageLongitude);
+			SpatialReferenceSystem.SetOriginLatitude(AverageLatitude);
+			SpatialReferenceSystem.SetOriginLongitude(AverageLongitude);
 		}
 		else if (NodeMap.Num() > 0)
 		{
 			AverageLatitude /= NodeMap.Num();
 			AverageLongitude /= NodeMap.Num();
 
-			SpatialReferenceSystem->SetOriginLatitude(AverageLatitude);
-			SpatialReferenceSystem->SetOriginLongitude(AverageLongitude);
+			SpatialReferenceSystem.SetOriginLatitude(AverageLatitude);
+			SpatialReferenceSystem.SetOriginLongitude(AverageLongitude);
 		}
 		else
 		{

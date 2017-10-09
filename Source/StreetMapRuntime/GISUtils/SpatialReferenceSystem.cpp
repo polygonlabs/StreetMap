@@ -10,7 +10,7 @@ static const double InvLatitudeLongitudeScale = 1.0 / LatitudeLongitudeScale; //
 
 
 
-USpatialReferenceSystem::USpatialReferenceSystem(	const double OriginLongitude,
+FSpatialReferenceSystem::FSpatialReferenceSystem(	const double OriginLongitude,
 													const double OriginLatitude)
 	: OriginLongitude(OriginLongitude)
 	, OriginLatitude(OriginLatitude)
@@ -18,7 +18,7 @@ USpatialReferenceSystem::USpatialReferenceSystem(	const double OriginLongitude,
 }
 
 
-USpatialReferenceSystem::USpatialReferenceSystem()
+FSpatialReferenceSystem::FSpatialReferenceSystem()
 {
 	OriginLongitude = 0.0;
 	OriginLatitude = 0.0;
@@ -34,14 +34,14 @@ static double ConvertEPSG4326LatitudeToMeters(const double Latitude)
 	return -Latitude * LatitudeLongitudeScale;
 };
 
-FVector2D USpatialReferenceSystem::FromEPSG4326(const double Longitude, const double Latitude) const
+FVector2D FSpatialReferenceSystem::FromEPSG4326(const double Longitude, const double Latitude) const
 {
 	return FVector2D(
 		(float)(ConvertEPSG4326LongitudeToMeters(Longitude, Latitude) - ConvertEPSG4326LongitudeToMeters(OriginLongitude, Latitude)),
 		(float)(ConvertEPSG4326LatitudeToMeters(Latitude) - ConvertEPSG4326LatitudeToMeters(OriginLatitude)));
 };
 
-void USpatialReferenceSystem::ToEPSG4326(const FVector2D& Location, double& OutLongitude, double& OutLatitude) const
+void FSpatialReferenceSystem::ToEPSG4326(const FVector2D& Location, double& OutLongitude, double& OutLatitude) const
 {
 	OutLatitude = OriginLatitude - Location.Y * InvLatitudeLongitudeScale;
 	OutLongitude = OriginLongitude;
@@ -53,7 +53,7 @@ void USpatialReferenceSystem::ToEPSG4326(const FVector2D& Location, double& OutL
 	}
 };
 
-bool USpatialReferenceSystem::ToEPSG3857(const FVector2D& Location, double& OutX, double& OutY) const
+bool FSpatialReferenceSystem::ToEPSG3857(const FVector2D& Location, double& OutX, double& OutY) const
 {
 	// convert to lon/lat first
 	ToEPSG4326(Location, OutX, OutY);

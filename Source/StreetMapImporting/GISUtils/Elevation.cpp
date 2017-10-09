@@ -430,7 +430,7 @@ public:
 		// 1.) collect all elevation tiles needed based on StreetMap location and Landscape size
 		{
 			const UStreetMap* StreetMap = StreetMapComponent->GetStreetMap();
-			const USpatialReferenceSystem SRS(StreetMap->GetOriginLongitude(), StreetMap->GetOriginLatitude());
+			const FSpatialReferenceSystem SRS(StreetMap->GetOriginLongitude(), StreetMap->GetOriginLatitude());
 
 			int32 SubsectionSizeQuads;
 			const int32 NumVerticesForRadius = GetNumVerticesForRadius(BuildSettings, SubsectionSizeQuads);
@@ -532,7 +532,7 @@ public:
 	{
 		const FText ProgressText = LOCTEXT("ReprojectingElevationModel", "Reprojecting Elevation Model");
 		const UStreetMap* StreetMap = StreetMapComponent->GetStreetMap();
-		const USpatialReferenceSystem SRS(StreetMap->GetOriginLongitude(), StreetMap->GetOriginLatitude());
+		const FSpatialReferenceSystem SRS(StreetMap->GetOriginLongitude(), StreetMap->GetOriginLatitude());
 
 		int32 SubsectionSizeQuads;
 
