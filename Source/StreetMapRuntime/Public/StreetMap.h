@@ -403,6 +403,10 @@ public:
 	UPROPERTY(Category = "RoadFurniture", EditAnywhere)
 		bool BuildTrafficSigns = true;
 
+	// Build traffic signs
+	UPROPERTY(Category = "RoadFurniture", EditAnywhere)
+		bool BuildWindTurbines = true;
+
 	FStreetMapRoadFurnitureBuildSettings()
 	{
 	}

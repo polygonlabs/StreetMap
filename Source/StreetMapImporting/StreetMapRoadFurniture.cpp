@@ -17,36 +17,43 @@ static void BuildStreetMapRoadFurniture(class UStreetMapComponent* StreetMapComp
 	if (World)
 	{
 		// Traffic Signs
-		const TArray<FStreetMapSign>& Signs = StreetMapComponent->GetStreetMap()->GetSigns();
-		for (auto Sign : Signs)
+		if (BuildSettings.BuildTrafficSigns)
 		{
-			const float WorldElevation = FStreetMapSplineTools::GetLandscapeElevation(BuildSettings.Landscape, Sign.Location);
-			
-			FRotator Rotation(0.0f, 0.0f, 0.0f);
-			FActorSpawnParameters SpawnInfo;
-			SpawnInfo.Name = FName(*Sign.NodeId);
-			auto NewActor = World->SpawnActor<ATrafficSign>(FVector(Sign.Location, WorldElevation), Rotation, SpawnInfo);
-			if (NewActor)
+			const TArray<FStreetMapSign>& Signs = StreetMapComponent->GetStreetMap()->GetSigns();
+			for (auto Sign : Signs)
 			{
-				NewActor->SetFolderPath("Nodes/Signs");
-				NewActor->SetActorLabel(SpawnInfo.Name.ToString());
+				const float WorldElevation = FStreetMapSplineTools::GetLandscapeElevation(BuildSettings.Landscape, Sign.Location);
+
+				FRotator Rotation(0.0f, 0.0f, 0.0f);
+				FActorSpawnParameters SpawnInfo;
+				SpawnInfo.Name = FName(*Sign.NodeId);
+				auto NewActor = World->SpawnActor<ATrafficSign>(FVector(Sign.Location, WorldElevation), Rotation, SpawnInfo);
+				if (NewActor)
+				{
+					NewActor->SetFolderPath("Nodes/Signs");
+					NewActor->SetActorLabel(SpawnInfo.Name.ToString());
+				}
 			}
 		}
+		
 
 		// Wind Turbines
-		const TArray<FStreetMapWindTurbine>& WindTurbines = StreetMapComponent->GetStreetMap()->GetWindTurbines();
-		for (auto WindTurbine : WindTurbines)
+		if (BuildSettings.BuildWindTurbines)
 		{
-			const float WorldElevation = FStreetMapSplineTools::GetLandscapeElevation(BuildSettings.Landscape, WindTurbine.Location);
-
-			FRotator Rotation(0.0f, 0.0f, 0.0f);
-			FActorSpawnParameters SpawnInfo;
-			SpawnInfo.Name = FName(*WindTurbine.NodeId);
-			auto NewActor = World->SpawnActor<APowerGeneratorWind>(FVector(WindTurbine.Location, WorldElevation), Rotation, SpawnInfo);
-			if (NewActor)
+			const TArray<FStreetMapWindTurbine>& WindTurbines = StreetMapComponent->GetStreetMap()->GetWindTurbines();
+			for (auto WindTurbine : WindTurbines)
 			{
-				NewActor->SetFolderPath("Nodes/WindTurbines");
-				NewActor->SetActorLabel(SpawnInfo.Name.ToString());
+				const float WorldElevation = FStreetMapSplineTools::GetLandscapeElevation(BuildSettings.Landscape, WindTurbine.Location);
+
+				FRotator Rotation(0.0f, 0.0f, 0.0f);
+				FActorSpawnParameters SpawnInfo;
+				SpawnInfo.Name = FName(*WindTurbine.NodeId);
+				auto NewActor = World->SpawnActor<APowerGeneratorWind>(FVector(WindTurbine.Location, WorldElevation), Rotation, SpawnInfo);
+				if (NewActor)
+				{
+					NewActor->SetFolderPath("Nodes/WindTurbines");
+					NewActor->SetActorLabel(SpawnInfo.Name.ToString());
+				}
 			}
 		}
 	}
