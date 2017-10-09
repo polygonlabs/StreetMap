@@ -292,7 +292,7 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 
 	// RoadFurniture settings
 	{
-		IDetailCategoryBuilder& RailwayCategory = DetailBuilder.EditCategory("Road Furniture", FText::GetEmpty(), ECategoryPriority::Important);
+		IDetailCategoryBuilder& RailwayCategory = DetailBuilder.EditCategory("RoadFurniture", FText::GetEmpty(), ECategoryPriority::Important);
 		RailwayCategory.InitiallyCollapsed(false);
 
 		RailwayCategory.AddCustomRow(FText::GetEmpty(), false)
