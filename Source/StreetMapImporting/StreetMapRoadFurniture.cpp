@@ -1,6 +1,8 @@
 #include "StreetMapImporting.h"
 #include "StreetMapActor.h"
 #include "StreetMapComponent.h"
+#include "Elements/TrafficSign.h"
+#include "Elements/PowerGeneratorWind.h"
 
 #include "StreetMapSplineTools.h"
 
@@ -14,20 +16,30 @@ static void BuildStreetMapRoadFurniture(class UStreetMapComponent* StreetMapComp
 	UWorld* World = GEditor->GetEditorWorldContext().World();
 	if (World)
 	{
+		// Traffic Signs
 		const TArray<FStreetMapSign>& Signs = StreetMapComponent->GetStreetMap()->GetSigns();
 		for (auto Sign : Signs)
 		{
 			const float WorldElevation = FStreetMapSplineTools::GetLandscapeElevation(BuildSettings.Landscape, Sign.Location);
-			const float ScaledWorldElevation = WorldElevation;
-			const FVector2D& ScaledPointLocation = Sign.Location;
-
-			FVector Location(ScaledPointLocation, WorldElevation);
+			
 			FRotator Rotation(0.0f, 0.0f, 0.0f);
 			FActorSpawnParameters SpawnInfo;
-			World->SpawnActor<ATrafficSign>(Location, Rotation, SpawnInfo);
+			SpawnInfo.Name = FName(*Sign.NodeId);
+			World->SpawnActor<ATrafficSign>(FVector(Sign.Location, WorldElevation), Rotation, SpawnInfo);
+		}
+
+		// Wind Turbines
+		const TArray<FStreetMapWindTurbine>& WindTurbines = StreetMapComponent->GetStreetMap()->GetWindTurbines();
+		for (auto WindTurbine : WindTurbines)
+		{
+			const float WorldElevation = FStreetMapSplineTools::GetLandscapeElevation(BuildSettings.Landscape, WindTurbine.Location);
+
+			FRotator Rotation(0.0f, 0.0f, 0.0f);
+			FActorSpawnParameters SpawnInfo;
+			SpawnInfo.Name = FName(*WindTurbine.NodeId);
+			World->SpawnActor<APowerGeneratorWind>(FVector(WindTurbine.Location, WorldElevation), Rotation, SpawnInfo);
 		}
 	}
-
 }
 
 

@@ -732,6 +732,10 @@ struct STREETMAPRUNTIME_API FStreetMapSign
 {
 	GENERATED_USTRUCT_BODY()
 
+	/** NodeID of the traffic sign - TODO: NodeIds as strings are inefficient but no int64 is possible in blueprints */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+	FString NodeId;
+
 	/** Name of the sign */
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		FString Name;
@@ -741,6 +745,30 @@ struct STREETMAPRUNTIME_API FStreetMapSign
 		FString Type;
 
 	/** points that define the the way (line or polygon) */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FVector2D Location;
+};
+
+
+/** A wind turbine */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapWindTurbine
+{
+	GENERATED_USTRUCT_BODY()
+
+	/** NodeID of the wind turbine - TODO: NodeIds as strings are inefficient but no int64 is possible in blueprints */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+	FString NodeId;
+
+	/** Name of the wind turbine */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+	FString Name;
+
+	/** Category of the wind turbine */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FString Type;
+
+	/** point location */
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		FVector2D Location;
 };
@@ -831,6 +859,18 @@ public:
 	{
 		return Signs;
 	}
+	
+	/** Gets all of the miscellaneous ways */
+	const TArray<FStreetMapWindTurbine>& GetWindTurbines() const
+	{
+		return WindTurbines;
+	}
+
+	/** Gets all of the miscellaneous ways */
+	TArray<FStreetMapWindTurbine>& GetWindTurbines()
+	{
+		return WindTurbines;
+	}
 
 
 	/** Gets the bounding box of the map */
@@ -877,6 +917,11 @@ protected:
 	/** List of all traffic sign on the street map */
 	UPROPERTY(Category = StreetMap, VisibleAnywhere)
 		TArray<FStreetMapSign> Signs;
+
+	/** List of all wind turbines on the street map */
+	UPROPERTY(Category = StreetMap, VisibleAnywhere)
+		TArray<FStreetMapWindTurbine> WindTurbines;
+
 
 	/** 2D bounds (min) of this map's roads and buildings */
 	UPROPERTY( Category=StreetMap, VisibleAnywhere)

@@ -568,9 +568,15 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 	for (const auto& NodeMapHashPair : OSMFile->NodeMap)
 	{
 		const UOSMFile::FOSMNodeInfo& OSMNode = *NodeMapHashPair.Value;
+		const int64& OSMNodeId = NodeMapHashPair.Key;
 		FStreetMapNode NewNode;
 
 		FName TrafficSignTag("traffic_sign");
+
+		FName PowerKey("power");
+		FName PowerValue("generator");
+		FName WindTurbineKey("generator:source");
+		FName WindTurbineValue("wind");
 
 		// copy all tags first
 		for (const UOSMFile::FOSMTag& OSMNodeTag : OSMNode.Tags)
@@ -587,6 +593,11 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 			if (!Tag.Key.Compare(TrafficSignTag))
 			{
 				FStreetMapSign NewSign;
+				// NodeId to FString - Conversion from int64 to char array and then to FString
+				char CharBuffer[21];
+				sprintf_s(CharBuffer, "%lld", OSMNodeId);
+				NewSign.NodeId = FString(CharBuffer);
+
 				NewSign.Type = Tag.Value.ToString();
 				NewSign.Location = OSMFile->SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 				for (const FStreetMapTag& Tag : NewNode.Tags)
@@ -599,6 +610,33 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 				}
 				StreetMap->Signs.Add(NewSign);
 				break;
+			}
+			else if (!Tag.Key.Compare(PowerKey) && !Tag.Value.Compare(PowerValue))
+			{
+				for (const FStreetMapTag& Tag : NewNode.Tags)
+				{
+					if (!Tag.Key.Compare(WindTurbineKey) && !Tag.Value.Compare(WindTurbineValue))
+					{
+						FStreetMapWindTurbine NewPowerGenerator;
+						// NodeId to FString - Conversion from int64 to char array and then to FString
+						char CharBuffer[21];
+						sprintf_s(CharBuffer, "%lld", OSMNodeId);
+						NewPowerGenerator.NodeId = FString(CharBuffer);
+
+						NewPowerGenerator.Type = Tag.Value.ToString();
+						NewPowerGenerator.Location = OSMFile->SpatialReferenceSystem->FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
+						for (const FStreetMapTag& Tag : NewNode.Tags)
+						{
+							if (!Tag.Key.Compare(FName("name")))
+							{
+								NewPowerGenerator.Name = Tag.Value.ToString();
+								break;
+							}
+						}
+						StreetMap->WindTurbines.Add(NewPowerGenerator);
+						break;
+					}
+				}
 			}
 		}
 		
