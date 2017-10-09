@@ -25,7 +25,12 @@ static void BuildStreetMapRoadFurniture(class UStreetMapComponent* StreetMapComp
 			FRotator Rotation(0.0f, 0.0f, 0.0f);
 			FActorSpawnParameters SpawnInfo;
 			SpawnInfo.Name = FName(*Sign.NodeId);
-			World->SpawnActor<ATrafficSign>(FVector(Sign.Location, WorldElevation), Rotation, SpawnInfo);
+			auto NewActor = World->SpawnActor<ATrafficSign>(FVector(Sign.Location, WorldElevation), Rotation, SpawnInfo);
+			if (NewActor)
+			{
+				NewActor->SetFolderPath("Nodes/Signs");
+				NewActor->SetActorLabel(SpawnInfo.Name.ToString());
+			}
 		}
 
 		// Wind Turbines
@@ -37,7 +42,12 @@ static void BuildStreetMapRoadFurniture(class UStreetMapComponent* StreetMapComp
 			FRotator Rotation(0.0f, 0.0f, 0.0f);
 			FActorSpawnParameters SpawnInfo;
 			SpawnInfo.Name = FName(*WindTurbine.NodeId);
-			World->SpawnActor<APowerGeneratorWind>(FVector(WindTurbine.Location, WorldElevation), Rotation, SpawnInfo);
+			auto NewActor = World->SpawnActor<APowerGeneratorWind>(FVector(WindTurbine.Location, WorldElevation), Rotation, SpawnInfo);
+			if (NewActor)
+			{
+				NewActor->SetFolderPath("Nodes/WindTurbines");
+				NewActor->SetActorLabel(SpawnInfo.Name.ToString());
+			}
 		}
 	}
 }
