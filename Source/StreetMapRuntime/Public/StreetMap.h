@@ -619,7 +619,10 @@ enum EStreetMapRailwayType
 	/** One or two carriage rail vehicles, usually sharing motor road. */
 	Tram,
 
-	/** Other (monorail, abandoned, construction, disused, funicular, etc.) */
+	/** Abandonded rail tracks */
+	Abandoned,
+
+	/** Other (monorail, construction, disused, funicular, etc.) */
 	OtherRailway,
 };
 

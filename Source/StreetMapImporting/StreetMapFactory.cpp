@@ -266,6 +266,8 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 			RailwayType = EStreetMapRailwayType::Subway;
 		else if (OSMWay.Category == TEXT("tram"))
 			RailwayType = EStreetMapRailwayType::Tram;
+		else if (OSMWay.Category == TEXT("abandoned"))
+			RailwayType = EStreetMapRailwayType::Abandoned;
 
 		if (RailwayType == EStreetMapRailwayType::OtherRailway)
 		{
