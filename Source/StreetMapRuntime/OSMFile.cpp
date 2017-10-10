@@ -5,7 +5,6 @@
 
 
 UOSMFile::UOSMFile()
-	: ParsingState( ParsingState::Root )
 {
 }
 		
@@ -398,12 +397,10 @@ bool UOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("OSM file does not contain any nodes, failed to init SpatialReferenceSystem!"));
+			UE_LOG(LogTemp, Error, TEXT("OSM file does not contain any nodes nor bound tags, failed to init SpatialReferenceSystem!"));
 			return false;
 		}
 
-		// TODO: just as a test to see if writing works
-		//SaveOpenStreetMapFile();
 		return true;
 	}
 	else

@@ -67,6 +67,10 @@ public:
 	/** Returns whether splines can be created or not */
 	bool BuildTrafficSignsIsEnabled() const;
 
+	FReply OnSaveRoadFurnitureClicked();
+
+	bool SaveRoadFurnitureIsEnabled() const;
+
 protected:
 	/** Holds Selected Street Map Component */
 	 class UStreetMapComponent* SelectedStreetMapComponent;

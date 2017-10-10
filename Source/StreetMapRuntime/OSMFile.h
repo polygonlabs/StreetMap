@@ -197,23 +197,6 @@ public:
 	TMap<int64, FOSMWayInfo*> WayMap;
 	
 protected:
-	
-	enum class ParsingState
-	{
-		Root,
-		Node,
-		Node_Tag,
-		Way,
-		Way_NodeRef,
-		Way_Tag,
-		Relation,
-		Relation_Member,
-		Relation_Tag
-	};
-		
-	// Current state of parser
-	ParsingState ParsingState;
-		
 	// ID of node that is currently being parsed
 	int64 CurrentNodeID;
 

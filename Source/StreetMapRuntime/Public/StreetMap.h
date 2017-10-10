@@ -407,6 +407,9 @@ public:
 	UPROPERTY(Category = "RoadFurniture", EditAnywhere)
 		bool BuildWindTurbines = true;
 
+	bool HasSpawnedTrafficSignsIntoLevel = false;
+	bool HasSpawnedWindTurbinesIntoLevel = false;
+
 	FStreetMapRoadFurnitureBuildSettings()
 	{
 	}
@@ -794,6 +797,10 @@ public:
 	// UObject overrides
 	virtual void GetAssetRegistryTags( TArray<FAssetRegistryTag>& OutTags ) const override;
 	
+	/** OSM XML File */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = StreetMap)
+		UOSMFile* OSMFile;
+
 	/** Gets the roads in this street map (read only) */
 	const TArray<FStreetMapRoad>& GetRoads() const
 	{
@@ -944,10 +951,6 @@ protected:
 	/** Latitude Origin of the SpatialReferenceSystem */
 	UPROPERTY(Category = StreetMap, VisibleAnywhere)
 	double OriginLatitude;
-
-	/** OSM XML File */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = StreetMap)
-		UOSMFile* OSMFile;
 
 #if WITH_EDITORONLY_DATA
 	/** Importing data and options used for this mesh */

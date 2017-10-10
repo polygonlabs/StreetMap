@@ -292,11 +292,11 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 
 	// RoadFurniture settings
 	{
-		IDetailCategoryBuilder& RailwayCategory = DetailBuilder.EditCategory("RoadFurniture", FText::GetEmpty(), ECategoryPriority::Important);
-		RailwayCategory.InitiallyCollapsed(false);
+		IDetailCategoryBuilder& RoadFurntiureCategory = DetailBuilder.EditCategory("RoadFurniture", FText::GetEmpty(), ECategoryPriority::Important);
+		RoadFurntiureCategory.InitiallyCollapsed(false);
 
-		RailwayCategory.AddCustomRow(FText::GetEmpty(), false)
-			[
+		RoadFurntiureCategory.AddCustomRow(FText::GetEmpty(), false)
+		[
 				SAssignNew(TempHorizontalBox, SHorizontalBox)
 				+ SHorizontalBox::Slot()
 			[
@@ -310,6 +310,19 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 				.Text(LOCTEXT("BuildSigns", "Build Signs"))
 			.Font(IDetailLayoutBuilder::GetDetailFont())
 			]
+			]
+		];
+		
+		TempHorizontalBox->AddSlot()
+			[
+				SNew(SButton)
+				.ToolTipText(LOCTEXT("SaveRoadFurniture_Tooltip", "Save road furniture data back to OSM file"))
+			.OnClicked(this, &FStreetMapComponentDetails::OnSaveRoadFurnitureClicked)
+			.IsEnabled(this, &FStreetMapComponentDetails::SaveRoadFurnitureIsEnabled)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("SaveRoadFurniture", "Save Road Furniture"))
+			.Font(IDetailLayoutBuilder::GetDetailFont())
 			]
 			];
 	}
@@ -729,6 +742,40 @@ bool FStreetMapComponentDetails::BuildTrafficSignsIsEnabled() const
 	}
 
 	return true;
+}
+
+
+FReply FStreetMapComponentDetails::OnSaveRoadFurnitureClicked()
+{
+	if (SelectedStreetMapComponent != nullptr)
+	{
+		SaveRoadFurniture(
+			SelectedStreetMapComponent,
+			SelectedStreetMapComponent->RoadFurnitureSettings);
+
+		// regenerates details panel layouts, to take in consideration new changes.
+		RefreshDetails();
+	}
+
+	return FReply::Handled();
+}
+
+
+bool FStreetMapComponentDetails::SaveRoadFurnitureIsEnabled() const
+{
+	if (!SelectedStreetMapComponent ||
+		!SelectedStreetMapComponent->GetStreetMap())
+	{
+		return false;
+	}
+
+	if (SelectedStreetMapComponent->RoadFurnitureSettings.HasSpawnedTrafficSignsIntoLevel ||
+		SelectedStreetMapComponent->RoadFurnitureSettings.HasSpawnedWindTurbinesIntoLevel)
+	{
+		return true;
+	}
+
+	return false;
 }
 
 #undef LOCTEXT_NAMESPACE
