@@ -147,11 +147,16 @@ static void SaveStreetMapRoadFurniture(class UStreetMapComponent* StreetMapCompo
 					{
 						if (!Attribute.GetTag().Compare(FString("lat")))
 						{
-							Attribute.SetValue(FString::SanitizeFloat(NewLatitude));
+							// FString::SanitizeFloat() trims one too many digit important for Lat / Lon representation
+							char CharBuffer[21];
+							sprintf_s(CharBuffer, "%.*g", 10, NewLatitude);
+							Attribute.SetValue(FString(CharBuffer));
 						}
 						else if (!Attribute.GetTag().Compare(FString("lon")))
 						{
-							Attribute.SetValue(FString::SanitizeFloat(NewLongitude));
+							char CharBuffer[21];
+							sprintf_s(CharBuffer, "%.*g", 10, NewLongitude);
+							Attribute.SetValue(FString(CharBuffer));
 						}
 					}
 				}
