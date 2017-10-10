@@ -40,6 +40,7 @@ static void BuildStreetMapRoadFurniture(class UStreetMapComponent* StreetMapComp
 						bFoundInWorld = true;
 						// found instance in world, so update it
 						Actor->SetActorLocation(FVector(Sign.Location, WorldElevation));
+						break;
 					}
 				}
 				if (!bFoundInWorld)
@@ -81,6 +82,7 @@ static void BuildStreetMapRoadFurniture(class UStreetMapComponent* StreetMapComp
 						bFoundInWorld = true;
 						// found instance in world, so update it
 						Actor->SetActorLocation(FVector(WindTurbine.Location, WorldElevation));
+						break;
 					}
 				}
 				if (!bFoundInWorld)
