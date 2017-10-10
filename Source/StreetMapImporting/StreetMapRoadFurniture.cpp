@@ -16,24 +16,45 @@ static void BuildStreetMapRoadFurniture(class UStreetMapComponent* StreetMapComp
 	UWorld* World = GEditor->GetEditorWorldContext().World();
 	if (World)
 	{
+		// Might have manually deleted actors still in memory, which would result in actor locations twice the distance from origin to be spawned
+		World->ForceGarbageCollection(true);
+
 		// Traffic Signs
 		if (BuildSettings.BuildTrafficSigns)
 		{
 			const TArray<FStreetMapSign>& Signs = StreetMapComponent->GetStreetMap()->GetSigns();
+
+			// Find already instanced actors and update their position or spawn new ones
+			TArray<AActor*> FoundActors;
+			UGameplayStatics::GetAllActorsOfClass(World, ATrafficSign::StaticClass(), FoundActors);
+
 			for (auto Sign : Signs)
 			{
 				const float WorldElevation = FStreetMapSplineTools::GetLandscapeElevation(BuildSettings.Landscape, Sign.Location);
+				bool bFoundInWorld = false;
 
-				FRotator Rotation(0.0f, 0.0f, 0.0f);
-				FActorSpawnParameters SpawnInfo;
-				SpawnInfo.Name = FName(*Sign.NodeId);
-				auto NewActor = World->SpawnActor<ATrafficSign>(FVector(Sign.Location, WorldElevation), Rotation, SpawnInfo);
-				if (NewActor)
+				for (auto Actor : FoundActors)
 				{
-					NewActor->SetFolderPath("Nodes/Signs");
-					NewActor->SetActorLabel(SpawnInfo.Name.ToString());
+					if (Sign.NodeId == Actor->GetName())
+					{
+						bFoundInWorld = true;
+						// found instance in world, so update it
+						Actor->SetActorLocation(FVector(Sign.Location, WorldElevation));
+					}
+				}
+				if (!bFoundInWorld)
+				{
+					FRotator Rotation(0.0f, 0.0f, 0.0f);
+					FActorSpawnParameters SpawnInfo;
+					SpawnInfo.Name = FName(*Sign.NodeId);
+					auto NewActor = World->SpawnActor<ATrafficSign>(FVector(Sign.Location, WorldElevation), Rotation, SpawnInfo);
+					if (NewActor)
+					{
+						NewActor->SetFolderPath("Nodes/Signs");
+						NewActor->SetActorLabel(SpawnInfo.Name.ToString());
 
-					BuildSettings.HasSpawnedTrafficSignsIntoLevel = true;
+						BuildSettings.HasSpawnedTrafficSignsIntoLevel = true;
+					}
 				}
 			}
 		}
@@ -43,20 +64,38 @@ static void BuildStreetMapRoadFurniture(class UStreetMapComponent* StreetMapComp
 		if (BuildSettings.BuildWindTurbines)
 		{
 			const TArray<FStreetMapWindTurbine>& WindTurbines = StreetMapComponent->GetStreetMap()->GetWindTurbines();
+
+			// Find already instanced actors and update their position or spawn new ones
+			TArray<AActor*> FoundActors;
+			UGameplayStatics::GetAllActorsOfClass(World, APowerGeneratorWind::StaticClass(), FoundActors);
+
 			for (auto WindTurbine : WindTurbines)
 			{
 				const float WorldElevation = FStreetMapSplineTools::GetLandscapeElevation(BuildSettings.Landscape, WindTurbine.Location);
+				bool bFoundInWorld = false;
 
-				FRotator Rotation(0.0f, 0.0f, 0.0f);
-				FActorSpawnParameters SpawnInfo;
-				SpawnInfo.Name = FName(*WindTurbine.NodeId);
-				auto NewActor = World->SpawnActor<APowerGeneratorWind>(FVector(WindTurbine.Location, WorldElevation), Rotation, SpawnInfo);
-				if (NewActor)
+				for (auto Actor : FoundActors)
 				{
-					NewActor->SetFolderPath("Nodes/WindTurbines");
-					NewActor->SetActorLabel(SpawnInfo.Name.ToString());
+					if (WindTurbine.NodeId == Actor->GetName())
+					{
+						bFoundInWorld = true;
+						// found instance in world, so update it
+						Actor->SetActorLocation(FVector(WindTurbine.Location, WorldElevation));
+					}
+				}
+				if (!bFoundInWorld)
+				{
+					FRotator Rotation(0.0f, 0.0f, 0.0f);
+					FActorSpawnParameters SpawnInfo;
+					SpawnInfo.Name = FName(*WindTurbine.NodeId);
+					auto NewActor = World->SpawnActor<APowerGeneratorWind>(FVector(WindTurbine.Location, WorldElevation), Rotation, SpawnInfo);
+					if (NewActor)
+					{
+						NewActor->SetFolderPath("Nodes/WindTurbines");
+						NewActor->SetActorLabel(SpawnInfo.Name.ToString());
 
-					BuildSettings.HasSpawnedWindTurbinesIntoLevel = true;
+						BuildSettings.HasSpawnedWindTurbinesIntoLevel = true;
+					}
 				}
 			}
 		}
@@ -149,13 +188,13 @@ static void SaveStreetMapRoadFurniture(class UStreetMapComponent* StreetMapCompo
 						{
 							// FString::SanitizeFloat() trims one too many digit important for Lat / Lon representation
 							char CharBuffer[21];
-							sprintf_s(CharBuffer, "%.*g", 10, NewLatitude);
+							sprintf_s(CharBuffer, "%.*g", 9, NewLatitude);
 							Attribute.SetValue(FString(CharBuffer));
 						}
 						else if (!Attribute.GetTag().Compare(FString("lon")))
 						{
 							char CharBuffer[21];
-							sprintf_s(CharBuffer, "%.*g", 10, NewLongitude);
+							sprintf_s(CharBuffer, "%.*g", 9, NewLongitude);
 							Attribute.SetValue(FString(CharBuffer));
 						}
 					}
@@ -167,7 +206,8 @@ static void SaveStreetMapRoadFurniture(class UStreetMapComponent* StreetMapCompo
 			}
 			if (OSMFile->SaveOpenStreetMapFile())
 			{
-				UE_LOG(LogTemp, Display, TEXT("Saved file successfully"));
+				// reload the changed osm file
+				OSMFile->LoadOpenStreetMapFile(OSMFile->OSMFileLocation, false, nullptr);
 			}
 			else
 			{
