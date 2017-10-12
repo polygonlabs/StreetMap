@@ -11,7 +11,7 @@ class FStreetMapCommands : public TCommands<FStreetMapCommands>
 public:
 
 	FStreetMapCommands()
-		: TCommands<FStreetMapCommands>(TEXT("StreetMapToolbar"), NSLOCTEXT("Contexts", "StreetMapToolbar", "StreetMapToolbar Plugin"), NAME_None, FStreetMapStyle::GetStyleSetName())
+		: TCommands<FStreetMapCommands>(TEXT("StreetMapEditor"), NSLOCTEXT("Contexts", "StreetMapEditor", "StreetMapEditor Plugin"), NAME_None, FStreetMapStyle::GetStyleSetName())
 	{
 	}
 
@@ -19,5 +19,5 @@ public:
 	virtual void RegisterCommands() override;
 
 public:
-	TSharedPtr< FUICommandInfo > PluginAction;
+	TSharedPtr< FUICommandInfo > SaveOsmFile;
 };

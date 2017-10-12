@@ -7,7 +7,7 @@
 
 void FStreetMapCommands::RegisterCommands()
 {
-	UI_COMMAND(PluginAction, "StreetMapToolbar", "Execute StreetMapToolbar action", EUserInterfaceActionType::Button, FInputGesture());
+	UI_COMMAND(SaveOsmFile, "Save OSM data", "Save to .osm file", EUserInterfaceActionType::Button, FInputGesture());
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -18,12 +18,15 @@ public:
 	virtual void ShutdownModule() override;
 
 	/** This function will be bound to Command. */
-	void PluginButtonClicked();
+	void SaveOsmButtonClicked();
 
 private:
 
 	void AddToolbarExtension(FToolBarBuilder& Builder);
 	void AddMenuExtension(FMenuBuilder& Builder);
+
+	void ShowErrorMessage(const FText& MessageText);
+	void ShowInfoMessage(const FText& MessageText);
 
 private:
 	TSharedPtr<class FUICommandList> PluginCommands;
