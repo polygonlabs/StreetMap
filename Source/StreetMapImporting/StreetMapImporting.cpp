@@ -5,23 +5,16 @@
 #include "ModuleManager.h"
 #include "StreetMapStyle.h"
 #include "StreetMapComponentDetails.h"
+#include "StreetMapCommands.h"
+#include "Misc/MessageDialog.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 
-
-class FStreetMapImportingModule : public IModuleInterface
-{
-
-public:
-
-	// IModuleInterface interface
-	virtual void StartupModule() override;
-	virtual void ShutdownModule() override;
-
-	TSharedPtr< FStreetMapAssetTypeActions > StreetMapAssetTypeActions;
-};
+#include "LevelEditor.h"
 
 
 IMPLEMENT_MODULE( FStreetMapImportingModule, StreetMapImporting )
 
+#define LOCTEXT_NAMESPACE "FStreetMapImporting"
 
 
 void FStreetMapImportingModule::StartupModule()
@@ -33,6 +26,7 @@ void FStreetMapImportingModule::StartupModule()
 
 	// Initialize & Register StreetMap Style
 	FStreetMapStyle::Initialize();
+	FStreetMapStyle::ReloadTextures();
 
 	// Register StreetMapComponent Detail Customization
 	FPropertyEditorModule& PropertyModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor");
@@ -51,6 +45,32 @@ void FStreetMapImportingModule::StartupModule()
 		}
 
 	}
+
+	// Toolbar plugin code
+	FStreetMapCommands::Register();
+
+	PluginCommands = MakeShareable(new FUICommandList);
+
+	PluginCommands->MapAction(
+		FStreetMapCommands::Get().PluginAction,
+		FExecuteAction::CreateRaw(this, &FStreetMapImportingModule::PluginButtonClicked),
+		FCanExecuteAction());
+
+	FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
+
+	{
+		TSharedPtr<FExtender> MenuExtender = MakeShareable(new FExtender());
+		MenuExtender->AddMenuExtension("WindowLayout", EExtensionHook::First, PluginCommands, FMenuExtensionDelegate::CreateRaw(this, &FStreetMapImportingModule::AddMenuExtension));
+
+		LevelEditorModule.GetMenuExtensibilityManager()->AddExtender(MenuExtender);
+	}
+
+	{
+		TSharedPtr<FExtender> ToolbarExtender = MakeShareable(new FExtender);
+		ToolbarExtender->AddToolBarExtension("Settings", EExtensionHook::First, PluginCommands, FToolBarExtensionDelegate::CreateRaw(this, &FStreetMapImportingModule::AddToolbarExtension));
+
+		LevelEditorModule.GetToolBarExtensibilityManager()->AddExtender(ToolbarExtender);
+	}
 }
 
 
@@ -64,9 +84,6 @@ void FStreetMapImportingModule::ShutdownModule()
 		StreetMapAssetTypeActions.Reset();
 	}
 
-	// Unregister StreetMap Style
-	FStreetMapStyle::Shutdown();
-
 	if (FModuleManager::Get().IsModuleLoaded("PropertyEditor"))
 	{
 		FPropertyEditorModule& PropertyModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor");
@@ -79,4 +96,32 @@ void FStreetMapImportingModule::ShutdownModule()
 	{
 		GUnrealEd->UnregisterComponentVisualizer(UStreetMapComponent::StaticClass()->GetFName());
 	}
+
+	// Unregister StreetMap Style
+	FStreetMapStyle::Shutdown();
+
+	FStreetMapCommands::Unregister();
 }
+
+void FStreetMapImportingModule::PluginButtonClicked()
+{
+	// Put your "OnButtonClicked" stuff here
+	FText DialogText = FText::Format(
+		LOCTEXT("PluginButtonDialogText", "Add code to {0} in {1} to override this button's actions"),
+		FText::FromString(TEXT("FStreetMapToolbarModule::PluginButtonClicked()")),
+		FText::FromString(TEXT("StreetMapToolbar.cpp"))
+	);
+	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
+}
+
+void FStreetMapImportingModule::AddMenuExtension(FMenuBuilder& Builder)
+{
+	Builder.AddMenuEntry(FStreetMapCommands::Get().PluginAction);
+}
+
+void FStreetMapImportingModule::AddToolbarExtension(FToolBarBuilder& Builder)
+{
+	Builder.AddToolBarButton(FStreetMapCommands::Get().PluginAction);
+}
+
+#undef LOCTEXT_NAMESPACE

@@ -6,6 +6,8 @@ namespace UnrealBuildTool.Rules
     {
         public StreetMapImporting(ReadOnlyTargetRules Target) : base(Target)
         {
+            // PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+
             PrivateDependencyModuleNames.AddRange(
                 new string[] {
                     "Core",
@@ -32,6 +34,7 @@ namespace UnrealBuildTool.Rules
                     "Landscape",
                     "CinematicCamera",
                     "InputCore",
+                    "LevelEditor",
                 }
             );
 
