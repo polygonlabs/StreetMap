@@ -16,6 +16,7 @@ namespace UnrealBuildTool.Rules
 					"ShaderCore",
                     "Landscape",
 					"XmlParser",
+					"RuntimeMeshComponent"
                 }
 			);
         }
