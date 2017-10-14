@@ -629,6 +629,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 						NewPowerGenerator.Location = OSMFile->SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 						for (const FStreetMapTag& Tag : NewNode.Tags)
 						{
+							NewPowerGenerator.Tags.Add(Tag);
 							if (!Tag.Key.Compare(FName("name")))
 							{
 								NewPowerGenerator.Name = Tag.Value.ToString();

@@ -7,10 +7,7 @@
 ATrafficSign::ATrafficSign(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
-	RootComponent = MeshComponent;
-
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshAsset(TEXT("/Game/StarterContent/Shapes/Shape_Plane.Shape_Plane"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshAsset(TEXT("StaticMesh'/StreetMap/Meshes/Signs/Ortsschild.Ortsschild'"));
 	if (MeshAsset.Succeeded())
 	{
 		MeshComponent->SetStaticMesh(MeshAsset.Object);

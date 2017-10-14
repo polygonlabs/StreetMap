@@ -781,6 +781,10 @@ struct STREETMAPRUNTIME_API FStreetMapWindTurbine
 	/** point location */
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		FVector2D Location;
+
+	/** OSM Tags */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		TArray<FStreetMapTag> Tags;
 };
 
 /** A loaded street map */

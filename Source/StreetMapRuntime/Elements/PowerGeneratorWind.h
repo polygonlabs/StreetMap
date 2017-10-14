@@ -4,18 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Public/StreetMap.h"
+#include "Elements/OsmBaseTypes.h"
 #include "PowerGeneratorWind.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class STREETMAPRUNTIME_API APowerGeneratorWind : public AActor
+class STREETMAPRUNTIME_API APowerGeneratorWind : public AOsmNode
 {
 	GENERATED_UCLASS_BODY()
 
 public:
-	/**  Component that represents the geometry in the world */
-	UPROPERTY(EditAnywhere)
-		UStaticMeshComponent* MeshComponent;
+
 };

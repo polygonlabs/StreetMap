@@ -4,18 +4,29 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "OsmBaseTypes.h"
 #include "TrafficSign.generated.h"
+
+/** Types of miscellaneous ways */
+UENUM(BlueprintType)
+enum ESignType
+{
+	CityLimit,
+	OneWay,
+	Stop,
+	SpeedLimit,
+};
+
 
 /**
  * 
  */
 UCLASS()
-class STREETMAPRUNTIME_API ATrafficSign : public AActor
+class STREETMAPRUNTIME_API ATrafficSign : public AOsmNode
 {
 	GENERATED_UCLASS_BODY()
 	
 public:
-	/**  Component that represents the geometry in the world */
-	UPROPERTY(EditAnywhere)
-	UStaticMeshComponent* MeshComponent;
+	ESignType SignType;
+	FName SignText;
 };

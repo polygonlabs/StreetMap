@@ -6,7 +6,7 @@
 #include "StreetMapActor.generated.h"
 
 /** An actor that renders a street map mesh component */
-UCLASS(hidecategories = (Physics)) // Physics category in detail panel is hidden. Our component/Actor is not simulated !
+UCLASS(HideCategories = (Input, Actor, Rendering, Collision, Lighting, Tags, Activation, Cooking, Mobile, Physics))
 class STREETMAPRUNTIME_API AStreetMapActor : public AActor
 {
 	GENERATED_UCLASS_BODY()

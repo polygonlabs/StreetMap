@@ -7,9 +7,6 @@
 APowerGeneratorWind::APowerGeneratorWind(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
-	RootComponent = MeshComponent;
-
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshAsset(TEXT("StaticMesh'/StreetMap/Meshes/WindTurbine/WindTurbine.WindTurbine'"));
 	if (MeshAsset.Succeeded())
 	{

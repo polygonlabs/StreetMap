@@ -415,18 +415,16 @@ bool UOSMFile::SaveOpenStreetMapFile()
 {
 	if (OsmXmlFile.IsValid())
 	{
-		if (OsmXmlFile.Save(OSMFileLocation))
-		{
-			UE_LOG(LogTemp, Display, TEXT("Saved file successfully"));
-			return true;
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("Failed to save OSM file"));
-			return false;
-		}
+		UE_LOG(LogTemp, Error, TEXT("File is not valid or not even loaded. Cannot save!"));
+		return false;
 	}
 
-	UE_LOG(LogTemp, Error, TEXT("File is not valid or not even loaded. Cannot save!"));
-	return false;
+	if (!OsmXmlFile.Save(OSMFileLocation))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to save OSM file to: %s"), *OSMFileLocation);
+		return false;
+	}
+
+	UE_LOG(LogTemp, Display, TEXT("Saved OSM file successfully to: %s"), *OSMFileLocation);
+	return true;
 }

@@ -8,6 +8,8 @@
 void FStreetMapCommands::RegisterCommands()
 {
 	UI_COMMAND(SaveOsmFile, "Save OSM data", "Save to .osm file", EUserInterfaceActionType::Button, FInputGesture());
+
+	UI_COMMAND(LoadOsmFile, "Load OSM data", "Load .osm file", EUserInterfaceActionType::Button, FInputGesture());
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -17,10 +17,6 @@ TSharedPtr< class ISlateStyle > FStreetMapStyle::Get() { return StyleSet; }
 #define TTF_FONT( RelativePath, ... ) FSlateFontInfo( StyleSet->RootToContentDir( RelativePath, TEXT(".ttf") ), __VA_ARGS__ )
 #define OTF_FONT( RelativePath, ... ) FSlateFontInfo( StyleSet->RootToContentDir( RelativePath, TEXT(".otf") ), __VA_ARGS__ )
 
-const FVector2D Icon16x16(16.0f, 16.0f);
-const FVector2D Icon20x20(20.0f, 20.0f);
-const FVector2D Icon40x40(40.0f, 40.0f);
-
 FString FStreetMapStyle::InContent(const FString& RelativePath, const ANSICHAR* Extension)
 {
 	static FString IconsDir = IPluginManager::Get().FindPlugin(TEXT("StreetMap"))->GetContentDir() / TEXT("Icons");
@@ -31,6 +27,8 @@ void FStreetMapStyle::Initialize()
 {
 	// Const icon & thumbnail sizes
 	const FVector2D Icon16x16(16.0f, 16.0f);
+	const FVector2D Icon20x20(20.0f, 20.0f);
+	const FVector2D Icon40x40(40.0f, 40.0f);
 	const FVector2D Icon128x128(128.0f, 128.0f);
 
 	// Only register once
@@ -51,7 +49,8 @@ void FStreetMapStyle::Initialize()
 	StyleSet->Set("ClassIcon.StreetMapComponent", new IMAGE_BRUSH("sm_component_icon_32", Icon16x16));
 	StyleSet->Set("ClassThumbnail.StreetMapComponent", new IMAGE_BRUSH("sm_component_icon_128", Icon128x128));
 
-	StyleSet->Set("StreetMapEditor.SaveOsmFile", new IMAGE_BRUSH(TEXT("Icon128"), Icon40x40));
+	StyleSet->Set("StreetMapEditor.SaveOsmFile", new IMAGE_BRUSH(TEXT("Icon128_Save"), Icon40x40));
+	StyleSet->Set("StreetMapEditor.LoadOsmFile", new IMAGE_BRUSH(TEXT("Icon128_Load"), Icon40x40));
 
 	FSlateStyleRegistry::RegisterSlateStyle(*StyleSet.Get());
 };

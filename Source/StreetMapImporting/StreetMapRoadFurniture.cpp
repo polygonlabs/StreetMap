@@ -3,6 +3,7 @@
 #include "StreetMapComponent.h"
 #include "Elements/TrafficSign.h"
 #include "Elements/PowerGeneratorWind.h"
+#include "Map.h"
 
 #include "StreetMapSplineTools.h"
 
@@ -17,6 +18,7 @@ static void BuildStreetMapRoadFurniture(class UStreetMapComponent* StreetMapComp
 	if (World)
 	{
 		// Might have manually deleted actors still in memory, which would result in actor locations twice the distance from origin to be spawned
+		// TODO: still not working as anticipated
 		World->ForceGarbageCollection(true);
 
 		// Traffic Signs
@@ -95,6 +97,13 @@ static void BuildStreetMapRoadFurniture(class UStreetMapComponent* StreetMapComp
 					{
 						NewActor->SetFolderPath("Nodes/WindTurbines");
 						NewActor->SetActorLabel(SpawnInfo.Name.ToString());
+
+						NewActor->Id = FPlatformString::Atoi64(*WindTurbine.NodeId);
+						// Copy OSM tags into a TMap for easy editing in editor
+						for (auto Tag : WindTurbine.Tags)
+						{
+							NewActor->OsmTags.Add(Tag.Key, Tag.Value);
+						}
 
 						BuildSettings.HasSpawnedWindTurbinesIntoLevel = true;
 					}

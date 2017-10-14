@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "ModuleManager.h"
 #include "StreetMapAssetTypeActions.h"
+#include "OSMFile.h"
+#include "Elements/OsmBaseTypes.h"
 
 class FToolBarBuilder;
 class FMenuBuilder;
@@ -17,9 +19,9 @@ public:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 
-	/** This function will be bound to Command. */
+	/** This functions will be bound to Command. */
 	void SaveOsmButtonClicked();
-
+	void LoadOsmButtonClicked();
 private:
 
 	void AddToolbarExtension(FToolBarBuilder& Builder);
@@ -27,6 +29,8 @@ private:
 
 	void ShowErrorMessage(const FText& MessageText);
 	void ShowInfoMessage(const FText& MessageText);
+
+	AOsmNode* GetSpecializedActorFromNodeTags(UWorld* World, UOSMFile::FOSMNodeInfo* Node, FVector Location, FRotator Rotation, FActorSpawnParameters SpawnInfo);
 
 private:
 	TSharedPtr<class FUICommandList> PluginCommands;

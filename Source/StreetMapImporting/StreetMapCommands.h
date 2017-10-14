@@ -20,4 +20,5 @@ public:
 
 public:
 	TSharedPtr< FUICommandInfo > SaveOsmFile;
+	TSharedPtr< FUICommandInfo > LoadOsmFile;
 };
