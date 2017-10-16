@@ -62,11 +62,11 @@ public:
 	UPROPERTY(EditAnywhere)
 		UStaticMesh* Mesh;
 
+	/** Internal book keeping for the spline meshes we created along the spline */
+	UPROPERTY()
+		TArray<USplineMeshComponent*> SplineMeshComponents;
+
 public:
 	/** Construction script that gets fired when changes to this actor are made in editor */
-	virtual void OnConstruction(const FTransform & Transform) override;
-
-private:
-	/** Internal book keeping for the spline meshes we created along the spline */
-	TArray<USplineMeshComponent*> SplineMeshComponents;
+	virtual void OnConstruction(const FTransform & Transform) override;;
 };
