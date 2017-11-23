@@ -19,7 +19,7 @@ static void BuildStreetMapRoadFurniture(class UStreetMapComponent* StreetMapComp
 	{
 		// Might have manually deleted actors still in memory, which would result in actor locations twice the distance from origin to be spawned
 		// TODO: still not working as anticipated
-		World->ForceGarbageCollection(true);
+		GEngine->ForceGarbageCollection(true);
 
 		// Traffic Signs
 		if (BuildSettings.BuildTrafficSigns)

@@ -84,14 +84,19 @@ void FStreetMapComponentVisualizer::OnRegister()
 
 void FStreetMapComponentVisualizer::OnDeleteRoad()
 {
-
+	if (GetEditedStreetMapComponent()->IsValidLowLevel() && SelectedRoadIndex != INDEX_NONE)
+	{
+		UStreetMap* StreetMap = GetEditedStreetMapComponent()->GetStreetMap();
+		StreetMap->GetRoads()[SelectedRoadIndex].RoadPoints.RemoveAt(0);
+	}
 }
 
 bool FStreetMapComponentVisualizer::CanDeleteRoad() const
 {
 	UStreetMapComponent* StreetMapComp = GetEditedStreetMapComponent();
 	return (StreetMapComp != nullptr &&
-			StreetMapComp->GetStreetMap()->GetRoads()[SelectedRoadIndex].RoadPoints.Num() > 0
+			StreetMapComp->GetStreetMap()->GetRoads()[SelectedRoadIndex].RoadPoints.Num() > 0 &&
+			SelectedRoadIndex != INDEX_NONE
 			);
 }
 
@@ -137,7 +142,7 @@ void FStreetMapComponentVisualizer::DrawVisualization(const UActorComponent* Com
 			const FVector Locaction = StreetMapComponent->GetComponentLocation();
 
 			//Iterate over each road, drawing simple HitProxies that can be selected in editor viewport
-			auto NumberOfRoadsInfosToDraw = FMath::Min(StreetMapComponent->GetStreetMap()->GetRoads().Num(), 0);
+			auto NumberOfRoadsInfosToDraw = FMath::Min(StreetMapComponent->GetStreetMap()->GetRoads().Num(), 10);
 			for (int i = 0; i < NumberOfRoadsInfosToDraw; i++)
 			{
 				FColor Color = (i == SelectedRoadIndex) ? SelectedColor : UnselectedColor;
@@ -199,6 +204,8 @@ bool FStreetMapComponentVisualizer::GetWidgetLocation(const FEditorViewportClien
 
 		return true;
 	}
+	// TODO: find a way to change the gizmo to XY only display instead of XYZ from ComponentVisualizer ... or have to switch to EdMode
+	//ViewportClient-> SetCurrentWidgetAxis(EAxisList::XY); 
 
 	return false;
 }
@@ -227,10 +234,9 @@ bool FStreetMapComponentVisualizer::HandleInputDelta(FEditorViewportClient* View
 	if (GetEditedStreetMapComponent()->IsValidLowLevel() && SelectedRoadIndex != INDEX_NONE)
 	{
 		UStreetMap* StreetMap = GetEditedStreetMapComponent()->GetStreetMap();
-		FVector2D FirstRoadNode = StreetMap->GetRoads()[SelectedRoadIndex].RoadPoints[0];
 		FVector2D DeltaTranslate2D(DeltaTranslate.X, DeltaTranslate.Y);
 		
-		FirstRoadNode += DeltaTranslate2D;
+		StreetMap->GetRoads()[SelectedRoadIndex].RoadPoints[0] += DeltaTranslate2D;
 		bHandled = true;
 	}
 

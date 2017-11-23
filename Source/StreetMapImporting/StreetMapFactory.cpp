@@ -39,6 +39,8 @@ UObject* UStreetMapFactory::FactoryCreateText( UClass* Class, UObject* Parent, F
 	{
 		StreetMap->MarkPendingKill();
 		StreetMap = nullptr;
+		OSMFile->MarkPendingKill();
+		OSMFile = nullptr;
 	}
 
 	return StreetMap;
