@@ -269,7 +269,7 @@ void FStreetMapSplineTools::CleanSplines(ULandscapeSplinesComponent* SplinesComp
 
 	SplinesComponent->Modify();
 
-	World->ForceGarbageCollection(true);
+	GEngine->ForceGarbageCollection(true);
 }
 
 

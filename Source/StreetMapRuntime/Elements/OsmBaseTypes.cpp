@@ -45,7 +45,7 @@ void AOsmWay::OnConstruction(const FTransform& Transform)
 	if (Mesh)
 	{
 		// if there is a change in spline point size
-		if (WaySpline->GetNumberOfSplinePoints() != SplineMeshComponents.Num() - 1)
+		if (WaySpline->GetNumberOfSplinePoints() != SplineMeshComponents.Num() - 1 )
 		{
 			// if a spline point was added or deleted
 			if (WaySpline->GetNumberOfSplinePoints() > SplineMeshComponents.Num() - 1)
