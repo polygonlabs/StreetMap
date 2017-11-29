@@ -12,7 +12,7 @@ UENUM(BlueprintType)
 enum EStreetMapMiscWayType
 {
 	/** unknown type */
-	Unknown,
+	UnknownWayType,
 
 	/** The leisure tag is for places people go in their spare time (e.g. parks, pitches). */
 	Leisure,
@@ -159,7 +159,7 @@ public:
 		FString Category;
 
 	FWayMatch()
-		: Type(EStreetMapMiscWayType::Unknown)
+		: Type(EStreetMapMiscWayType::UnknownWayType)
 		, Category(TEXT(""))
 	{
 	}
