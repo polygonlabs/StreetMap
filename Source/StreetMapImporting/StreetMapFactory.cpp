@@ -412,7 +412,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, UOS
 		}
 
 
-		NewMiscWay.Type = EStreetMapMiscWayType::Unknown;
+		NewMiscWay.Type = EStreetMapMiscWayType::UnknownWayType;
 		switch (OSMWay.WayType)
 		{
 			case UOSMFile::EOSMWayType::Leisure: NewMiscWay.Type = EStreetMapMiscWayType::Leisure; break;

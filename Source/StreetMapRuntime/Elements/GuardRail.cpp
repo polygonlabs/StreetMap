@@ -7,7 +7,7 @@
 AGuardRail::AGuardRail(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshAsset(TEXT("StaticMesh'/Game/Procedural_Ecosystem/Meshes/SM_berrier.SM_berrier'"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshAsset(TEXT("StaticMesh'/Game/StarterContent/Shapes/Shape_Cube.Shape_Cube'"));
 	if (MeshAsset.Succeeded())
 	{
 		Mesh = MeshAsset.Object;
