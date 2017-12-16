@@ -52,12 +52,12 @@ bool UOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 		for (auto XmlNode : XmlNodes)
 		{
 			auto Name = XmlNode->GetTag();
-			auto Attributes = XmlNode->GetAttributes();
+			auto AllAttributes = XmlNode->GetAttributes();
 			auto XmlNodeChildren = XmlNode->GetChildrenNodes();
 
 			if (!Name.Compare(FString("bounds")))
 			{
-				for (auto Attribute : Attributes)
+				for (auto Attribute : AllAttributes)
 				{
 					if (!Attribute.GetTag().Compare(FString("minlon")))
 					{
@@ -84,7 +84,7 @@ bool UOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 				CurrentNodeInfo->Latitude = 0.0;
 				CurrentNodeInfo->Longitude = 0.0;
 				// Process infos inside node tag
-				for (auto Attribute : Attributes)
+				for (auto Attribute : AllAttributes)
 				{
 					if (!Attribute.GetTag().Compare(FString("id")))
 					{
@@ -142,7 +142,7 @@ bool UOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 				//        be included in our data set.  It might be nice to make this an import option.
 				
 				// Process infos inside way tag
-				for (auto Attribute : Attributes)
+				for (auto Attribute : AllAttributes)
 				{
 					if (!Attribute.GetTag().Compare(FString("id")))
 					{
@@ -279,7 +279,7 @@ bool UOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 				CurrentRelation = new FOSMRelation();
 				CurrentRelation->Type = EOSMRelationType::Other;
 				// Process infos inside relation tag
-				for (auto Attribute : Attributes)
+				for (auto Attribute : AllAttributes)
 				{
 					if (!Attribute.GetTag().Compare(FString("id")))
 					{
