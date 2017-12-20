@@ -164,9 +164,9 @@ public:
 	{
 	}
 
-	FWayMatch(EStreetMapMiscWayType Type, const FString& Category)
-		: Type(Type)
-		, Category(Category)
+	FWayMatch(EStreetMapMiscWayType TypeIn, const FString& CategoryIn)
+		: Type(TypeIn)
+		, Category(CategoryIn)
 	{
 	}
 };

@@ -10,10 +10,10 @@ static const double InvLatitudeLongitudeScale = 1.0 / LatitudeLongitudeScale; //
 
 
 
-FSpatialReferenceSystem::FSpatialReferenceSystem(	const double OriginLongitude,
-													const double OriginLatitude)
-	: OriginLongitude(OriginLongitude)
-	, OriginLatitude(OriginLatitude)
+FSpatialReferenceSystem::FSpatialReferenceSystem(	const double OriginLongitudeIn,
+													const double OriginLatitudeIn)
+	: OriginLongitude(OriginLongitudeIn)
+	, OriginLatitude(OriginLatitudeIn)
 {
 }
 
