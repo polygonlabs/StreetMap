@@ -2,7 +2,6 @@
 
 #include "StreetMapRuntime.h"
 #include "StreetMapSceneProxy.h"
-#include "StreetMapComponent.h"
 #include "Runtime/Engine/Public/SceneManagement.h"
 
 
@@ -70,16 +69,11 @@ void FStreetMapVertexFactory::InitVertexFactory( const FStreetMapVertexBuffer& V
 											   });
 }
 
-
-FStreetMapSceneProxy::FStreetMapSceneProxy(const UStreetMapComponent* InComponent)
-	: FPrimitiveSceneProxy(InComponent),
-	StreetMapComp(InComponent),
-	CollisionResponse(InComponent->GetCollisionResponseToChannels())
+SIZE_T FStreetMapSceneProxy::GetTypeHash() const
 {
-
+	static size_t UniquePointer;
+	return reinterpret_cast<size_t>(&UniquePointer);
 }
-
-
 void FStreetMapSceneProxy::Init( const UStreetMapComponent* InComponent, const TArray< FStreetMapVertex >& Vertices, const TArray< uint16 >& Indices )
 {
 	// Copy 16-bit index data

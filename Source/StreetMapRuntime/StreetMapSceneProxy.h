@@ -3,7 +3,10 @@
 
 #include "Runtime/Engine/Public/PrimitiveSceneProxy.h"
 #include "Runtime/Engine/Public/LocalVertexFactory.h"
+//#include "Public/StreetMapComponent.h"
 #include "StreetMapSceneProxy.generated.h"
+
+class UStreetMapComponent;
 
 /**	A single vertex on a street map mesh */
 USTRUCT()
@@ -100,8 +103,11 @@ class FStreetMapSceneProxy : public FPrimitiveSceneProxy
 
 public:
 
-	/** Construct this scene proxy */
-	FStreetMapSceneProxy(const class UStreetMapComponent* InComponent);
+	///** Construct this scene proxy */
+	//FStreetMapSceneProxy(const class UStreetMapComponent* InComponent);
+
+	/** Type Hash function needed for TMap etc. */
+	SIZE_T GetTypeHash() const override;
 
 	/**
 	* Init this street map mesh scene proxy for the specified component (32-bit indices)

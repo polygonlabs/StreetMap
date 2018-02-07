@@ -191,24 +191,24 @@ static void SaveStreetMapRoadFurniture(class UStreetMapComponent* StreetMapCompo
 					double NewLongitude = 0.0;
 					SRS.ToEPSG4326(NewLocation, NewLongitude, NewLatitude);
 
-					// Find Lat / Lon in XmlNode and write it
-					TArray<FXmlAttribute>& Attributes = WindTurbineXmlNode->GetAttributes();
-					for (FXmlAttribute& Attribute : Attributes)
-					{
-						if (!Attribute.GetTag().Compare(FString("lat")))
-						{
-							// FString::SanitizeFloat() trims one too many digit important for Lat / Lon representation
-							char CharBuffer[21];
-							sprintf_s(CharBuffer, "%.*g", 9, NewLatitude);
-							Attribute.SetValue(FString(CharBuffer));
-						}
-						else if (!Attribute.GetTag().Compare(FString("lon")))
-						{
-							char CharBuffer[21];
-							sprintf_s(CharBuffer, "%.*g", 9, NewLongitude);
-							Attribute.SetValue(FString(CharBuffer));
-						}
-					}
+					//// Find Lat / Lon in XmlNode and write it
+					//TArray<FXmlAttribute>& Attributes = WindTurbineXmlNode->GetAttributes();
+					//for (FXmlAttribute& Attribute : Attributes)
+					//{
+					//	if (!Attribute.GetTag().Compare(FString("lat")))
+					//	{
+					//		// FString::SanitizeFloat() trims one too many digit important for Lat / Lon representation
+					//		char CharBuffer[21];
+					//		sprintf_s(CharBuffer, "%.*g", 9, NewLatitude);
+					//		Attribute.SetValue(FString(CharBuffer));
+					//	}
+					//	else if (!Attribute.GetTag().Compare(FString("lon")))
+					//	{
+					//		char CharBuffer[21];
+					//		sprintf_s(CharBuffer, "%.*g", 9, NewLongitude);
+					//		Attribute.SetValue(FString(CharBuffer));
+					//	}
+					//}
 				}
 				else
 				{

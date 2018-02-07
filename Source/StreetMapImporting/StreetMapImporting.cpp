@@ -106,13 +106,13 @@ void FStreetMapImportingModule::StartupModule()
 
 		LevelEditorModule.GetMenuExtensibilityManager()->AddExtender(MenuExtender);
 	}
-
+/*
 	{
 		TSharedPtr<FExtender> ToolbarExtender = MakeShareable(new FExtender);
-		ToolbarExtender->AddToolBarExtension("File", EExtensionHook::After, PluginCommands, FToolBarExtensionDelegate::CreateRaw(this, &FStreetMapImportingModule::AddToolbarExtension));
+		ToolbarExtender->AddToolBarExtension("Game", EExtensionHook::After, PluginCommands, FToolBarExtensionDelegate::CreateRaw(this, &FStreetMapImportingModule::AddToolbarExtension));
 
 		LevelEditorModule.GetToolBarExtensibilityManager()->AddExtender(ToolbarExtender);
-	}
+	}*/
 }
 
 void FStreetMapImportingModule::ShutdownModule()

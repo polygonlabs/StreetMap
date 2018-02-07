@@ -2,7 +2,6 @@
 
 #include "StreetMapRuntime.h"
 #include "StreetMapComponent.h"
-#include "StreetMapSceneProxy.h"
 #include "Runtime/Engine/Classes/Engine/StaticMesh.h"
 #include "Runtime/Engine/Public/StaticMeshResources.h"
 #include "PolygonTools.h"
@@ -74,12 +73,12 @@ UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitial
 
 FPrimitiveSceneProxy* UStreetMapComponent::CreateSceneProxy()
 {
-	FStreetMapSceneProxy* StreetMapSceneProxy = nullptr;
+	FPrimitiveSceneProxy* StreetMapSceneProxy = nullptr;
 
 	if( HasValidMesh() )
 	{
-		StreetMapSceneProxy = new FStreetMapSceneProxy( this );
-		StreetMapSceneProxy->Init( this, Vertices, Indices );
+		//StreetMapSceneProxy = new FStreetMapSceneProxy(this);
+		//StreetMapSceneProxy->Init(this, Vertices, Indices);
 	}
 	
 	return StreetMapSceneProxy;
