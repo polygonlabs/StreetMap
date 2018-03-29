@@ -86,8 +86,15 @@ public:
 /** Street map mesh vertex factory */
 class FStreetMapVertexFactory : public FLocalVertexFactory
 {
-
+    DECLARE_VERTEX_FACTORY_TYPE(FStreetMapVertexFactory);
 public:
+
+    /** Default constructor. */
+    FStreetMapVertexFactory(ERHIFeatureLevel::Type InFeatureLevel)
+        : FLocalVertexFactory(InFeatureLevel, "FStreetMapVertexFactory")
+    {
+        bSupportsManualVertexFetch = false;
+    }
 
 	/** Initialize this vertex factory */
 	void InitVertexFactory( const FStreetMapVertexBuffer& VertexBuffer );
@@ -124,6 +131,11 @@ public:
 	/** Destructor that cleans up our rendering data */
 	virtual ~FStreetMapSceneProxy();
 
+    SIZE_T GetTypeHash() const override
+    {
+        static size_t UniquePointer;
+        return reinterpret_cast<size_t>(&UniquePointer);
+    }
 
 protected:
 

@@ -16,16 +16,16 @@
 	"Installed" : false,
 	"Modules" :
 	[
-		{
-			"Name" : "StreetMapRuntime",
-			"Type" : "Runtime",
-			"LoadingPhase" : "Default"
-		},
-	
-		{
-			"Name" : "StreetMapImporting",
-			"Type" : "Editor",
-			"LoadingPhase" : "Default"
-		}
+        {
+            "Name": "StreetMapRuntime",
+            "Type": "Runtime",
+            "LoadingPhase": "PostConfigInit"
+        },
+
+        {
+            "Name": "StreetMapImporting",
+            "Type": "Editor",
+            "LoadingPhase": "PostConfigInit"
+        }
   ]
 }

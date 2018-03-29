@@ -255,7 +255,7 @@ void FStreetMapSplineTools::CleanSplines(ULandscapeSplinesComponent* SplinesComp
 
 	SplinesComponent->Modify();
 
-	World->ForceGarbageCollection(true);
+    GEngine->ForceGarbageCollection(true);
 }
 
 ULandscapeSplineControlPoint* FStreetMapSplineTools::FindNearestSplineControlPoint(const AActor* Actor, ALandscapeProxy* Landscape)

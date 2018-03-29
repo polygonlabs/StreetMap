@@ -48,6 +48,7 @@ void FStreetMapIndexBuffer::InitRHI()
 	}
 }
 
+IMPLEMENT_VERTEX_FACTORY_TYPE(FStreetMapVertexFactory, "/Engine/Private/LocalVertexFactory.ush", true, false, true, true, false);
 
 void FStreetMapVertexFactory::InitVertexFactory( const FStreetMapVertexBuffer& VertexBuffer )
 {
@@ -73,6 +74,7 @@ void FStreetMapVertexFactory::InitVertexFactory( const FStreetMapVertexBuffer& V
 
 FStreetMapSceneProxy::FStreetMapSceneProxy(const UStreetMapComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent),
+    VertexFactory(GetScene().GetFeatureLevel()),
 	StreetMapComp(InComponent),
 	CollisionResponse(InComponent->GetCollisionResponseToChannels())
 {

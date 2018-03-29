@@ -7,7 +7,8 @@
 #include "Interfaces/IHttpResponse.h"
 #include "HttpManager.h"
 #include "Misc/ScopedSlowTask.h"
-#include "Interfaces/IImageWrapperModule.h"
+#include "IImageWrapper.h"
+#include "IImageWrapperModule.h"
 #include "SNotificationList.h"
 #include "NotificationManager.h"
 #include "ScopedTransaction.h"
@@ -88,11 +89,11 @@ private:
 	{
 		IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
 
-		IImageWrapperPtr PngImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
+        TSharedPtr<IImageWrapper> PngImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
 		if (PngImageWrapper.IsValid() && PngImageWrapper->SetCompressed(RawData.GetData(), RawData.Num()))
 		{
 			int32 BitDepth = PngImageWrapper->GetBitDepth();
-			const ERGBFormat::Type Format = PngImageWrapper->GetFormat();
+			const ERGBFormat Format = PngImageWrapper->GetFormat();
 			const int32 Width = PngImageWrapper->GetWidth();
 			const int32 Height = PngImageWrapper->GetHeight();
 
