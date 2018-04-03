@@ -25,7 +25,7 @@
         {
             "Name": "StreetMapImporting",
             "Type": "Editor",
-            "LoadingPhase": "PostConfigInit"
+            "LoadingPhase": "Default"
         }
   ]
 }
