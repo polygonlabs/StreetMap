@@ -20,7 +20,7 @@
 UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
 	  StreetMap(nullptr),
-	  CachedLocalBounds(FBox(ForceInitToZero))
+	  CachedLocalBounds(ForceInit)
 {
 	// We make sure our mesh collision profile name is set to NoCollisionProfileName at initialization. 
 	// Because we don't have collision data yet!
@@ -196,7 +196,6 @@ void UStreetMapComponent::GenerateCollision()
 	// Rebuild the body setup
 	StreetMapBodySetup->InvalidatePhysicsData();
 	StreetMapBodySetup->CreatePhysicsMeshes();
-
 	UpdateNavigationIfNeeded();
 }
 
@@ -257,7 +256,7 @@ void UStreetMapComponent::GenerateMesh()
 	/////////////////////////////////////////////////////////
 
 
-	CachedLocalBounds = FBox(ForceInitToZero);
+	CachedLocalBounds = FBox( ForceInit );
 	Vertices.Reset();
 	Indices.Reset();
 
@@ -549,7 +548,7 @@ void UStreetMapComponent::InvalidateMesh()
 {
 	Vertices.Reset();
 	Indices.Reset();
-	CachedLocalBounds = FBoxSphereBounds(FBox(ForceInitToZero));
+	CachedLocalBounds = FBoxSphereBounds(FBox(ForceInit));
 	ClearCollision();
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
