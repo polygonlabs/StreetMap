@@ -17,7 +17,8 @@ namespace UnrealBuildTool.Rules
 					"ShaderCore",
                     "Landscape",
 					"XmlParser",
-					"RuntimeMeshComponent"
+					"RuntimeMeshComponent",
+                    "NavigationSystem"
                 }
 			);
         }
