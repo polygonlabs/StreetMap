@@ -18,6 +18,15 @@ UStreetMapFactory::UStreetMapFactory(const FObjectInitializer& ObjectInitializer
 	bText = true;
 }
 
+FText UStreetMapFactory::GetToolTip() const
+{
+    return NSLOCTEXT("StreetMap", "StreetMapFactoryDescription", "OpenStreetMap excerpts in osm format");
+}
+
+bool UStreetMapFactory::FactoryCanImport(const FString& Filename)
+{
+    return true;
+}
 
 UObject* UStreetMapFactory::FactoryCreateText( UClass* Class, UObject* Parent, FName Name, EObjectFlags Flags, UObject* Context, const TCHAR* Type, const TCHAR*& Buffer, const TCHAR* BufferEnd, FFeedbackContext* Warn )
 {

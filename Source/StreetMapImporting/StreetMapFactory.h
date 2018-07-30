@@ -21,6 +21,8 @@ public:
 protected:
 
 	// UFactory overrides
+    virtual FText GetToolTip() const override;
+    virtual bool FactoryCanImport(const FString& Filename) override;
 	virtual UObject* FactoryCreateText( UClass* Class, UObject* Parent, FName Name, EObjectFlags Flags, UObject* Context, const TCHAR* Type, const TCHAR*& Buffer, const TCHAR* BufferEnd, FFeedbackContext* Warn ) override;
 
 	/** Loads the street map from an OpenStreetMap XML file.  Note that in the case of the file path containing the XML data, the string must be mutable for us to parse it quickly. */

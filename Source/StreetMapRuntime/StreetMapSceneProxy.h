@@ -3,10 +3,8 @@
 
 #include "Runtime/Engine/Public/PrimitiveSceneProxy.h"
 #include "Runtime/Engine/Public/LocalVertexFactory.h"
-//#include "Public/StreetMapComponent.h"
+#include "Runtime/Engine/Public/DynamicMeshBuilder.h"
 #include "StreetMapSceneProxy.generated.h"
-
-class UStreetMapComponent;
 
 /**	A single vertex on a street map mesh */
 USTRUCT()
@@ -15,8 +13,8 @@ struct FStreetMapVertex
 
 	GENERATED_USTRUCT_BODY()
 
-	/** Location of the vertex in local space */
-	UPROPERTY()
+		/** Location of the vertex in local space */
+		UPROPERTY()
 		FVector Position;
 
 	/** Texture coordinate */
@@ -53,61 +51,14 @@ struct FStreetMapVertex
 };
 
 
-/** Street map mesh vertex buffer */
-class FStreetMapVertexBuffer : public FVertexBuffer
-{
-
-public:
-
-	/** All of the vertices in this mesh */
-	TArray< FStreetMapVertex > Vertices;
-
-
-	// FRenderResource interface
-	virtual void InitRHI() override;
-};
-
-
-/** Street map mesh index buffer */
-class FStreetMapIndexBuffer : public FIndexBuffer
-{
-
-public:
-
-	/** 16-bit indices */
-	TArray< uint16 > Indices16;
-
-	/** 32-bit indices */
-	TArray< uint32 > Indices32;
-
-
-	// FRenderResource interface
-	virtual void InitRHI() override;
-};
-
-
-/** Street map mesh vertex factory */
-class FStreetMapVertexFactory : public FLocalVertexFactory
-{
-
-public:
-
-	/** Initialize this vertex factory */
-	void InitVertexFactory( const FStreetMapVertexBuffer& VertexBuffer );
-};
-
-
 /** Scene proxy for rendering a section of a street map mesh on the rendering thread */
 class FStreetMapSceneProxy : public FPrimitiveSceneProxy
 {
 
 public:
 
-	///** Construct this scene proxy */
-	//FStreetMapSceneProxy(const class UStreetMapComponent* InComponent);
-
-	/** Type Hash function needed for TMap etc. */
-	SIZE_T GetTypeHash() const override;
+	/** Construct this scene proxy */
+	FStreetMapSceneProxy(const class UStreetMapComponent* InComponent);
 
 	/**
 	* Init this street map mesh scene proxy for the specified component (32-bit indices)
@@ -118,23 +69,14 @@ public:
 	*/
 	void Init(const UStreetMapComponent* InComponent, const TArray< FStreetMapVertex >& Vertices, const TArray< uint32 >& Indices);
 
-	/**
-	* Init this street map mesh scene proxy for the specified component (16-bit indices)
-	*
-	* @param	InComponent			The street map mesh component to initialize this with
-	* @param	Vertices			The vertices for this street map mesh
-	* @param	Indices				The vertex indices for this street map mesh
-	*/
-	void Init(const UStreetMapComponent* InComponent, const TArray< FStreetMapVertex >& Vertices, const TArray< uint16 >& Indices);
-
 	/** Destructor that cleans up our rendering data */
 	virtual ~FStreetMapSceneProxy();
 
 
-protected:
+	/** Return a type (or subtype) specific hash for sorting purposes */
+	SIZE_T GetTypeHash() const override;
 
-	/** Called from the constructor to finish construction after the index buffer is setup */
-	void InitAfterIndexBuffer(const class UStreetMapComponent* StreetMapComponent, const TArray< FStreetMapVertex >& Vertices);
+protected:
 
 	/** Initializes this scene proxy's vertex buffer, index buffer and vertex factory (on the render thread.) */
 	void InitResources();
@@ -156,20 +98,16 @@ protected:
 	virtual FPrimitiveViewRelevance GetViewRelevance(const class FSceneView* View) const override;
 	virtual bool CanBeOccluded() const override;
 
-
-
 protected:
 
-
-
 	/** Contains all of the vertices in our street map mesh */
-	FStreetMapVertexBuffer VertexBuffer;
+	FStaticMeshVertexBuffers VertexBuffer;
 
-	/** All of the vertex indices in our street map mesh */
-	FStreetMapIndexBuffer IndexBuffer;
+	/** All of the vertex indices32 in our street map mesh */
+	FDynamicMeshIndexBuffer32 IndexBuffer32;
 
 	/** Our vertex factory specific to street map meshes */
-	FStreetMapVertexFactory VertexFactory;
+	FLocalVertexFactory VertexFactory;
 
 	/** Cached material relevance */
 	FMaterialRelevance MaterialRelevance;
@@ -181,6 +119,4 @@ protected:
 
 	// The Collision Response of the component being proxied
 	FCollisionResponseContainer CollisionResponse;
-
-
 };

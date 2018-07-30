@@ -4,7 +4,8 @@ namespace UnrealBuildTool.Rules
 {
     public class StreetMapImporting : ModuleRules
     {
-        public StreetMapImporting(ReadOnlyTargetRules Target) : base(Target)
+        public StreetMapImporting(ReadOnlyTargetRules Target)
+			: base(Target)
         {
             // PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 

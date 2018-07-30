@@ -269,13 +269,12 @@ void FStreetMapSplineTools::CleanSplines(ULandscapeSplinesComponent* SplinesComp
 
 	SplinesComponent->Modify();
 
-	GEngine->ForceGarbageCollection(true);
+	World->ForceGarbageCollection(true);
 }
-
 
 ULandscapeSplineControlPoint* FStreetMapSplineTools::FindNearestSplineControlPoint(const AActor* Actor, ALandscapeProxy* Landscape)
 {
-	const FTransform LandscapeTransform = Landscape->GetActorTransform();
+	const FMatrix LandscapeTransform = Landscape->SplineComponent->SceneProxy->GetLocalToWorld();
 	const FVector ActorLocation = Actor->GetTransform().GetLocation();
 
 	float DistSquaredMin = TNumericLimits<float>::Max();
@@ -285,7 +284,7 @@ ULandscapeSplineControlPoint* FStreetMapSplineTools::FindNearestSplineControlPoi
 	for (int32 ControlPointIndex = 0; ControlPointIndex < NumControlPoints; ControlPointIndex++)
 	{
 		ULandscapeSplineControlPoint* ControlPoint = Landscape->SplineComponent->ControlPoints[ControlPointIndex];
-		const FVector ControlPointInWorldSpace = LandscapeTransform.TransformPositionNoScale(ControlPoint->Location);
+		const FVector ControlPointInWorldSpace = LandscapeTransform.TransformPosition(ControlPoint->Location);
 
 		float DistSquared = FVector::DistSquared(ActorLocation, ControlPointInWorldSpace);
 
