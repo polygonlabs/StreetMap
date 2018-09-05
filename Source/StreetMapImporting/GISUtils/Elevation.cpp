@@ -165,7 +165,11 @@ private:
 
 	void DownloadFile()
 	{
-		FString URL = FString::Printf(*TiledMap.URLTemplate, Z, X, Y);
+		TMap<FString, FStringFormatArg> Arguments;
+		Arguments.Add("X", X);
+		Arguments.Add("Y", Y);
+		Arguments.Add("Z", Z);
+		FString URL = FString::Format(*TiledMap.URLTemplate, Arguments);
 
 		HttpRequest = FHttpModule::Get().CreateRequest();
 		HttpRequest->SetVerb(TEXT("GET"));

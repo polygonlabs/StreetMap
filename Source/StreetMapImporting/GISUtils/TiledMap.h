@@ -34,7 +34,7 @@ public:
 		TiledMap.Bounds.MinY =  20037508.34;
 		TiledMap.Bounds.MaxX =  20037508.34;
 		TiledMap.Bounds.MaxY = -20037508.34;
-		TiledMap.URLTemplate = TEXT("http://s3.amazonaws.com/elevation-tiles-prod/terrarium/%d/%d/%d.png");
+		TiledMap.URLTemplate = TEXT("http://s3.amazonaws.com/elevation-tiles-prod/terrarium/{Z}/{X}/{Y}.png");
 		return TiledMap;
 	}
 
