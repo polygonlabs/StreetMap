@@ -206,8 +206,8 @@ bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* Attrib
 		else if (!FCString::Stricmp(AttributeName, TEXT("v")))
 		{
 			FOSMTag Tag;
-			Tag.Key = FName::FName(CurrentNodeTagKey);
-			Tag.Value = FName::FName(AttributeValue);
+			Tag.Key = FName(CurrentNodeTagKey);
+			Tag.Value = FName(AttributeValue);
 			CurrentNodeInfo->Tags.Add(Tag);
 		}
 	}
@@ -374,8 +374,8 @@ bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* Attrib
 		else if (!FCString::Stricmp(AttributeName, TEXT("v")))
 		{
 			FOSMTag Tag;
-			Tag.Key = FName::FName(CurrentRelationTagKey);
-			Tag.Value = FName::FName(AttributeValue);
+			Tag.Key = FName(CurrentRelationTagKey);
+			Tag.Value = FName(AttributeValue);
 			CurrentRelation->Tags.Add(Tag);
 
 			if (!FCString::Stricmp(CurrentRelationTagKey, TEXT("type")))
