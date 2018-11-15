@@ -313,6 +313,10 @@ void UStreetMapComponent::GenerateMesh()
 					else if (Building.BuildingLevels > 0) {
 						BuildingFillZ = (float)Building.BuildingLevels * BuildingLevelFloorFactor;
 					}
+					else
+					{
+						BuildingFillZ = MeshBuildSettings.DefaultBuildingHeight;
+					}
 				}		
 
 				// Top of building
@@ -325,7 +329,7 @@ void UStreetMapComponent::GenerateMesh()
 					AddTriangles( TempPoints, TriangulatedVertexIndices, FVector::ForwardVector, FVector::UpVector, BuildingFillColor, MeshBoundingBox );
 				}
 
-				if( bWant3DBuildings && (Building.Height > KINDA_SMALL_NUMBER || Building.BuildingLevels > 0) )
+				if( bWant3DBuildings && (Building.Height > KINDA_SMALL_NUMBER || Building.BuildingLevels > 0 || BuildingFillZ > KINDA_SMALL_NUMBER) )
 				{
 					// NOTE: Lit buildings can't share vertices beyond quads (all quads have their own face normals), so this uses a lot more geometry!
 					if( bWantLitBuildings )

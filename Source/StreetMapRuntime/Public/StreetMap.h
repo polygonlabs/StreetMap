@@ -56,6 +56,10 @@ public:
 	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Building Level Floor Factor")
 		float BuildingLevelFloorFactor = 300.0f;
 
+	/** building default height for buildings without any height information */
+	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Building Default Height")
+		float DefaultBuildingHeight = 1000.0f;
+
 	/**
 	* If true, buildings mesh will receive light information.
 	* Lit buildings can't share vertices beyond quads (all quads have their own face normals), so this uses a lot more geometry.
