@@ -7,7 +7,7 @@ namespace UnrealBuildTool.Rules
         public StreetMapImporting(ReadOnlyTargetRules Target)
 			: base(Target)
         {
-            // PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+            PrivatePCHHeaderFile = "StreetMapImporting.h";
 
             PrivateDependencyModuleNames.AddRange(
                 new string[] {
