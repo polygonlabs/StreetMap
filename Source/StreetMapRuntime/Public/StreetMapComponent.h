@@ -128,6 +128,15 @@ public:
 	/** Rebuilds the graphics and physics mesh representation if we don't have one right now.  Designed to be called on demand. */
 	void BuildMesh();
 
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void BuildRoadMesh();
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void IncreaseRoadThickness(float val);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void DecreaseRoadThickness(float val);
+
 protected:
 
 	/** Giving a default material to the mesh if no valid material is already assigned or materials array is empty. */
@@ -151,6 +160,9 @@ protected:
 	/** The street map we're representing. */
 	UPROPERTY(EditAnywhere, Category = "StreetMap")
 		UStreetMap* StreetMap;
+
+	UPROPERTY(EditAnywhere, Category = "StreetMap")
+		FStreetMapRoadMeshBuildSettings RoadMeshBuildSettings;
 
 	UPROPERTY(EditAnywhere, Category = "StreetMap")
 		FStreetMapMeshBuildSettings MeshBuildSettings;
@@ -197,4 +209,6 @@ protected:
 	UPROPERTY()
 		UMaterialInterface* StreetMapDefaultMaterial;
 
+private:
+	double _widthCoefficient = 1.0;
 };

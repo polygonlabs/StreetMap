@@ -63,7 +63,7 @@ public:
 
 	/** Roads base vertical offset */
 	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Road Vertical Offset")
-		float RoadOffesetZ;
+		float RoadOffsetZ;
 
 	/** if true buildings mesh will be 3D instead of flat representation. */
 	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Create 3D Buildings")
@@ -123,7 +123,7 @@ public:
 		float BuildingBorderZ;
 
 	FStreetMapMeshBuildSettings() :
-		RoadOffesetZ(0.0f),
+		RoadOffsetZ(0.0f),
 		bWant3DBuildings(true),
 		bWantLitBuildings(true),
 		StreetThickness(800.0f),
@@ -138,6 +138,54 @@ public:
 	{
 	}
 
+};
+
+/** Mesh generation settings */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapRoadMeshBuildSettings
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+
+	/** Roads base vertical offset */
+	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Road Vertical Offset")
+		float RoadOffsetZ;
+
+	/** Streets thickness */
+	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"))
+		float StreetThickness;
+
+	/** Street vertex color */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FLinearColor StreetColor;
+
+	/** Major road thickness */
+	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"))
+		float MajorRoadThickness;
+
+	/** Major road vertex color */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FLinearColor MajorRoadColor;
+
+	/** Highway thickness */
+	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"))
+		float HighwayThickness;
+
+	/** Highway vertex color */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FLinearColor HighwayColor;
+
+	FStreetMapRoadMeshBuildSettings() :
+		RoadOffsetZ(0.0f),
+		StreetThickness(800.0f),
+		StreetColor(0.05f, 0.75f, 0.05f),
+		MajorRoadThickness(1000.0f),
+		MajorRoadColor(0.15f, 0.85f, 0.15f),
+		HighwayThickness(1400.0f),
+		HighwayColor(FLinearColor(0.25f, 0.95f, 0.25f))
+	{
+	}
 };
 
 

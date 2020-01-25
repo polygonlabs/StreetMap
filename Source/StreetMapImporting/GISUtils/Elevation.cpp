@@ -7,7 +7,9 @@
 #include "Interfaces/IHttpResponse.h"
 #include "HttpManager.h"
 #include "Misc/ScopedSlowTask.h"
-#include "Interfaces/IImageWrapperModule.h"
+#include "Misc/Guid.h"
+#include "IImageWrapper.h"
+#include "IImageWrapperModule.h"
 #include "SNotificationList.h"
 #include "NotificationManager.h"
 #include "ScopedTransaction.h"
@@ -92,7 +94,7 @@ private:
 		if (PngImageWrapper.IsValid() && PngImageWrapper->SetCompressed(RawData.GetData(), RawData.Num()))
 		{
 			int32 BitDepth = PngImageWrapper->GetBitDepth();
-			const ERGBFormat::Type Format = PngImageWrapper->GetFormat();
+			const ERGBFormat Format = PngImageWrapper->GetFormat();
 			const int32 Width = PngImageWrapper->GetWidth();
 			const int32 Height = PngImageWrapper->GetHeight();
 
@@ -165,6 +167,7 @@ private:
 	void DownloadFile()
 	{
 		FString URL = FString::Printf(*TiledMap.URLTemplate, Z, X, Y);
+		GWarn->Logf(ELogVerbosity::Error, TEXT("URL: %s"), *URL);
 
 		HttpRequest = FHttpModule::Get().CreateRequest();
 		HttpRequest->SetVerb(TEXT("GET"));
@@ -247,7 +250,7 @@ public:
 
 		if (WasDownloadSuccessful || Failed) return;
 
-		if (TimeSpan.GetSeconds() > 10)
+		if (TimeSpan.GetSeconds() > 100)
 		{
 			GWarn->Logf(ELogVerbosity::Error, TEXT("Download time-out. Check your internet connection!"));
 			NumPendingDownloads--;
@@ -842,11 +845,20 @@ static ALandscape* CreateLandscape(
 	SlowTask.EnterProgressFrame(1.0f, LOCTEXT("GeneratingLandscapeMesh", "Generating Landscape Mesh"));
 	ALandscape* Landscape = World->SpawnActor<ALandscape>(ALandscape::StaticClass(), Transform);
 	Landscape->LandscapeMaterial = BuildSettings.Material;
-	Landscape->Import(FGuid::NewGuid(), 
+
+	const FGuid guid = FGuid::NewGuid();
+
+	TMap<FGuid, TArray<uint16>> HeightDataMap;
+	HeightDataMap.Add(guid, ElevationData);
+
+	TMap<FGuid, TArray<FLandscapeImportLayerInfo>> ImportLayersMap;
+	ImportLayersMap.Add(guid, ImportLayers);
+
+	Landscape->Import(guid, 
 		-NumVerticesForRadius, -NumVerticesForRadius,
 		NumVerticesForRadius - 1, NumVerticesForRadius - 1,
-		1, SubsectionSizeQuads, ElevationData.GetData(), nullptr,
-		ImportLayers, ELandscapeImportAlphamapType::Additive);
+		1, SubsectionSizeQuads, HeightDataMap, nullptr,
+		ImportLayersMap, ELandscapeImportAlphamapType::Additive);
 
 	// automatically calculate a lighting LOD that won't crash lightmass (hopefully)
 	//  < 2048x2048 -> LOD0

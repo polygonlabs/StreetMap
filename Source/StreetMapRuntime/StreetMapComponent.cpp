@@ -13,6 +13,7 @@
 #include "ModuleManager.h"
 #include "PropertyEditorModule.h"
 #include "LandscapeLayerInfoObject.h"
+#include "Public\StreetMapComponent.h"
 #endif //WITH_EDITOR
 
 
@@ -238,7 +239,7 @@ void UStreetMapComponent::GenerateMesh()
 	/////////////////////////////////////////////////////////
 	// Visual tweakables for generated Street Map mesh
 	//
-	const float RoadZ = MeshBuildSettings.RoadOffesetZ;
+	const float RoadZ = MeshBuildSettings.RoadOffsetZ;
 	const bool bWant3DBuildings = MeshBuildSettings.bWant3DBuildings;
 	const float BuildingLevelFloorFactor = MeshBuildSettings.BuildingLevelFloorFactor;
 	const bool bWantLitBuildings = MeshBuildSettings.bWantLitBuildings;
@@ -457,6 +458,104 @@ void UStreetMapComponent::GenerateMesh()
 	}
 }
 
+void UStreetMapComponent::BuildRoadMesh()
+{
+	/////////////////////////////////////////////////////////
+	// Visual tweakables for generated Street Map mesh
+	//
+	const float RoadZ = RoadMeshBuildSettings.RoadOffsetZ;
+	const float StreetThickness = RoadMeshBuildSettings.StreetThickness;
+	const FColor StreetColor = RoadMeshBuildSettings.StreetColor.ToFColor(false);
+	const float MajorRoadThickness = RoadMeshBuildSettings.MajorRoadThickness;
+	const FColor MajorRoadColor = RoadMeshBuildSettings.MajorRoadColor.ToFColor(false);
+	const float HighwayThickness = RoadMeshBuildSettings.HighwayThickness;
+	const FColor HighwayColor = RoadMeshBuildSettings.HighwayColor.ToFColor(false);
+	/////////////////////////////////////////////////////////
+
+
+	CachedLocalBounds = FBox(ForceInitToZero);
+	Indices.Reset();
+
+	if (StreetMap != nullptr)
+	{
+		FBox MeshBoundingBox;
+		MeshBoundingBox.Init();
+
+		const auto& Roads = StreetMap->GetRoads();
+
+		for (const auto& Road : Roads)
+		{
+			float RoadThickness = StreetThickness;
+			FColor RoadColor = StreetColor;
+			switch (Road.RoadType)
+			{
+			case EStreetMapRoadType::Highway:
+				RoadThickness = HighwayThickness;
+				RoadColor = HighwayColor;
+				break;
+
+			case EStreetMapRoadType::MajorRoad:
+				RoadThickness = MajorRoadThickness;
+				RoadColor = MajorRoadColor;
+				break;
+
+			case EStreetMapRoadType::Street:
+			case EStreetMapRoadType::Other:
+				break;
+
+			default:
+				check(0);
+				break;
+			}
+
+			for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
+			{
+				AddThick2DLine(
+					Road.RoadPoints[PointIndex],
+					Road.RoadPoints[PointIndex + 1],
+					RoadZ,
+					RoadThickness * _widthCoefficient,
+					RoadColor,
+					RoadColor,
+					MeshBoundingBox);
+			}
+		}
+
+		CachedLocalBounds = MeshBoundingBox;
+
+		if (HasValidMesh())
+		{
+			// We have a new bounding box
+			UpdateBounds();
+		}
+		else
+		{
+			// No mesh was generated
+		}
+
+		GenerateCollision();
+
+		// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
+		MarkRenderStateDirty();
+
+		AssignDefaultMaterialIfNeeded();
+
+		Modify();
+	}
+}
+
+void UStreetMapComponent::IncreaseRoadThickness(float val)
+{
+	_widthCoefficient += val;
+	BuildRoadMesh();
+}
+
+void UStreetMapComponent::DecreaseRoadThickness(float val)
+{
+	_widthCoefficient -= val;
+	BuildRoadMesh();
+}
+
 
 #if WITH_EDITOR
 void UStreetMapComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
@@ -541,7 +640,7 @@ void UStreetMapComponent::UpdateNavigationIfNeeded()
 {
 	if (bCanEverAffectNavigation || bNavigationRelevant)
 	{
-		UNavigationSystem::UpdateComponentInNavOctree(*this);
+		FNavigationSystem::UpdateComponentData(*this);
 	}
 }
 

@@ -72,7 +72,7 @@ ULandscapeSplineControlPoint* FStreetMapSplineTools::AddControlPoint(ULandscapeS
 		NewControlPoint->Mesh = PreviousPoint->Mesh;
 		NewControlPoint->MeshScale = PreviousPoint->MeshScale;
 		NewControlPoint->bPlaceSplineMeshesInStreamingLevels = PreviousPoint->bPlaceSplineMeshesInStreamingLevels;
-		NewControlPoint->bEnableCollision = PreviousPoint->bEnableCollision;
+		/*NewControlPoint->bEnableCollision = PreviousPoint->bEnableCollision;*/
 		NewControlPoint->bCastShadow = PreviousPoint->bCastShadow;
 	}
 	else
@@ -143,7 +143,7 @@ ULandscapeSplineSegment* FStreetMapSplineTools::AddSegment(ULandscapeSplineContr
 		NewSegment->bRaiseTerrain = CopyFromSegment->bRaiseTerrain;
 		NewSegment->bLowerTerrain = CopyFromSegment->bLowerTerrain;
 		NewSegment->bPlaceSplineMeshesInStreamingLevels = CopyFromSegment->bPlaceSplineMeshesInStreamingLevels;
-		NewSegment->bEnableCollision = CopyFromSegment->bEnableCollision;
+		//NewSegment->bEnableCollision = CopyFromSegment->bEnableCollision;
 		NewSegment->bCastShadow = CopyFromSegment->bCastShadow;
 	}
 

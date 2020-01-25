@@ -28,6 +28,13 @@ public:
 	/** Handles build/rebuild mesh button clicking */
 	FReply OnBuildMeshClicked();
 
+	/** Handles build/rebuild road mesh button clicking */
+	FReply OnBuildRoadMeshClicked();
+
+	FReply OnIncRoadThicknessClicked();
+
+	FReply OnDecRoadThicknessClicked();
+	
 	/** Handles clear mesh button clicking */
 	FReply OnClearMeshClicked();
 

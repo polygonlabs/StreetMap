@@ -46,7 +46,7 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 {
 	LastDetailBuilderPtr = &DetailBuilder;
 
-	TArray <TWeakObjectPtr<UObject>> SelectedObjects = DetailBuilder.GetDetailsView().GetSelectedObjects();
+	TArray <TWeakObjectPtr<UObject>> SelectedObjects = DetailBuilder.GetDetailsView()->GetSelectedObjects();
 
 	for (const TWeakObjectPtr<UObject>& Object : SelectedObjects)
 	{
@@ -61,7 +61,7 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 
 	if (SelectedStreetMapComponent == nullptr)
 	{
-		TArray<TWeakObjectPtr<AActor>> SelectedActors = DetailBuilder.GetDetailsView().GetSelectedActors();
+		TArray<TWeakObjectPtr<AActor>> SelectedActors = DetailBuilder.GetDetailsView()->GetSelectedActors();
 
 		for (const TWeakObjectPtr<UObject>& Object : SelectedObjects)
 		{
@@ -115,6 +115,7 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 		]
 		];
 
+
 	TempHorizontalBox->AddSlot()
 		[
 			SNew(SButton)
@@ -146,6 +147,52 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 		]
 		]
 		];
+	
+	StreetMapCategory.AddCustomRow(FText::GetEmpty(), false)
+		[
+			SAssignNew(TempHorizontalBox, SHorizontalBox)
+			+ SHorizontalBox::Slot()
+		[
+			SNew(SButton)
+			.ToolTipText(LOCTEXT("GenerateMesh_Tooltip", "Generate a cached mesh from raw street map data."))
+		.OnClicked(this, &FStreetMapComponentDetails::OnBuildRoadMeshClicked)
+		.IsEnabled(bCanRebuildMesh)
+		.HAlign(HAlign_Center)
+		[
+			SNew(STextBlock)
+			.Text(bCanClearMesh ? LOCTEXT("RebuildRoadMesh", "Rebuild Road Mesh") : LOCTEXT("BuildRoadMesh", "Build Road Mesh"))
+		.Font(IDetailLayoutBuilder::GetDetailFont())
+		]
+		]
+		];
+
+	StreetMapCategory.AddCustomRow(FText::GetEmpty(), false)
+		[
+			SAssignNew(TempHorizontalBox, SHorizontalBox)
+			+ SHorizontalBox::Slot()
+		[
+			SNew(SButton)
+		.OnClicked(this, &FStreetMapComponentDetails::OnIncRoadThicknessClicked)
+		.HAlign(HAlign_Center)
+		[
+			SNew(STextBlock)
+			.Text(LOCTEXT("IncreaseRoadThickness", "Increase Road Thickness"))
+		.Font(IDetailLayoutBuilder::GetDetailFont())
+		]
+		]
+		];
+
+
+	TempHorizontalBox->AddSlot()
+		[
+			SNew(SButton)
+		.OnClicked(this, &FStreetMapComponentDetails::OnDecRoadThicknessClicked)
+		[
+			SNew(STextBlock)
+			.Text(LOCTEXT("DecreaseRoadThickness", "Decrease Road Thickness"))
+		.Font(IDetailLayoutBuilder::GetDetailFont())
+		]
+		];
 
 	if (bCanCreateMeshAsset)
 	{
@@ -169,7 +216,7 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 				.Font(FSlateFontInfo("Verdana", 8))
 			.Text(FText::FromString(NumVerticesToString))
 			]
-			+ SHorizontalBox::Slot()
+		+ SHorizontalBox::Slot()
 			.HAlign(HAlign_Left)
 			.VAlign(VAlign_Center)
 			[
@@ -177,14 +224,14 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 				.Font(FSlateFontInfo("Verdana", 8))
 			.Text(FText::FromString(NumTrianglesToString))
 			]
-			+ SHorizontalBox::Slot()
-				.HAlign(HAlign_Left)
-				.VAlign(VAlign_Center)
-				[
-					SNew(STextBlock)
-					.Font(FSlateFontInfo("Verdana", 8))
-				.Text(FText::FromString(CollisionStatusToString))
-				]
+		+ SHorizontalBox::Slot()
+			.HAlign(HAlign_Left)
+			.VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Font(FSlateFontInfo("Verdana", 8))
+			.Text(FText::FromString(CollisionStatusToString))
+			]
 			];
 	}
 
@@ -335,13 +382,13 @@ FReply FStreetMapComponentDetails::OnCreateStaticMeshAssetClicked()
 			// Materials to apply to new mesh
 			TArray<UMaterialInterface*> MeshMaterials = SelectedStreetMapComponent->GetMaterials();
 
-			
+
 			const TArray<FStreetMapVertex > RawMeshVertices = SelectedStreetMapComponent->GetRawMeshVertices();
 			const TArray< uint32 > RawMeshIndices = SelectedStreetMapComponent->GetRawMeshIndices();
 
 
 			// Copy verts
-			for (int32 VertIndex = 0; VertIndex < RawMeshVertices.Num();VertIndex++)
+			for (int32 VertIndex = 0; VertIndex < RawMeshVertices.Num(); VertIndex++)
 			{
 				RawMesh.VertexPositions.Add(RawMeshVertices[VertIndex].Position);
 			}
@@ -444,13 +491,53 @@ FReply FStreetMapComponentDetails::OnCreateStaticMeshAssetClicked()
 FReply FStreetMapComponentDetails::OnBuildMeshClicked()
 {
 
-	if(SelectedStreetMapComponent != nullptr)
+	if (SelectedStreetMapComponent != nullptr)
 	{
 		//
 		SelectedStreetMapComponent->BuildMesh();
 
 		// regenerates details panel layouts , to take in consideration new changes.
 		RefreshDetails();
+	}
+
+	return FReply::Handled();
+}
+
+
+FReply FStreetMapComponentDetails::OnBuildRoadMeshClicked()
+{
+
+	if (SelectedStreetMapComponent != nullptr)
+	{
+		//
+		SelectedStreetMapComponent->BuildRoadMesh();
+
+		// regenerates details panel layouts , to take in consideration new changes.
+		RefreshDetails();
+	}
+
+	return FReply::Handled();
+}
+
+FReply FStreetMapComponentDetails::OnIncRoadThicknessClicked()
+{
+
+	if (SelectedStreetMapComponent != nullptr)
+	{
+		//
+		SelectedStreetMapComponent->IncreaseRoadThickness(0.5);
+	}
+
+	return FReply::Handled();
+}
+
+FReply FStreetMapComponentDetails::OnDecRoadThicknessClicked()
+{
+
+	if (SelectedStreetMapComponent != nullptr)
+	{
+		//
+		SelectedStreetMapComponent->DecreaseRoadThickness(0.5);
 	}
 
 	return FReply::Handled();
@@ -472,7 +559,7 @@ FReply FStreetMapComponentDetails::OnClearMeshClicked()
 
 void FStreetMapComponentDetails::RefreshDetails()
 {
-	if(LastDetailBuilderPtr != nullptr)
+	if (LastDetailBuilderPtr != nullptr)
 	{
 		LastDetailBuilderPtr->ForceRefreshDetails();
 	}
@@ -574,7 +661,7 @@ void FStreetMapComponentDetails::RefreshLandscapeLayersList()
 					// might be inappropiate - in one usecase the area is marked industrial (should default to concrete) but grass fits it better
 					// TODO: make LayerWayMapping better configurable in editor
 					NewLayerWayMapping.Matches.Add(FWayMatch(EStreetMapMiscWayType::LandUse, TEXT("industrial")));
-			
+
 				}
 				else if (LayerName == "Wood")
 				{
@@ -609,7 +696,7 @@ FReply FStreetMapComponentDetails::OnBuildRailwayClicked()
 
 bool FStreetMapComponentDetails::BuildRailwayIsEnabled() const
 {
-	if (!SelectedStreetMapComponent || 
+	if (!SelectedStreetMapComponent ||
 		!SelectedStreetMapComponent->RailwaySettings.RailwayLineMesh ||
 		!SelectedStreetMapComponent->RailwaySettings.Landscape)
 	{
@@ -651,7 +738,7 @@ FReply FStreetMapComponentDetails::OnBuildSplinesClicked()
 	if (SelectedStreetMapComponent != nullptr)
 	{
 		BuildSplines(
-			SelectedStreetMapComponent, 
+			SelectedStreetMapComponent,
 			SelectedStreetMapComponent->SplineSettings,
 			SelectedStreetMapComponent->RailwaySettings.Landscape);
 

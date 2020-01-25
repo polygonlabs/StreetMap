@@ -6,21 +6,23 @@ namespace UnrealBuildTool.Rules
     {
         public StreetMapImporting(ReadOnlyTargetRules Target) : base(Target)
         {
+            bEnforceIWYU = false;
+
+            PrivatePCHHeaderFile = "StreetMapImporting.h";
             PrivateDependencyModuleNames.AddRange(
                 new string[] {
                     "Core",
                     "CoreUObject",
                     "Engine",
-                    "UnrealEd",
                     "XmlParser",
                     "AssetTools",
                     "Projects",
                     "Slate",
                     "EditorStyle",
                     "SlateCore",
+                    "UnrealEd",
                     "PropertyEditor",
                     "RenderCore",
-                    "ShaderCore",
                     "RHI",
                     "RawMesh",
                     "AssetTools",

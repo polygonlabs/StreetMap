@@ -81,7 +81,7 @@ static void BuildStreetMapRailways(class UStreetMapComponent* StreetMapComponent
 					NewSegment->bRaiseTerrain = true;
 					NewSegment->bLowerTerrain = true;
 					NewSegment->bPlaceSplineMeshesInStreamingLevels = true;
-					NewSegment->bEnableCollision = false;
+					/*NewSegment->bEnableCollision = false;*/
 					NewSegment->bCastShadow = true;
 
 					if (NewSegment->SplineMeshes.Num() == 0)
