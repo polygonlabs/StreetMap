@@ -8,9 +8,9 @@
 /** OpenStreetMap file loader */
 class FOSMFile : public IFastXmlCallback
 {
-	
+
 public:
-	
+
 	/** Default constructor for FOSMFile */
 	FOSMFile();
 
@@ -18,7 +18,7 @@ public:
 	virtual ~FOSMFile();
 
 	/** Loads the map from an OpenStreetMap XML file.  Note that in the case of the file path containing the XML data, the string must be mutable for us to parse it quickly. */
-	bool LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePathActuallyTextBuffer, class FFeedbackContext* FeedbackContext );
+	bool LoadOpenStreetMapFile(FString& OSMFilePath, const bool bIsFilePathActuallyTextBuffer, class FFeedbackContext* FeedbackContext);
 
 
 	struct FOSMWayInfo;
@@ -46,6 +46,22 @@ public:
 
 		/** Currently unrecognized type */
 		Other,
+
+		/** For Nusys */
+		Fwy,
+
+		Pkwy,
+
+		Brg,
+
+		Tunl,
+
+		St,
+
+		Pl,
+
+		Ave,
+
 	};
 
 	/** Types of a relations we support - there are many, but most are not yet relevant */
@@ -98,7 +114,7 @@ public:
 	{
 		// Way that we're referencing at this node
 		FOSMWayInfo* Way;
-			
+
 		// Index of the node in the way's array of nodes
 		int32 NodeIndex;
 	};
@@ -116,7 +132,7 @@ public:
 		TArray<FOSMTag> Tags;
 		TArray<FOSMWayRef> WayRefs;
 	};
-		
+
 	struct FOSMWayInfo
 	{
 		FString Name;
@@ -172,7 +188,7 @@ public:
 
 	// All relations we've parsed
 	TArray<FOSMRelation*> Relations;
-		
+
 	// Maps node IDs to info about each node
 	TMap<int64, FOSMNodeInfo*> NodeMap;
 
@@ -182,15 +198,15 @@ public:
 protected:
 
 	// IFastXmlCallback overrides
-	virtual bool ProcessXmlDeclaration( const TCHAR* ElementData, int32 XmlFileLineNumber ) override;
-	virtual bool ProcessComment( const TCHAR* Comment ) override;
-	virtual bool ProcessElement( const TCHAR* ElementName, const TCHAR* ElementData, int32 XmlFileLineNumber ) override;
-	virtual bool ProcessAttribute( const TCHAR* AttributeName, const TCHAR* AttributeValue ) override;
-	virtual bool ProcessClose( const TCHAR* Element ) override;
+	virtual bool ProcessXmlDeclaration(const TCHAR* ElementData, int32 XmlFileLineNumber) override;
+	virtual bool ProcessComment(const TCHAR* Comment) override;
+	virtual bool ProcessElement(const TCHAR* ElementName, const TCHAR* ElementData, int32 XmlFileLineNumber) override;
+	virtual bool ProcessAttribute(const TCHAR* AttributeName, const TCHAR* AttributeValue) override;
+	virtual bool ProcessClose(const TCHAR* Element) override;
 
-	
+
 protected:
-	
+
 	enum class ParsingState
 	{
 		Root,
@@ -203,10 +219,10 @@ protected:
 		Relation_Member,
 		Relation_Tag
 	};
-		
+
 	// Current state of parser
 	ParsingState ParsingState;
-		
+
 	// ID of node that is currently being parsed
 	int64 CurrentNodeID;
 
@@ -218,7 +234,7 @@ protected:
 
 	// Node that is currently being parsed
 	FOSMNodeInfo* CurrentNodeInfo;
-		
+
 	// Way that is currently being parsed
 	FOSMWayInfo* CurrentWayInfo;
 

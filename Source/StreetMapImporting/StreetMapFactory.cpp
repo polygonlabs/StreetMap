@@ -11,7 +11,7 @@ UStreetMapFactory::UStreetMapFactory(const FObjectInitializer& ObjectInitializer
 {
 	SupportedClass = UStreetMap::StaticClass();
 
-	Formats.Add( TEXT( "osm;OpenStreetMap XML" ) );
+	Formats.Add(TEXT("osm;OpenStreetMap XML"));
 	bCreateNew = false;
 	bEditorImport = true;
 	bEditAfterNew = false;
@@ -19,21 +19,21 @@ UStreetMapFactory::UStreetMapFactory(const FObjectInitializer& ObjectInitializer
 }
 
 
-UObject* UStreetMapFactory::FactoryCreateText( UClass* Class, UObject* Parent, FName Name, EObjectFlags Flags, UObject* Context, const TCHAR* Type, const TCHAR*& Buffer, const TCHAR* BufferEnd, FFeedbackContext* Warn )
+UObject* UStreetMapFactory::FactoryCreateText(UClass* Class, UObject* Parent, FName Name, EObjectFlags Flags, UObject* Context, const TCHAR* Type, const TCHAR*& Buffer, const TCHAR* BufferEnd, FFeedbackContext* Warn)
 {
-	UStreetMap* StreetMap = NewObject<UStreetMap>( Parent, Name, Flags | RF_Transactional );
+	UStreetMap* StreetMap = NewObject<UStreetMap>(Parent, Name, Flags | RF_Transactional);
 
-	StreetMap->AssetImportData->Update( this->GetCurrentFilename() );
+	StreetMap->AssetImportData->Update(this->GetCurrentFilename());
 
 	// @todo: Performance: This will copy the entire text buffer into an FString.  We need to do this
 	//        because the FFastXml parser is expecting a buffer that it can mutate as it parses.
 	const int32 CharacterCount = BufferEnd - Buffer;
-	FString MutableTextBuffer( CharacterCount, Buffer );
+	FString MutableTextBuffer(CharacterCount, Buffer);
 
 	const bool bIsFilePathActuallyTextBuffer = true;
-	const bool bLoadedOkay = LoadFromOpenStreetMapXMLFile( StreetMap, MutableTextBuffer, bIsFilePathActuallyTextBuffer, Warn );
+	const bool bLoadedOkay = LoadFromOpenStreetMapXMLFile(StreetMap, MutableTextBuffer, bIsFilePathActuallyTextBuffer, Warn);
 
-	if( !bLoadedOkay )
+	if (!bLoadedOkay)
 	{
 		StreetMap->MarkPendingKill();
 		StreetMap = nullptr;
@@ -43,7 +43,7 @@ UObject* UStreetMapFactory::FactoryCreateText( UClass* Class, UObject* Parent, F
 }
 
 
-bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FString& OSMFilePath, const bool bIsFilePathActuallyTextBuffer, FFeedbackContext* FeedbackContext )
+bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile(UStreetMap* StreetMap, FString& OSMFilePath, const bool bIsFilePathActuallyTextBuffer, FFeedbackContext* FeedbackContext)
 {
 	// OSM data is stored in meters.  This is the scale factor to convert those units into UE4's native units (cm)
 	// Keep in mind that if this is changed, UStreetMapComponent sizes for roads may need to be updated too!
@@ -52,16 +52,22 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 
 	// Adds a road to the street map using the OpenStreetMap data, flattening the road's coordinates into our map's space
 	auto AddRoadForWay = [OSMToCentimetersScaleFactor](
-		const FOSMFile& OSMFile, 
-		UStreetMap& StreetMapRef, 
-		const FOSMFile::FOSMWayInfo& OSMWay, 
-		int32& OutRoadIndex ) -> bool
+		const FOSMFile& OSMFile,
+		UStreetMap& StreetMapRef,
+		const FOSMFile::FOSMWayInfo& OSMWay,
+		int32& OutRoadIndex) -> bool
 	{
 		EStreetMapRoadType RoadType = EStreetMapRoadType::Other;
 		if ((OSMWay.Category == TEXT("residential")) || // ~32% of all highways
 			(OSMWay.Category == TEXT("service")) ||		// ~15% of all highways
 			(OSMWay.Category == TEXT("unclassified")) ||
-			(OSMWay.Category == TEXT("road"))) // @todo: Consider excluding "Road" from our data set, as it could be a highway that wasn't properly tagged in OSM yet
+			(OSMWay.Category == TEXT("Pl")) ||
+			(OSMWay.Category == TEXT("St")) ||
+			(OSMWay.Category == TEXT("Ave")) ||
+			(OSMWay.Category == TEXT("Tunl")) ||
+			(OSMWay.Category == TEXT("Unclassified")) ||
+			(OSMWay.Category == TEXT("road")))
+			// @todo: Consider excluding "Road" from our data set, as it could be a highway that wasn't properly tagged in OSM yet
 			RoadType = EStreetMapRoadType::Street;
 		else if (
 			(OSMWay.Category == TEXT("tertiary")) ||	// ~4% of all highways
@@ -70,14 +76,18 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 			(OSMWay.Category == TEXT("tertiary_link")) ||
 			(OSMWay.Category == TEXT("raceway")))
 			RoadType = EStreetMapRoadType::MajorRoad;
-		else if( 
+		else if (
 			(OSMWay.Category == TEXT("primary")) || // ~2% of all highways
 			(OSMWay.Category == TEXT("primary_link")) ||
 			(OSMWay.Category == TEXT("motorway")) ||
 			(OSMWay.Category == TEXT("motorway_link")) ||
 			(OSMWay.Category == TEXT("trunk")) ||
+			(OSMWay.Category == TEXT("Fwy")) ||
 			(OSMWay.Category == TEXT("trunk_link")))
 			RoadType = EStreetMapRoadType::Highway;
+		else if (
+			(OSMWay.Category == TEXT("Brg")))
+			RoadType = EStreetMapRoadType::Bridge;
 
 		if (RoadType == EStreetMapRoadType::Other)
 		{
@@ -95,55 +105,55 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 
 		// Create a road for this way
 		OutRoadIndex = StreetMapRef.Roads.Num();
-		FStreetMapRoad& NewRoad = *new( StreetMapRef.Roads )FStreetMapRoad();
+		FStreetMapRoad& NewRoad = *new(StreetMapRef.Roads)FStreetMapRoad();
 
-		FVector2D BoundsMin( TNumericLimits<float>::Max(), TNumericLimits<float>::Max() );
-		FVector2D BoundsMax( TNumericLimits<float>::Lowest(), TNumericLimits<float>::Lowest() );
+		FVector2D BoundsMin(TNumericLimits<float>::Max(), TNumericLimits<float>::Max());
+		FVector2D BoundsMax(TNumericLimits<float>::Lowest(), TNumericLimits<float>::Lowest());
 
-		NewRoad.RoadPoints.AddUninitialized( OSMWay.Nodes.Num() );
+		NewRoad.RoadPoints.AddUninitialized(OSMWay.Nodes.Num());
 		int32 CurRoadPoint = 0;
 
 		// Set defaults for each node index on this road.  INDEX_NONE means the node is not valid, which may be the case
 		// for nodes that we filter out entirely.  This will be filled in by valid indices to nodes later on.
-		NewRoad.NodeIndices.AddUninitialized( OSMWay.Nodes.Num() );
-		for( int32& NodeIndex : NewRoad.NodeIndices )
+		NewRoad.NodeIndices.AddUninitialized(OSMWay.Nodes.Num());
+		for (int32& NodeIndex : NewRoad.NodeIndices)
 		{
 			NodeIndex = INDEX_NONE;
 		}
 
 
-		for( const FOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes )
+		for (const FOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes)
 		{
 			const FOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
 			const FVector2D NodePos = OSMFile.SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 
 			// Update bounding box
 			{
-				if( NodePos.X < BoundsMin.X )
+				if (NodePos.X < BoundsMin.X)
 				{
 					BoundsMin.X = NodePos.X;
 				}
-				if( NodePos.Y < BoundsMin.Y )
+				if (NodePos.Y < BoundsMin.Y)
 				{
 					BoundsMin.Y = NodePos.Y;
 				}
-				if( NodePos.X > BoundsMax.X )
+				if (NodePos.X > BoundsMax.X)
 				{
 					BoundsMax.X = NodePos.X;
 				}
-				if( NodePos.Y > BoundsMax.Y )
+				if (NodePos.Y > BoundsMax.Y)
 				{
 					BoundsMax.Y = NodePos.Y;
 				}
 			}
 
 			// Fill in the points
-			NewRoad.RoadPoints[ CurRoadPoint++ ] = NodePos;
+			NewRoad.RoadPoints[CurRoadPoint++] = NodePos;
 		}
 
 
 		NewRoad.RoadName = OSMWay.Name;
-		if( NewRoad.RoadName.IsEmpty() )
+		if (NewRoad.RoadName.IsEmpty())
 		{
 			NewRoad.RoadName = OSMWay.Ref;
 		}
@@ -153,20 +163,20 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 
 		NewRoad.bIsOneWay = OSMWay.bIsOneWay;
 
-		StreetMapRef.BoundsMin.X = FMath::Min( StreetMapRef.BoundsMin.X, BoundsMin.X );
-		StreetMapRef.BoundsMin.Y = FMath::Min( StreetMapRef.BoundsMin.Y, BoundsMin.Y );
-		StreetMapRef.BoundsMax.X = FMath::Max( StreetMapRef.BoundsMax.X, BoundsMax.X );
-		StreetMapRef.BoundsMax.Y = FMath::Max( StreetMapRef.BoundsMax.Y, BoundsMax.Y );
+		StreetMapRef.BoundsMin.X = FMath::Min(StreetMapRef.BoundsMin.X, BoundsMin.X);
+		StreetMapRef.BoundsMin.Y = FMath::Min(StreetMapRef.BoundsMin.Y, BoundsMin.Y);
+		StreetMapRef.BoundsMax.X = FMath::Max(StreetMapRef.BoundsMax.X, BoundsMax.X);
+		StreetMapRef.BoundsMax.Y = FMath::Max(StreetMapRef.BoundsMax.Y, BoundsMax.Y);
 
 		return true;
 	};
 
 
 	// Adds a building to the street map using the OpenStreetMap data, flattening the road's coordinates into our map's space
-	auto AddBuildingForWay = [OSMToCentimetersScaleFactor]( 
-		const FOSMFile& OSMFile, 
-		UStreetMap& StreetMapRef, 
-		const FOSMFile::FOSMWayInfo& OSMWay ) -> bool
+	auto AddBuildingForWay = [OSMToCentimetersScaleFactor](
+		const FOSMFile& OSMFile,
+		UStreetMap& StreetMapRef,
+		const FOSMFile::FOSMWayInfo& OSMWay) -> bool
 	{
 		// Require at least three points so that we don't have degenerate polygon!
 		if (OSMWay.Nodes.Num() < 3)
@@ -177,46 +187,46 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		}
 
 		// Create a building for this way
-		FStreetMapBuilding& NewBuilding = *new( StreetMapRef.Buildings )FStreetMapBuilding();
+		FStreetMapBuilding& NewBuilding = *new(StreetMapRef.Buildings)FStreetMapBuilding();
 
-		FVector2D BoundsMin( TNumericLimits<float>::Max(), TNumericLimits<float>::Max() );
-		FVector2D BoundsMax( TNumericLimits<float>::Lowest(), TNumericLimits<float>::Lowest() );
+		FVector2D BoundsMin(TNumericLimits<float>::Max(), TNumericLimits<float>::Max());
+		FVector2D BoundsMax(TNumericLimits<float>::Lowest(), TNumericLimits<float>::Lowest());
 
-		NewBuilding.BuildingPoints.AddUninitialized( OSMWay.Nodes.Num() );
+		NewBuilding.BuildingPoints.AddUninitialized(OSMWay.Nodes.Num());
 		int32 CurBuildingPoint = 0;
 
-		for( const FOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes )
+		for (const FOSMFile::FOSMNodeInfo* OSMNodePtr : OSMWay.Nodes)
 		{
 			const FOSMFile::FOSMNodeInfo& OSMNode = *OSMNodePtr;
 			const FVector2D NodePos = OSMFile.SpatialReferenceSystem.FromEPSG4326(OSMNode.Longitude, OSMNode.Latitude) * OSMToCentimetersScaleFactor;
 
 			// Update bounding box
 			{
-				if( NodePos.X < BoundsMin.X )
+				if (NodePos.X < BoundsMin.X)
 				{
 					BoundsMin.X = NodePos.X;
 				}
-				if( NodePos.Y < BoundsMin.Y )
+				if (NodePos.Y < BoundsMin.Y)
 				{
 					BoundsMin.Y = NodePos.Y;
 				}
-				if( NodePos.X > BoundsMax.X )
+				if (NodePos.X > BoundsMax.X)
 				{
 					BoundsMax.X = NodePos.X;
 				}
-				if( NodePos.Y > BoundsMax.Y )
+				if (NodePos.Y > BoundsMax.Y)
 				{
 					BoundsMax.Y = NodePos.Y;
 				}
 			}
 
 			// Fill in the points
-			NewBuilding.BuildingPoints[ CurBuildingPoint++ ] = NodePos;
+			NewBuilding.BuildingPoints[CurBuildingPoint++] = NodePos;
 		}
 
 		// Make sure the building ended up with a closed polygon, then remove the final (redundant) point
-		const bool bIsClosed = NewBuilding.BuildingPoints[ 0 ].Equals( NewBuilding.BuildingPoints[ NewBuilding.BuildingPoints.Num() - 1 ], KINDA_SMALL_NUMBER );
-		if( bIsClosed )
+		const bool bIsClosed = NewBuilding.BuildingPoints[0].Equals(NewBuilding.BuildingPoints[NewBuilding.BuildingPoints.Num() - 1], KINDA_SMALL_NUMBER);
+		if (bIsClosed)
 		{
 			// Remove the final redundant point
 			NewBuilding.BuildingPoints.Pop();
@@ -229,7 +239,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		}
 
 		NewBuilding.BuildingName = OSMWay.Name;
-		if( NewBuilding.BuildingName.IsEmpty() )
+		if (NewBuilding.BuildingName.IsEmpty())
 		{
 			NewBuilding.BuildingName = OSMWay.Ref;
 		}
@@ -240,10 +250,10 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		NewBuilding.BoundsMin = BoundsMin;
 		NewBuilding.BoundsMax = BoundsMax;
 
-		StreetMapRef.BoundsMin.X = FMath::Min( StreetMapRef.BoundsMin.X, BoundsMin.X );
-		StreetMapRef.BoundsMin.Y = FMath::Min( StreetMapRef.BoundsMin.Y, BoundsMin.Y );
-		StreetMapRef.BoundsMax.X = FMath::Max( StreetMapRef.BoundsMax.X, BoundsMax.X );
-		StreetMapRef.BoundsMax.Y = FMath::Max( StreetMapRef.BoundsMax.Y, BoundsMax.Y );
+		StreetMapRef.BoundsMin.X = FMath::Min(StreetMapRef.BoundsMin.X, BoundsMin.X);
+		StreetMapRef.BoundsMin.Y = FMath::Min(StreetMapRef.BoundsMin.Y, BoundsMin.Y);
+		StreetMapRef.BoundsMax.X = FMath::Max(StreetMapRef.BoundsMax.X, BoundsMax.X);
+		StreetMapRef.BoundsMax.Y = FMath::Max(StreetMapRef.BoundsMax.Y, BoundsMax.Y);
 
 		return true;
 	};
@@ -409,9 +419,9 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 		NewMiscWay.Type = EStreetMapMiscWayType::Unknown;
 		switch (OSMWay.WayType)
 		{
-			case FOSMFile::EOSMWayType::Leisure: NewMiscWay.Type = EStreetMapMiscWayType::Leisure; break;
-			case FOSMFile::EOSMWayType::Natural: NewMiscWay.Type = EStreetMapMiscWayType::Natural; break;
-			case FOSMFile::EOSMWayType::LandUse: NewMiscWay.Type = EStreetMapMiscWayType::LandUse; break;
+		case FOSMFile::EOSMWayType::Leisure: NewMiscWay.Type = EStreetMapMiscWayType::Leisure; break;
+		case FOSMFile::EOSMWayType::Natural: NewMiscWay.Type = EStreetMapMiscWayType::Natural; break;
+		case FOSMFile::EOSMWayType::LandUse: NewMiscWay.Type = EStreetMapMiscWayType::LandUse; break;
 		}
 
 		NewMiscWay.Name = OSMWay.Name;
@@ -484,9 +494,9 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 				}
 			}
 
-		// TODO: we can create misc ways but have to keep the outer and inner relations somehow for advanced cases
-		// all inner polygons having influence on the layer painting. it should work as inner ways are added later and repaint the area - or not???
-		// or we add a special drawing function to the CreateLandscape() function on how to handle multipolygons
+			// TODO: we can create misc ways but have to keep the outer and inner relations somehow for advanced cases
+			// all inner polygons having influence on the layer painting. it should work as inner ways are added later and repaint the area - or not???
+			// or we add a special drawing function to the CreateLandscape() function on how to handle multipolygons
 		}
 
 		return false;
@@ -495,7 +505,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 
 	// Load up the OSM file.  It's in XML format.
 	FOSMFile OSMFile;
-	if( !OSMFile.LoadOpenStreetMapFile( OSMFilePath, bIsFilePathActuallyTextBuffer, FeedbackContext ) )
+	if (!OSMFile.LoadOpenStreetMapFile(OSMFilePath, bIsFilePathActuallyTextBuffer, FeedbackContext))
 	{
 		// Loading failed.  The actual error message will be sent to the FeedbackContext's log.
 		return false;
@@ -515,25 +525,25 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile( UStreetMap* StreetMap, FSt
 	TMap< const FOSMFile::FOSMWayInfo*, int32 > OSMWayToRoadIndexMap;
 	TMap< const FOSMFile::FOSMWayInfo*, int32 > OSMWayToRailwayIndexMap;
 
-	StreetMap->BoundsMin = FVector2D( TNumericLimits<float>::Max(), TNumericLimits<float>::Max() );
-	StreetMap->BoundsMax = FVector2D( TNumericLimits<float>::Lowest(), TNumericLimits<float>::Lowest() );
+	StreetMap->BoundsMin = FVector2D(TNumericLimits<float>::Max(), TNumericLimits<float>::Max());
+	StreetMap->BoundsMax = FVector2D(TNumericLimits<float>::Lowest(), TNumericLimits<float>::Lowest());
 
-	for( const FOSMFile::FOSMWayInfo* OSMWay : OSMFile.Ways )
+	for (const FOSMFile::FOSMWayInfo* OSMWay : OSMFile.Ways)
 	{
 		// Handle buildings differently than roads
-		if( OSMWay->WayType == FOSMFile::EOSMWayType::Building )
+		if (OSMWay->WayType == FOSMFile::EOSMWayType::Building)
 		{
-			if( AddBuildingForWay( OSMFile, *StreetMap, *OSMWay ) )
+			if (AddBuildingForWay(OSMFile, *StreetMap, *OSMWay))
 			{
 				// ...
 			}
 		}
-		else if( OSMWay->WayType == FOSMFile::EOSMWayType::Highway )
+		else if (OSMWay->WayType == FOSMFile::EOSMWayType::Highway)
 		{
 			int32 RoadIndex = INDEX_NONE;
-			if( AddRoadForWay( OSMFile, *StreetMap, *OSMWay, RoadIndex ) )
+			if (AddRoadForWay(OSMFile, *StreetMap, *OSMWay, RoadIndex))
 			{
-				OSMWayToRoadIndexMap.Add( OSMWay, RoadIndex );
+				OSMWayToRoadIndexMap.Add(OSMWay, RoadIndex);
 			}
 		}
 		else if (OSMWay->WayType == FOSMFile::EOSMWayType::Railway)
