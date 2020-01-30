@@ -446,9 +446,12 @@ enum EStreetMapRoadType
 	
 	/** Highway */
 	Highway,
+
+	/** Bridge */
+	Bridge,
 	
 	/** Other (path, bus route, etc) */
-	Other,
+	Other
 };
 
 
