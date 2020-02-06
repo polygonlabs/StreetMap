@@ -25,16 +25,11 @@ public:
 	/** Handles create static mesh asset button clicking */
 	FReply OnCreateStaticMeshAssetClicked();
 
+	void CreateStaticMeshAsset(FString UserPackageName, FName MeshName, TArray<FStreetMapVertex> RawMeshVertices, TArray<uint32> RawMeshIndices);
+
 	/** Handles build/rebuild mesh button clicking */
 	FReply OnBuildMeshClicked();
-
-	/** Handles build/rebuild road mesh button clicking */
-	FReply OnBuildRoadMeshClicked();
-
-	FReply OnIncRoadThicknessClicked();
-
-	FReply OnDecRoadThicknessClicked();
-	
+		
 	/** Handles clear mesh button clicking */
 	FReply OnClearMeshClicked();
 
@@ -70,9 +65,9 @@ public:
 
 protected:
 	/** Holds Selected Street Map Component */
-	 class UStreetMapComponent* SelectedStreetMapComponent;
+	class UStreetMapComponent* SelectedStreetMapComponent;
 
-	 /** Holds Last Detail Builder Pointer */
-	 IDetailLayoutBuilder*  LastDetailBuilderPtr;
+	/** Holds Last Detail Builder Pointer */
+	IDetailLayoutBuilder*  LastDetailBuilderPtr;
 
 };

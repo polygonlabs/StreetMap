@@ -14,7 +14,7 @@ class UBodySetup;
 /**
  * Component that represents a section of street map roads and buildings
  */
-UCLASS( meta=(BlueprintSpawnableComponent) , hidecategories = (Physics))
+UCLASS(meta = (BlueprintSpawnableComponent), hidecategories = (Physics))
 class STREETMAPRUNTIME_API UStreetMapComponent : public UMeshComponent, public IInterface_CollisionDataProvider
 {
 	GENERATED_BODY()
@@ -26,7 +26,7 @@ public:
 
 	/** @return Gets the street map object associated with this component */
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-	UStreetMap* GetStreetMap()
+		UStreetMap* GetStreetMap()
 	{
 		return StreetMap;
 	}
@@ -37,19 +37,40 @@ public:
 	/** Returns true if we have valid cached mesh data from our assigned street map asset */
 	bool HasValidMesh() const
 	{
-		return Vertices.Num() != 0 && Indices.Num() != 0;
+		return (StreetVertices.Num() != 0 && StreetIndices.Num() != 0) ||
+			(MajorRoadVertices.Num() != 0 && MajorRoadIndices.Num() != 0) ||
+			(HighwayVertices.Num() != 0 && HighwayIndices.Num() != 0) ||
+			(BuildingVertices.Num() != 0 && BuildingIndices.Num() != 0);
 	}
 
 	/** Returns Cached raw mesh vertices */
-	TArray< struct FStreetMapVertex > GetRawMeshVertices() const
+	TArray< struct FStreetMapVertex > GetRawMeshVertices(EVertexType type) const
 	{
-		return Vertices;
+		switch (type) {
+		case EVertexType::VBuilding:
+			return BuildingVertices;
+		case EVertexType::VMajorRoad:
+			return MajorRoadVertices;
+		case EVertexType::VHighway:
+			return HighwayVertices;
+		default:
+			return StreetVertices;
+		}
 	}
 
 	/** Returns Cached raw mesh triangle indices */
-	TArray< uint32 > GetRawMeshIndices() const
+	TArray< uint32 > GetRawMeshIndices(EVertexType type) const
 	{
-		return Indices;
+		switch (type) {
+		case EVertexType::VBuilding:
+			return BuildingIndices;
+		case EVertexType::VMajorRoad:
+			return MajorRoadIndices;
+		case EVertexType::VHighway:
+			return HighwayIndices;
+		default:
+			return StreetIndices;
+		}
 	}
 
 	/**
@@ -62,7 +83,7 @@ public:
 	}
 
 	/** Returns true, if the input PropertyName correspond to a collision property. */
-	bool IsCollisionProperty(const FName& PropertyName) const 
+	bool IsCollisionProperty(const FName& PropertyName) const
 	{
 		return PropertyName == TEXT("bGenerateCollision") || PropertyName == TEXT("bAllowDoubleSidedGeometry");
 	}
@@ -128,14 +149,19 @@ public:
 	/** Rebuilds the graphics and physics mesh representation if we don't have one right now.  Designed to be called on demand. */
 	void BuildMesh();
 
-	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void BuildRoadMesh();
+	void BuildRoadMesh(EStreetMapRoadType Type);
+
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, int64 ID);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void IncreaseRoadThickness(float val);
+		void ChangeStreetThickness(float val, EStreetMapRoadType type);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void DecreaseRoadThickness(float val);
+		void ChangeStreetColor(FLinearColor val, EStreetMapRoadType type);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void ChangeStreetColorByID(FLinearColor val, EStreetMapRoadType type, int64 ID);
 
 protected:
 
@@ -149,10 +175,10 @@ protected:
 	void GenerateMesh();
 
 	/** Adds a 2D line to the raw mesh */
-	void AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox);
+	void AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices, int64 ID = -1, FString TMC = "");
 
 	/** Adds 3D triangles to the raw mesh */
-	void AddTriangles(const TArray<FVector>& Points, const TArray<int32>& PointIndices, const FVector& ForwardVector, const FVector& UpVector, const FColor& Color, FBox& MeshBoundingBox);
+	void AddTriangles(const TArray<FVector>& Points, const TArray<int32>& PointIndices, const FVector& ForwardVector, const FVector& UpVector, const FColor& Color, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices);
 
 
 protected:
@@ -160,10 +186,7 @@ protected:
 	/** The street map we're representing. */
 	UPROPERTY(EditAnywhere, Category = "StreetMap")
 		UStreetMap* StreetMap;
-
-	UPROPERTY(EditAnywhere, Category = "StreetMap")
-		FStreetMapRoadMeshBuildSettings RoadMeshBuildSettings;
-
+	
 	UPROPERTY(EditAnywhere, Category = "StreetMap")
 		FStreetMapMeshBuildSettings MeshBuildSettings;
 
@@ -195,11 +218,23 @@ protected:
 
 	/** Cached raw mesh vertices */
 	UPROPERTY()
-		TArray< struct FStreetMapVertex > Vertices;
+		TArray< struct FStreetMapVertex > StreetVertices;
+	UPROPERTY()
+		TArray< struct FStreetMapVertex > MajorRoadVertices;
+	UPROPERTY()
+		TArray< struct FStreetMapVertex > HighwayVertices;
+	UPROPERTY()
+		TArray< struct FStreetMapVertex > BuildingVertices;
 
 	/** Cached raw mesh triangle indices */
 	UPROPERTY()
-		TArray< uint32 > Indices;
+		TArray< uint32 > StreetIndices;
+	UPROPERTY()
+		TArray< uint32 > MajorRoadIndices;
+	UPROPERTY()
+		TArray< uint32 > HighwayIndices;
+	UPROPERTY()
+		TArray< uint32 > BuildingIndices;
 
 	/** Cached bounding box */
 	UPROPERTY()
@@ -208,7 +243,4 @@ protected:
 	/** Cached StreetMap DefaultMaterial */
 	UPROPERTY()
 		UMaterialInterface* StreetMapDefaultMaterial;
-
-private:
-	double _widthCoefficient = 1.0;
 };

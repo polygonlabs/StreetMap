@@ -103,6 +103,7 @@ bool FOSMFile::ProcessElement( const TCHAR* ElementName, const TCHAR* ElementDat
 			CurrentWayInfo = new FOSMWayInfo();
 			CurrentWayInfo->Name.Empty();
 			CurrentWayInfo->Ref.Empty();
+			CurrentWayInfo->TMC.Empty();
 			CurrentWayInfo->WayType = EOSMWayType::Other;
 			CurrentWayInfo->Height = 0.0;
 			CurrentWayInfo->bIsOneWay = false;
@@ -249,6 +250,14 @@ bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* Attrib
 			if( !FCString::Stricmp( CurrentWayTagKey, TEXT( "name" ) ) )
 			{
 				CurrentWayInfo->Name = AttributeValue;
+			}
+			else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("link_id")))
+			{
+				CurrentWayInfo->Id = FPlatformString::Atoi64(AttributeValue);
+			}
+			else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("tmc_link_id")))
+			{
+				CurrentWayInfo->TMC = AttributeValue;
 			}
 			else if( !FCString::Stricmp( CurrentWayTagKey, TEXT( "ref" ) ) )
 			{

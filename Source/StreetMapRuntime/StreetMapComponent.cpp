@@ -20,8 +20,8 @@
 
 UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
-	  StreetMap(nullptr),
-	  CachedLocalBounds(FBox(ForceInitToZero))
+	StreetMap(nullptr),
+	CachedLocalBounds(FBox(ForceInitToZero))
 {
 	// We make sure our mesh collision profile name is set to NoCollisionProfileName at initialization. 
 	// Because we don't have collision data yet!
@@ -77,12 +77,15 @@ FPrimitiveSceneProxy* UStreetMapComponent::CreateSceneProxy()
 {
 	FStreetMapSceneProxy* StreetMapSceneProxy = nullptr;
 
-	if( HasValidMesh() )
+	if (HasValidMesh())
 	{
-		StreetMapSceneProxy = new FStreetMapSceneProxy( this );
-		StreetMapSceneProxy->Init( this, Vertices, Indices );
+		StreetMapSceneProxy = new FStreetMapSceneProxy(this);
+		StreetMapSceneProxy->Init(this, EVertexType::VBuilding, BuildingVertices, BuildingIndices);
+		StreetMapSceneProxy->Init(this, EVertexType::VStreet, StreetVertices, StreetIndices);
+		StreetMapSceneProxy->Init(this, EVertexType::VMajorRoad, MajorRoadVertices, MajorRoadIndices);
+		StreetMapSceneProxy->Init(this, EVertexType::VHighway, HighwayVertices, HighwayIndices);
 	}
-	
+
 	return StreetMapSceneProxy;
 }
 
@@ -113,31 +116,30 @@ void UStreetMapComponent::SetStreetMap(class UStreetMap* NewStreetMap, bool bCle
 
 bool UStreetMapComponent::GetPhysicsTriMeshData(struct FTriMeshCollisionData* CollisionData, bool InUseAllTriData)
 {
-
 	if (!CollisionSettings.bGenerateCollision || !HasValidMesh())
 	{
 		return false;
 	}
 
 	// Copy vertices data
-	const int32 NumVertices = Vertices.Num();
+	const int32 NumVertices = BuildingVertices.Num();
 	CollisionData->Vertices.Empty();
 	CollisionData->Vertices.AddUninitialized(NumVertices);
 
 	for (int32 VertexIndex = 0; VertexIndex < NumVertices; VertexIndex++)
 	{
-		CollisionData->Vertices[VertexIndex] = Vertices[VertexIndex].Position;
+		CollisionData->Vertices[VertexIndex] = BuildingVertices[VertexIndex].Position;
 	}
 
 	// Copy indices data
-	const int32 NumTriangles = Indices.Num() / 3;
+	const int32 NumTriangles = BuildingIndices.Num() / 3;
 	FTriIndices TempTriangle;
 	for (int32 TriangleIndex = 0; TriangleIndex < NumTriangles * 3; TriangleIndex += 3)
 	{
 
-		TempTriangle.v0 = Indices[TriangleIndex + 0];
-		TempTriangle.v1 = Indices[TriangleIndex + 1];
-		TempTriangle.v2 = Indices[TriangleIndex + 2];
+		TempTriangle.v0 = BuildingIndices[TriangleIndex + 0];
+		TempTriangle.v1 = BuildingIndices[TriangleIndex + 1];
+		TempTriangle.v2 = BuildingIndices[TriangleIndex + 2];
 
 
 		CollisionData->Indices.Add(TempTriangle);
@@ -245,24 +247,31 @@ void UStreetMapComponent::GenerateMesh()
 	const bool bWantLitBuildings = MeshBuildSettings.bWantLitBuildings;
 	const bool bWantBuildingBorderOnGround = !bWant3DBuildings;
 	const float StreetThickness = MeshBuildSettings.StreetThickness;
-	const FColor StreetColor = MeshBuildSettings.StreetColor.ToFColor( false );
+	const FColor StreetColor = MeshBuildSettings.StreetColor.ToFColor(false);
 	const float MajorRoadThickness = MeshBuildSettings.MajorRoadThickness;
-	const FColor MajorRoadColor = MeshBuildSettings.MajorRoadColor.ToFColor( false );
+	const FColor MajorRoadColor = MeshBuildSettings.MajorRoadColor.ToFColor(false);
 	const float HighwayThickness = MeshBuildSettings.HighwayThickness;
-	const FColor HighwayColor = MeshBuildSettings.HighwayColor.ToFColor( false );
+	const FColor HighwayColor = MeshBuildSettings.HighwayColor.ToFColor(false);
 	const float BuildingBorderThickness = MeshBuildSettings.BuildingBorderThickness;
 	FLinearColor BuildingBorderLinearColor = MeshBuildSettings.BuildingBorderLinearColor;
 	const float BuildingBorderZ = MeshBuildSettings.BuildingBorderZ;
-	const FColor BuildingBorderColor( BuildingBorderLinearColor.ToFColor( false ) );
-	const FColor BuildingFillColor( FLinearColor( BuildingBorderLinearColor * 0.33f ).CopyWithNewOpacity( 1.0f ).ToFColor( false ) );
+	const FColor BuildingBorderColor(BuildingBorderLinearColor.ToFColor(false));
+	const FColor BuildingFillColor(FLinearColor(BuildingBorderLinearColor * 0.33f).CopyWithNewOpacity(1.0f).ToFColor(false));
 	/////////////////////////////////////////////////////////
 
 
 	CachedLocalBounds = FBox(ForceInitToZero);
-	Vertices.Reset();
-	Indices.Reset();
 
-	if( StreetMap != nullptr )
+	BuildingVertices.Reset();
+	BuildingIndices.Reset();
+	StreetVertices.Reset();
+	StreetIndices.Reset();
+	MajorRoadVertices.Reset();
+	MajorRoadIndices.Reset();
+	HighwayVertices.Reset();
+	HighwayIndices.Reset();
+
+	if (StreetMap != nullptr)
 	{
 		FBox MeshBoundingBox;
 		MeshBoundingBox.Init();
@@ -271,50 +280,108 @@ void UStreetMapComponent::GenerateMesh()
 		const auto& Nodes = StreetMap->GetNodes();
 		const auto& Buildings = StreetMap->GetBuildings();
 
-		for( const auto& Road : Roads )
+		for (const auto& Road : Roads)
 		{
 			float RoadThickness = StreetThickness;
 			FColor RoadColor = StreetColor;
-			switch( Road.RoadType )
+			EVertexType Type = EVertexType::VStreet;
+			switch (Road.RoadType)
 			{
-				case EStreetMapRoadType::Highway:
-					RoadThickness = HighwayThickness;
-					RoadColor = HighwayColor;
-					break;
-					
-				case EStreetMapRoadType::MajorRoad:
-					RoadThickness = MajorRoadThickness;
-					RoadColor = MajorRoadColor;
-					break;
-					
-				case EStreetMapRoadType::Street:
-				case EStreetMapRoadType::Other:
-					break;
-					
-				default:
-					check( 0 );
-					break;
+			case EStreetMapRoadType::Highway:
+				RoadThickness = HighwayThickness;
+				RoadColor = HighwayColor;
+				Type = EVertexType::VHighway;
+				break;
+
+			case EStreetMapRoadType::MajorRoad:
+				RoadThickness = MajorRoadThickness;
+				RoadColor = MajorRoadColor;
+				Type = EVertexType::VMajorRoad;
+				break;
+
+			case EStreetMapRoadType::Street:
+			case EStreetMapRoadType::Other:
+			case EStreetMapRoadType::Bridge:
+				break;
+
+			default:
+				check(0);
+				break;
 			}
-			
-			for( int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex )
+
+			for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
 			{
-				AddThick2DLine( 
-					Road.RoadPoints[ PointIndex ],
-					Road.RoadPoints[ PointIndex + 1 ],
-					RoadZ,
-					RoadThickness,
-					RoadColor,
-					RoadColor,
-					MeshBoundingBox );
+				switch (Type) {
+				case EVertexType::VStreet:
+					AddThick2DLine(
+						Road.RoadPoints[PointIndex],
+						Road.RoadPoints[PointIndex + 1],
+						RoadZ,
+						RoadThickness,
+						RoadColor,
+						RoadColor,
+						MeshBoundingBox,
+						StreetVertices,
+						StreetIndices,
+						Road.ID,
+						Road.TMC
+					);
+					break;
+				case EVertexType::VMajorRoad:
+					AddThick2DLine(
+						Road.RoadPoints[PointIndex],
+						Road.RoadPoints[PointIndex + 1],
+						RoadZ,
+						RoadThickness,
+						RoadColor,
+						RoadColor,
+						MeshBoundingBox,
+						MajorRoadVertices,
+						MajorRoadIndices,
+						Road.ID,
+						Road.TMC
+					);
+					break;
+				case EVertexType::VHighway:
+					AddThick2DLine(
+						Road.RoadPoints[PointIndex],
+						Road.RoadPoints[PointIndex + 1],
+						RoadZ,
+						RoadThickness,
+						RoadColor,
+						RoadColor,
+						MeshBoundingBox,
+						HighwayVertices,
+						HighwayIndices,
+						Road.ID,
+						Road.TMC
+					);
+					break;
+				case EVertexType::VBuilding:
+					AddThick2DLine(
+						Road.RoadPoints[PointIndex],
+						Road.RoadPoints[PointIndex + 1],
+						RoadZ,
+						RoadThickness,
+						RoadColor,
+						RoadColor,
+						MeshBoundingBox,
+						BuildingVertices,
+						BuildingIndices,
+						Road.ID,
+						Road.TMC
+					);
+					break;
+				}
 			}
 		}
-		
+
 		TArray< int32 > TempIndices;
 		TArray< int32 > TriangulatedVertexIndices;
 		TArray< FVector > TempPoints;
-		for( int32 BuildingIndex = 0; BuildingIndex < Buildings.Num(); ++BuildingIndex )
+		for (int32 BuildingIndex = 0; BuildingIndex < Buildings.Num(); ++BuildingIndex)
 		{
-			const auto& Building = Buildings[ BuildingIndex ];
+			const auto& Building = Buildings[BuildingIndex];
 
 			// Building mesh (or filled area, if the building has no height)
 
@@ -322,12 +389,12 @@ void UStreetMapComponent::GenerateMesh()
 			// @todo: Performance: Triangulating lots of building polygons is quite slow.  We could easily do this 
 			//        as part of the import process and store tessellated geometry instead of doing this at load time.
 			bool WindsClockwise;
-			if( FPolygonTools::TriangulatePolygon( Building.BuildingPoints, TempIndices, /* Out */ TriangulatedVertexIndices, /* Out */ WindsClockwise ) )
+			if (FPolygonTools::TriangulatePolygon(Building.BuildingPoints, TempIndices, /* Out */ TriangulatedVertexIndices, /* Out */ WindsClockwise))
 			{
 				// @todo: Performance: We could preprocess the building shapes so that the points always wind
 				//        in a consistent direction, so we can skip determining the winding above.
 
-				const int32 FirstTopVertexIndex = this->Vertices.Num();
+				const int32 FirstTopVertexIndex = this->BuildingVertices.Num();
 
 				// calculate fill Z for buildings
 				// either use the defined height or extrapolate from building level count
@@ -339,70 +406,70 @@ void UStreetMapComponent::GenerateMesh()
 					else if (Building.BuildingLevels > 0) {
 						BuildingFillZ = (float)Building.BuildingLevels * BuildingLevelFloorFactor;
 					}
-				}		
+				}
 
 				// Top of building
 				{
-					TempPoints.SetNum( Building.BuildingPoints.Num(), false );
-					for( int32 PointIndex = 0; PointIndex < Building.BuildingPoints.Num(); ++PointIndex )
+					TempPoints.SetNum(Building.BuildingPoints.Num(), false);
+					for (int32 PointIndex = 0; PointIndex < Building.BuildingPoints.Num(); ++PointIndex)
 					{
-						TempPoints[ PointIndex ] = FVector( Building.BuildingPoints[ ( Building.BuildingPoints.Num() - PointIndex ) - 1 ], BuildingFillZ );
+						TempPoints[PointIndex] = FVector(Building.BuildingPoints[(Building.BuildingPoints.Num() - PointIndex) - 1], BuildingFillZ);
 					}
-					AddTriangles( TempPoints, TriangulatedVertexIndices, FVector::ForwardVector, FVector::UpVector, BuildingFillColor, MeshBoundingBox );
+					AddTriangles(TempPoints, TriangulatedVertexIndices, FVector::ForwardVector, FVector::UpVector, BuildingFillColor, MeshBoundingBox, BuildingVertices, BuildingIndices);
 				}
 
-				if( bWant3DBuildings && (Building.Height > KINDA_SMALL_NUMBER || Building.BuildingLevels > 0 || MeshBuildSettings.BuildDefaultZ > 0.0) )
+				if (bWant3DBuildings && (Building.Height > KINDA_SMALL_NUMBER || Building.BuildingLevels > 0 || MeshBuildSettings.BuildDefaultZ > 0.0))
 				{
 					// NOTE: Lit buildings can't share vertices beyond quads (all quads have their own face normals), so this uses a lot more geometry!
-					if( bWantLitBuildings )
+					if (bWantLitBuildings)
 					{
 						// Create edges for the walls of the 3D buildings
-						for( int32 LeftPointIndex = 0; LeftPointIndex < Building.BuildingPoints.Num(); ++LeftPointIndex )
+						for (int32 LeftPointIndex = 0; LeftPointIndex < Building.BuildingPoints.Num(); ++LeftPointIndex)
 						{
-							const int32 RightPointIndex = ( LeftPointIndex + 1 ) % Building.BuildingPoints.Num();
+							const int32 RightPointIndex = (LeftPointIndex + 1) % Building.BuildingPoints.Num();
 
-							TempPoints.SetNum( 4, false );
+							TempPoints.SetNum(4, false);
 
 							const int32 TopLeftVertexIndex = 0;
-							TempPoints[ TopLeftVertexIndex ] = FVector( Building.BuildingPoints[ WindsClockwise ? RightPointIndex : LeftPointIndex ], BuildingFillZ );
+							TempPoints[TopLeftVertexIndex] = FVector(Building.BuildingPoints[WindsClockwise ? RightPointIndex : LeftPointIndex], BuildingFillZ);
 
 							const int32 TopRightVertexIndex = 1;
-							TempPoints[ TopRightVertexIndex ] = FVector( Building.BuildingPoints[ WindsClockwise ? LeftPointIndex : RightPointIndex ], BuildingFillZ );
+							TempPoints[TopRightVertexIndex] = FVector(Building.BuildingPoints[WindsClockwise ? LeftPointIndex : RightPointIndex], BuildingFillZ);
 
 							const int32 BottomRightVertexIndex = 2;
-							TempPoints[ BottomRightVertexIndex ] = FVector( Building.BuildingPoints[ WindsClockwise ? LeftPointIndex : RightPointIndex ], 0.0f );
+							TempPoints[BottomRightVertexIndex] = FVector(Building.BuildingPoints[WindsClockwise ? LeftPointIndex : RightPointIndex], 0.0f);
 
 							const int32 BottomLeftVertexIndex = 3;
-							TempPoints[ BottomLeftVertexIndex ] = FVector( Building.BuildingPoints[ WindsClockwise ? RightPointIndex : LeftPointIndex ], 0.0f );
+							TempPoints[BottomLeftVertexIndex] = FVector(Building.BuildingPoints[WindsClockwise ? RightPointIndex : LeftPointIndex], 0.0f);
 
 
-							TempIndices.SetNum( 6, false );
+							TempIndices.SetNum(6, false);
 
-							TempIndices[ 0 ] = BottomLeftVertexIndex;
-							TempIndices[ 1 ] = TopLeftVertexIndex;
-							TempIndices[ 2 ] = BottomRightVertexIndex;
+							TempIndices[0] = BottomLeftVertexIndex;
+							TempIndices[1] = TopLeftVertexIndex;
+							TempIndices[2] = BottomRightVertexIndex;
 
-							TempIndices[ 3 ] = BottomRightVertexIndex;
-							TempIndices[ 4 ] = TopLeftVertexIndex;
-							TempIndices[ 5 ] = TopRightVertexIndex;
+							TempIndices[3] = BottomRightVertexIndex;
+							TempIndices[4] = TopLeftVertexIndex;
+							TempIndices[5] = TopRightVertexIndex;
 
-							const FVector FaceNormal = FVector::CrossProduct( ( TempPoints[ 0 ] - TempPoints[ 2 ] ).GetSafeNormal(), ( TempPoints[ 0 ] - TempPoints[ 1 ] ).GetSafeNormal() );
+							const FVector FaceNormal = FVector::CrossProduct((TempPoints[0] - TempPoints[2]).GetSafeNormal(), (TempPoints[0] - TempPoints[1]).GetSafeNormal());
 							const FVector ForwardVector = FVector::UpVector;
 							const FVector UpVector = FaceNormal;
-							AddTriangles( TempPoints, TempIndices, ForwardVector, UpVector, BuildingFillColor, MeshBoundingBox );
+							AddTriangles(TempPoints, TempIndices, ForwardVector, UpVector, BuildingFillColor, MeshBoundingBox, BuildingVertices, BuildingIndices);
 						}
 					}
 					else
 					{
 						// Create vertices for the bottom
-						const int32 FirstBottomVertexIndex = this->Vertices.Num();
-						for( int32 PointIndex = 0; PointIndex < Building.BuildingPoints.Num(); ++PointIndex )
+						const int32 FirstBottomVertexIndex = this->BuildingVertices.Num();
+						for (int32 PointIndex = 0; PointIndex < Building.BuildingPoints.Num(); ++PointIndex)
 						{
-							const FVector2D Point = Building.BuildingPoints[ PointIndex ];
+							const FVector2D Point = Building.BuildingPoints[PointIndex];
 
-							FStreetMapVertex& NewVertex = *new( this->Vertices )FStreetMapVertex();
-							NewVertex.Position = FVector( Point, 0.0f );
-							NewVertex.TextureCoordinate = FVector2D( 0.0f, 0.0f );	// NOTE: We're not using texture coordinates for anything yet
+							FStreetMapVertex& NewVertex = *new(this->BuildingVertices)FStreetMapVertex();
+							NewVertex.Position = FVector(Point, 0.0f);
+							NewVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);	// NOTE: We're not using texture coordinates for anything yet
 							NewVertex.TangentX = FVector::ForwardVector;	 // NOTE: Tangents aren't important for these unlit buildings
 							NewVertex.TangentZ = FVector::UpVector;
 							NewVertex.Color = BuildingFillColor;
@@ -411,22 +478,22 @@ void UStreetMapComponent::GenerateMesh()
 						}
 
 						// Create edges for the walls of the 3D buildings
-						for( int32 LeftPointIndex = 0; LeftPointIndex < Building.BuildingPoints.Num(); ++LeftPointIndex )
+						for (int32 LeftPointIndex = 0; LeftPointIndex < Building.BuildingPoints.Num(); ++LeftPointIndex)
 						{
-							const int32 RightPointIndex = ( LeftPointIndex + 1 ) % Building.BuildingPoints.Num();
+							const int32 RightPointIndex = (LeftPointIndex + 1) % Building.BuildingPoints.Num();
 
 							const int32 BottomLeftVertexIndex = FirstBottomVertexIndex + LeftPointIndex;
 							const int32 BottomRightVertexIndex = FirstBottomVertexIndex + RightPointIndex;
 							const int32 TopRightVertexIndex = FirstTopVertexIndex + RightPointIndex;
 							const int32 TopLeftVertexIndex = FirstTopVertexIndex + LeftPointIndex;
 
-							this->Indices.Add( BottomLeftVertexIndex );
-							this->Indices.Add( TopLeftVertexIndex );
-							this->Indices.Add( BottomRightVertexIndex );
+							this->BuildingIndices.Add(BottomLeftVertexIndex);
+							this->BuildingIndices.Add(TopLeftVertexIndex);
+							this->BuildingIndices.Add(BottomRightVertexIndex);
 
-							this->Indices.Add( BottomRightVertexIndex );
-							this->Indices.Add( TopLeftVertexIndex );
-							this->Indices.Add( TopRightVertexIndex );
+							this->BuildingIndices.Add(BottomRightVertexIndex);
+							this->BuildingIndices.Add(TopLeftVertexIndex);
+							this->BuildingIndices.Add(TopRightVertexIndex);
 						}
 					}
 				}
@@ -438,18 +505,20 @@ void UStreetMapComponent::GenerateMesh()
 			}
 
 			// Building border
-			if( bWantBuildingBorderOnGround )
+			if (bWantBuildingBorderOnGround)
 			{
-				for( int32 PointIndex = 0; PointIndex < Building.BuildingPoints.Num(); ++PointIndex )
+				for (int32 PointIndex = 0; PointIndex < Building.BuildingPoints.Num(); ++PointIndex)
 				{
 					AddThick2DLine(
-						Building.BuildingPoints[ PointIndex ],
-						Building.BuildingPoints[ ( PointIndex + 1 ) % Building.BuildingPoints.Num() ],
+						Building.BuildingPoints[PointIndex],
+						Building.BuildingPoints[(PointIndex + 1) % Building.BuildingPoints.Num()],
 						BuildingBorderZ,
 						BuildingBorderThickness,		// Thickness
 						BuildingBorderColor,
 						BuildingBorderColor,
-						MeshBoundingBox );
+						MeshBoundingBox,
+						BuildingVertices,
+						BuildingIndices);
 				}
 			}
 		}
@@ -458,23 +527,34 @@ void UStreetMapComponent::GenerateMesh()
 	}
 }
 
-void UStreetMapComponent::BuildRoadMesh()
+void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 {
 	/////////////////////////////////////////////////////////
 	// Visual tweakables for generated Street Map mesh
 	//
-	const float RoadZ = RoadMeshBuildSettings.RoadOffsetZ;
-	const float StreetThickness = RoadMeshBuildSettings.StreetThickness;
-	const FColor StreetColor = RoadMeshBuildSettings.StreetColor.ToFColor(false);
-	const float MajorRoadThickness = RoadMeshBuildSettings.MajorRoadThickness;
-	const FColor MajorRoadColor = RoadMeshBuildSettings.MajorRoadColor.ToFColor(false);
-	const float HighwayThickness = RoadMeshBuildSettings.HighwayThickness;
-	const FColor HighwayColor = RoadMeshBuildSettings.HighwayColor.ToFColor(false);
+	const float RoadZ = MeshBuildSettings.RoadOffsetZ;
+	const float StreetThickness = MeshBuildSettings.StreetThickness;
+	const FColor StreetColor = MeshBuildSettings.StreetColor.ToFColor(false);
+	const float MajorRoadThickness = MeshBuildSettings.MajorRoadThickness;
+	const FColor MajorRoadColor = MeshBuildSettings.MajorRoadColor.ToFColor(false);
+	const float HighwayThickness = MeshBuildSettings.HighwayThickness;
+	const FColor HighwayColor = MeshBuildSettings.HighwayColor.ToFColor(false);
 	/////////////////////////////////////////////////////////
 
 
 	CachedLocalBounds = FBox(ForceInitToZero);
-	Indices.Reset();
+
+	switch (Type) {
+	case EStreetMapRoadType::Highway:
+		HighwayIndices.Reset();
+		break;
+	case EStreetMapRoadType::MajorRoad:
+		MajorRoadIndices.Reset();
+		break;
+	case EStreetMapRoadType::Street:
+		StreetIndices.Reset();
+		break;
+	}
 
 	if (StreetMap != nullptr)
 	{
@@ -485,39 +565,74 @@ void UStreetMapComponent::BuildRoadMesh()
 
 		for (const auto& Road : Roads)
 		{
-			float RoadThickness = StreetThickness;
-			FColor RoadColor = StreetColor;
-			switch (Road.RoadType)
-			{
-			case EStreetMapRoadType::Highway:
-				RoadThickness = HighwayThickness;
-				RoadColor = HighwayColor;
-				break;
+			if (Road.RoadType == Type) {
+				float RoadThickness = StreetThickness;
+				FColor RoadColor = StreetColor;
+				switch (Road.RoadType)
+				{
+				case EStreetMapRoadType::Highway:
+					RoadThickness = HighwayThickness;
+					RoadColor = HighwayColor;
+					break;
 
-			case EStreetMapRoadType::MajorRoad:
-				RoadThickness = MajorRoadThickness;
-				RoadColor = MajorRoadColor;
-				break;
+				case EStreetMapRoadType::MajorRoad:
+					RoadThickness = MajorRoadThickness;
+					RoadColor = MajorRoadColor;
+					break;
 
-			case EStreetMapRoadType::Street:
-			case EStreetMapRoadType::Other:
-				break;
+				case EStreetMapRoadType::Street:
+				case EStreetMapRoadType::Other:
+					break;
 
-			default:
-				check(0);
-				break;
-			}
+				default:
+					check(0);
+					break;
+				}
 
-			for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
-			{
-				AddThick2DLine(
-					Road.RoadPoints[PointIndex],
-					Road.RoadPoints[PointIndex + 1],
-					RoadZ,
-					RoadThickness * _widthCoefficient,
-					RoadColor,
-					RoadColor,
-					MeshBoundingBox);
+				for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
+				{
+					switch (Type) {
+					case EStreetMapRoadType::Highway:
+						AddThick2DLine(
+							Road.RoadPoints[PointIndex],
+							Road.RoadPoints[PointIndex + 1],
+							RoadZ,
+							RoadThickness,
+							RoadColor,
+							RoadColor,
+							MeshBoundingBox,
+							HighwayVertices,
+							HighwayIndices,
+							Road.ID);
+						break;
+					case EStreetMapRoadType::MajorRoad:
+						AddThick2DLine(
+							Road.RoadPoints[PointIndex],
+							Road.RoadPoints[PointIndex + 1],
+							RoadZ,
+							RoadThickness,
+							RoadColor,
+							RoadColor,
+							MeshBoundingBox,
+							MajorRoadVertices,
+							MajorRoadIndices,
+							Road.ID);
+						break;
+					case EStreetMapRoadType::Street:
+						AddThick2DLine(
+							Road.RoadPoints[PointIndex],
+							Road.RoadPoints[PointIndex + 1],
+							RoadZ,
+							RoadThickness,
+							RoadColor,
+							RoadColor,
+							MeshBoundingBox,
+							StreetVertices,
+							StreetIndices,
+							Road.ID);
+						break;
+					}
+				}
 			}
 		}
 
@@ -544,16 +659,100 @@ void UStreetMapComponent::BuildRoadMesh()
 	}
 }
 
-void UStreetMapComponent::IncreaseRoadThickness(float val)
+void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices) 
 {
-	_widthCoefficient += val;
-	BuildRoadMesh();
+	int NumVertices = Vertices.Num();
+
+	for (int i = 0; i < NumVertices; i++) {
+		Vertices[i].Color = val.ToFColor(false);
+	}
+	
+	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
+	MarkRenderStateDirty();
+
+	AssignDefaultMaterialIfNeeded();
+
+	Modify();
 }
 
-void UStreetMapComponent::DecreaseRoadThickness(float val)
+void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, int64 ID)
 {
-	_widthCoefficient -= val;
-	BuildRoadMesh();
+	auto FilteredVertices = Vertices.FilterByPredicate([ID](const FStreetMapVertex& Vertex) {
+		return Vertex.ID == ID;
+	});
+
+	int NumVertices = FilteredVertices.Num();
+
+	for (int i = 0; i < NumVertices; i++) {
+		FilteredVertices[i].Color = val.ToFColor(false);
+	}
+
+	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
+	MarkRenderStateDirty();
+
+	AssignDefaultMaterialIfNeeded();
+
+	Modify();
+}
+
+void UStreetMapComponent::ChangeStreetThickness(float val, EStreetMapRoadType type)
+{
+	switch (type)
+	{
+	case EStreetMapRoadType::Highway:
+		MeshBuildSettings.HighwayThickness = val;
+		break;
+	case EStreetMapRoadType::MajorRoad:
+		MeshBuildSettings.MajorRoadThickness = val;
+		break;
+	case EStreetMapRoadType::Street:
+		MeshBuildSettings.StreetThickness = val;
+		break;
+	default:
+		break;
+	}
+
+	BuildRoadMesh(type);
+}
+
+void UStreetMapComponent::ChangeStreetColor(FLinearColor val, EStreetMapRoadType type)
+{
+	switch (type)
+	{
+	case EStreetMapRoadType::Highway:
+		MeshBuildSettings.HighwayColor = val;
+		ColorRoadMesh(val, HighwayVertices);
+		break;
+	case EStreetMapRoadType::MajorRoad:
+		MeshBuildSettings.MajorRoadColor = val;
+		ColorRoadMesh(val, MajorRoadVertices);
+		break;
+	case EStreetMapRoadType::Street:
+		MeshBuildSettings.StreetColor = val;
+		ColorRoadMesh(val, StreetVertices);
+		break;
+	default:
+		break;
+	}
+}
+
+void UStreetMapComponent::ChangeStreetColorByID(FLinearColor val, EStreetMapRoadType type, int64 ID)
+{
+	switch (type)
+	{
+	case EStreetMapRoadType::Highway:
+		ColorRoadMesh(val, HighwayVertices, ID);
+		break;
+	case EStreetMapRoadType::MajorRoad:
+		ColorRoadMesh(val, MajorRoadVertices, ID);
+		break;
+	case EStreetMapRoadType::Street:
+		ColorRoadMesh(val, StreetVertices, ID);
+		break;
+
+	default:
+		break;
+	}
 }
 
 
@@ -646,8 +845,15 @@ void UStreetMapComponent::UpdateNavigationIfNeeded()
 
 void UStreetMapComponent::InvalidateMesh()
 {
-	Vertices.Reset();
-	Indices.Reset();
+	BuildingVertices.Reset();
+	BuildingIndices.Reset();
+	StreetVertices.Reset();
+	StreetIndices.Reset();
+	MajorRoadVertices.Reset();
+	MajorRoadIndices.Reset();
+	HighwayVertices.Reset();
+	HighwayIndices.Reset();
+
 	CachedLocalBounds = FBoxSphereBounds(FBox(ForceInitToZero));
 	ClearCollision();
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
@@ -655,84 +861,92 @@ void UStreetMapComponent::InvalidateMesh()
 	Modify();
 }
 
-FBoxSphereBounds UStreetMapComponent::CalcBounds( const FTransform& LocalToWorld ) const
+FBoxSphereBounds UStreetMapComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
-	if( HasValidMesh() )
+	if (HasValidMesh())
 	{
-		FBoxSphereBounds WorldSpaceBounds = CachedLocalBounds.TransformBy( LocalToWorld );
+		FBoxSphereBounds WorldSpaceBounds = CachedLocalBounds.TransformBy(LocalToWorld);
 		WorldSpaceBounds.BoxExtent *= BoundsScale;
 		WorldSpaceBounds.SphereRadius *= BoundsScale;
 		return WorldSpaceBounds;
 	}
 	else
 	{
-		return FBoxSphereBounds( LocalToWorld.GetLocation(), FVector::ZeroVector, 0.0f );
+		return FBoxSphereBounds(LocalToWorld.GetLocation(), FVector::ZeroVector, 0.0f);
 	}
 }
 
 
-void UStreetMapComponent::AddThick2DLine( const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox )
+void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices, int64 ID, FString TMC)
 {
 	const float HalfThickness = Thickness * 0.5f;
 
-	const FVector2D LineDirection = ( End - Start ).GetSafeNormal();
-	const FVector2D RightVector( -LineDirection.Y, LineDirection.X );
+	const FVector2D LineDirection = (End - Start).GetSafeNormal();
+	const FVector2D RightVector(-LineDirection.Y, LineDirection.X);
 
 	const int32 BottomLeftVertexIndex = Vertices.Num();
-	FStreetMapVertex& BottomLeftVertex = *new( Vertices )FStreetMapVertex();
-	BottomLeftVertex.Position = FVector( Start - RightVector * HalfThickness, Z );
-	BottomLeftVertex.TextureCoordinate = FVector2D( 0.0f, 0.0f );
-	BottomLeftVertex.TangentX = FVector( LineDirection, 0.0f );
+	FStreetMapVertex& BottomLeftVertex = *new(Vertices)FStreetMapVertex();
+	BottomLeftVertex.ID = ID;
+	BottomLeftVertex.TMC = TMC;
+	BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
+	BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
+	BottomLeftVertex.TangentX = FVector(LineDirection, 0.0f);
 	BottomLeftVertex.TangentZ = FVector::UpVector;
 	BottomLeftVertex.Color = StartColor;
 	MeshBoundingBox += BottomLeftVertex.Position;
 
 	const int32 BottomRightVertexIndex = Vertices.Num();
-	FStreetMapVertex& BottomRightVertex = *new( Vertices )FStreetMapVertex();
-	BottomRightVertex.Position = FVector( Start + RightVector * HalfThickness, Z );
-	BottomRightVertex.TextureCoordinate = FVector2D( 1.0f, 0.0f );
-	BottomRightVertex.TangentX = FVector( LineDirection, 0.0f );
+	FStreetMapVertex& BottomRightVertex = *new(Vertices)FStreetMapVertex();
+	BottomRightVertex.ID = ID;
+	BottomRightVertex.TMC = TMC;
+	BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
+	BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
+	BottomRightVertex.TangentX = FVector(LineDirection, 0.0f);
 	BottomRightVertex.TangentZ = FVector::UpVector;
 	BottomRightVertex.Color = StartColor;
 	MeshBoundingBox += BottomRightVertex.Position;
 
 	const int32 TopRightVertexIndex = Vertices.Num();
-	FStreetMapVertex& TopRightVertex = *new( Vertices )FStreetMapVertex();
-	TopRightVertex.Position = FVector( End + RightVector * HalfThickness, Z );
-	TopRightVertex.TextureCoordinate = FVector2D( 1.0f, 1.0f );
-	TopRightVertex.TangentX = FVector( LineDirection, 0.0f );
+	FStreetMapVertex& TopRightVertex = *new(Vertices)FStreetMapVertex();
+	TopRightVertex.ID = ID;
+	TopRightVertex.TMC = TMC;
+	TopRightVertex.Position = FVector(End + RightVector * HalfThickness, Z);
+	TopRightVertex.TextureCoordinate = FVector2D(1.0f, 1.0f);
+	TopRightVertex.TangentX = FVector(LineDirection, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;
 	MeshBoundingBox += TopRightVertex.Position;
 
 	const int32 TopLeftVertexIndex = Vertices.Num();
-	FStreetMapVertex& TopLeftVertex = *new( Vertices )FStreetMapVertex();
-	TopLeftVertex.Position = FVector( End - RightVector * HalfThickness, Z );
-	TopLeftVertex.TextureCoordinate = FVector2D( 0.0f, 1.0f );
-	TopLeftVertex.TangentX = FVector( LineDirection, 0.0f );
+	FStreetMapVertex& TopLeftVertex = *new(Vertices)FStreetMapVertex();
+	TopLeftVertex.ID = ID;
+	TopLeftVertex.TMC = TMC;
+	TopLeftVertex.Position = FVector(End - RightVector * HalfThickness, Z);
+	TopLeftVertex.TextureCoordinate = FVector2D(0.0f, 1.0f);
+	TopLeftVertex.TangentX = FVector(LineDirection, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
 	MeshBoundingBox += TopLeftVertex.Position;
 
-	Indices.Add( BottomLeftVertexIndex );
-	Indices.Add( BottomRightVertexIndex );
-	Indices.Add( TopRightVertexIndex );
+	Indices.Add(BottomLeftVertexIndex);
+	Indices.Add(BottomRightVertexIndex);
+	Indices.Add(TopRightVertexIndex);
 
-	Indices.Add( BottomLeftVertexIndex );
-	Indices.Add( TopRightVertexIndex );
-	Indices.Add( TopLeftVertexIndex );
+	Indices.Add(BottomLeftVertexIndex);
+	Indices.Add(TopRightVertexIndex);
+	Indices.Add(TopLeftVertexIndex);
 };
 
 
-void UStreetMapComponent::AddTriangles( const TArray<FVector>& Points, const TArray<int32>& PointIndices, const FVector& ForwardVector, const FVector& UpVector, const FColor& Color, FBox& MeshBoundingBox )
+void UStreetMapComponent::AddTriangles(const TArray<FVector>& Points, const TArray<int32>& PointIndices, const FVector& ForwardVector, const FVector& UpVector, const FColor& Color, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices)
 {
 	const int32 FirstVertexIndex = Vertices.Num();
 
-	for( FVector Point : Points )
+	for (FVector Point : Points)
 	{
-		FStreetMapVertex& NewVertex = *new( Vertices )FStreetMapVertex();
+		FStreetMapVertex& NewVertex = *new(Vertices)FStreetMapVertex();
 		NewVertex.Position = Point;
-		NewVertex.TextureCoordinate = FVector2D( 0.0f, 0.0f );	// NOTE: We're not using texture coordinates for anything yet
+		NewVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);	// NOTE: We're not using texture coordinates for anything yet
 		NewVertex.TangentX = ForwardVector;
 		NewVertex.TangentZ = UpVector;
 		NewVertex.Color = Color;
@@ -740,9 +954,9 @@ void UStreetMapComponent::AddTriangles( const TArray<FVector>& Points, const TAr
 		MeshBoundingBox += NewVertex.Position;
 	}
 
-	for( int32 PointIndex : PointIndices )
+	for (int32 PointIndex : PointIndices)
 	{
-		Indices.Add( FirstVertexIndex + PointIndex );
+		Indices.Add(FirstVertexIndex + PointIndex);
 	}
 };
 

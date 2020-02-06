@@ -147,59 +147,13 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 		]
 		]
 		];
-	
-	StreetMapCategory.AddCustomRow(FText::GetEmpty(), false)
-		[
-			SAssignNew(TempHorizontalBox, SHorizontalBox)
-			+ SHorizontalBox::Slot()
-		[
-			SNew(SButton)
-			.ToolTipText(LOCTEXT("GenerateMesh_Tooltip", "Generate a cached mesh from raw street map data."))
-		.OnClicked(this, &FStreetMapComponentDetails::OnBuildRoadMeshClicked)
-		.IsEnabled(bCanRebuildMesh)
-		.HAlign(HAlign_Center)
-		[
-			SNew(STextBlock)
-			.Text(bCanClearMesh ? LOCTEXT("RebuildRoadMesh", "Rebuild Road Mesh") : LOCTEXT("BuildRoadMesh", "Build Road Mesh"))
-		.Font(IDetailLayoutBuilder::GetDetailFont())
-		]
-		]
-		];
-
-	StreetMapCategory.AddCustomRow(FText::GetEmpty(), false)
-		[
-			SAssignNew(TempHorizontalBox, SHorizontalBox)
-			+ SHorizontalBox::Slot()
-		[
-			SNew(SButton)
-		.OnClicked(this, &FStreetMapComponentDetails::OnIncRoadThicknessClicked)
-		.HAlign(HAlign_Center)
-		[
-			SNew(STextBlock)
-			.Text(LOCTEXT("IncreaseRoadThickness", "Increase Road Thickness"))
-		.Font(IDetailLayoutBuilder::GetDetailFont())
-		]
-		]
-		];
-
-
-	TempHorizontalBox->AddSlot()
-		[
-			SNew(SButton)
-		.OnClicked(this, &FStreetMapComponentDetails::OnDecRoadThicknessClicked)
-		[
-			SNew(STextBlock)
-			.Text(LOCTEXT("DecreaseRoadThickness", "Decrease Road Thickness"))
-		.Font(IDetailLayoutBuilder::GetDetailFont())
-		]
-		];
 
 	if (bCanCreateMeshAsset)
 	{
-		const int32 NumVertices = SelectedStreetMapComponent->GetRawMeshVertices().Num();
+		const int32 NumVertices = SelectedStreetMapComponent->GetRawMeshVertices(EVertexType::VBuilding).Num() + SelectedStreetMapComponent->GetRawMeshVertices(EVertexType::VHighway).Num() + SelectedStreetMapComponent->GetRawMeshVertices(EVertexType::VMajorRoad).Num() + SelectedStreetMapComponent->GetRawMeshVertices(EVertexType::VStreet).Num();
 		const FString NumVerticesToString = TEXT("Vertex Count : ") + FString::FromInt(NumVertices);
 
-		const int32 NumTriangles = SelectedStreetMapComponent->GetRawMeshIndices().Num() / 3;
+		const int32 NumTriangles = (SelectedStreetMapComponent->GetRawMeshIndices(EVertexType::VBuilding).Num() + SelectedStreetMapComponent->GetRawMeshIndices(EVertexType::VHighway).Num() + SelectedStreetMapComponent->GetRawMeshIndices(EVertexType::VMajorRoad).Num() + SelectedStreetMapComponent->GetRawMeshIndices(EVertexType::VStreet).Num()) / 3;
 		const FString NumTrianglesToString = TEXT("Triangle Count : ") + FString::FromInt(NumTriangles);
 
 		const bool bCollisionEnabled = SelectedStreetMapComponent->IsCollisionEnabled();
@@ -377,115 +331,133 @@ FReply FStreetMapComponentDetails::OnCreateStaticMeshAssetClicked()
 				MeshName = *Name;
 			}
 
-			// Raw mesh data we are filling in
-			FRawMesh RawMesh;
-			// Materials to apply to new mesh
-			TArray<UMaterialInterface*> MeshMaterials = SelectedStreetMapComponent->GetMaterials();
 
+			const TArray<FStreetMapVertex > BuildingRawMeshVertices = SelectedStreetMapComponent->GetRawMeshVertices(EVertexType::VBuilding);
+			const TArray< uint32 > BuildingRawMeshIndices = SelectedStreetMapComponent->GetRawMeshIndices(EVertexType::VBuilding);
 
-			const TArray<FStreetMapVertex > RawMeshVertices = SelectedStreetMapComponent->GetRawMeshVertices();
-			const TArray< uint32 > RawMeshIndices = SelectedStreetMapComponent->GetRawMeshIndices();
+			this->CreateStaticMeshAsset(UserPackageName, MeshName, BuildingRawMeshVertices, BuildingRawMeshIndices);
 
+			const TArray<FStreetMapVertex > StreetRawMeshVertices = SelectedStreetMapComponent->GetRawMeshVertices(EVertexType::VStreet);
+			const TArray< uint32 > StreetRawMeshIndices = SelectedStreetMapComponent->GetRawMeshIndices(EVertexType::VStreet);
 
-			// Copy verts
-			for (int32 VertIndex = 0; VertIndex < RawMeshVertices.Num(); VertIndex++)
-			{
-				RawMesh.VertexPositions.Add(RawMeshVertices[VertIndex].Position);
-			}
+			this->CreateStaticMeshAsset(UserPackageName, MeshName, StreetRawMeshVertices, StreetRawMeshIndices);
 
-			// Copy 'wedge' info
-			int32 NumIndices = RawMeshIndices.Num();
-			for (int32 IndexIdx = 0; IndexIdx < NumIndices; IndexIdx++)
-			{
-				int32 VertexIndex = RawMeshIndices[IndexIdx];
+			const TArray<FStreetMapVertex > HighwayRawMeshVertices = SelectedStreetMapComponent->GetRawMeshVertices(EVertexType::VHighway);
+			const TArray< uint32 > HighwayRawMeshIndices = SelectedStreetMapComponent->GetRawMeshIndices(EVertexType::VHighway);
 
-				RawMesh.WedgeIndices.Add(VertexIndex);
+			this->CreateStaticMeshAsset(UserPackageName, MeshName, HighwayRawMeshVertices, HighwayRawMeshIndices);
 
-				const FStreetMapVertex& StreetMapVertex = RawMeshVertices[VertexIndex];
+			const TArray<FStreetMapVertex > MajorRoadRawMeshVertices = SelectedStreetMapComponent->GetRawMeshVertices(EVertexType::VMajorRoad);
+			const TArray< uint32 > MajorRoadRawMeshIndices = SelectedStreetMapComponent->GetRawMeshIndices(EVertexType::VMajorRoad);
 
-				FVector TangentX = StreetMapVertex.TangentX;
-				FVector TangentZ = StreetMapVertex.TangentZ;
-				FVector TangentY = (TangentX ^ TangentZ).GetSafeNormal();
-
-				RawMesh.WedgeTangentX.Add(TangentX);
-				RawMesh.WedgeTangentY.Add(TangentY);
-				RawMesh.WedgeTangentZ.Add(TangentZ);
-
-				RawMesh.WedgeTexCoords[0].Add(StreetMapVertex.TextureCoordinate);
-				RawMesh.WedgeColors.Add(StreetMapVertex.Color);
-			}
-
-			// copy face info
-			int32 NumTris = NumIndices / 3;
-			for (int32 TriIdx = 0; TriIdx < NumTris; TriIdx++)
-			{
-				RawMesh.FaceMaterialIndices.Add(0);
-				RawMesh.FaceSmoothingMasks.Add(0); // Assume this is ignored as bRecomputeNormals is false
-			}
-
-			// If we got some valid data.
-			if (RawMesh.VertexPositions.Num() > 3 && RawMesh.WedgeIndices.Num() > 3)
-			{
-				// Then find/create it.
-				UPackage* Package = CreatePackage(NULL, *UserPackageName);
-				check(Package);
-
-				// Create StaticMesh object
-				UStaticMesh* StaticMesh = NewObject<UStaticMesh>(Package, MeshName, RF_Public | RF_Standalone);
-				StaticMesh->InitResources();
-
-				StaticMesh->LightingGuid = FGuid::NewGuid();
-
-				// Add source to new StaticMesh
-				FStaticMeshSourceModel* SrcModel = new (StaticMesh->SourceModels) FStaticMeshSourceModel();
-				SrcModel->BuildSettings.bRecomputeNormals = false;
-				SrcModel->BuildSettings.bRecomputeTangents = false;
-				SrcModel->BuildSettings.bRemoveDegenerates = false;
-				SrcModel->BuildSettings.bUseHighPrecisionTangentBasis = false;
-				SrcModel->BuildSettings.bUseFullPrecisionUVs = false;
-				SrcModel->BuildSettings.bGenerateLightmapUVs = true;
-				SrcModel->BuildSettings.SrcLightmapIndex = 0;
-				SrcModel->BuildSettings.DstLightmapIndex = 1;
-				SrcModel->RawMeshBulkData->SaveRawMesh(RawMesh);
-
-				// Copy materials to new mesh
-				for (UMaterialInterface* Material : MeshMaterials)
-				{
-					StaticMesh->StaticMaterials.Add(FStaticMaterial(Material));
-				}
-
-				//Set the Imported version before calling the build
-				StaticMesh->ImportVersion = EImportStaticMeshVersion::LastVersion;
-
-				// Build mesh from source
-				StaticMesh->Build(/** bSilent =*/ false);
-				StaticMesh->PostEditChange();
-
-				StaticMesh->MarkPackageDirty();
-
-				// Notify asset registry of new asset
-				FAssetRegistryModule::AssetCreated(StaticMesh);
-
-
-				// Display notification so users can quickly access the mesh
-				if (GIsEditor)
-				{
-					FNotificationInfo Info(FText::Format(LOCTEXT("StreetMapMeshConverted", "Successfully Converted Mesh"), FText::FromString(StaticMesh->GetName())));
-					Info.ExpireDuration = 8.0f;
-					Info.bUseLargeFont = false;
-					Info.Hyperlink = FSimpleDelegate::CreateLambda([=]() { FAssetEditorManager::Get().OpenEditorForAssets(TArray<UObject*>({ StaticMesh })); });
-					Info.HyperlinkText = FText::Format(LOCTEXT("OpenNewAnimationHyperlink", "Open {0}"), FText::FromString(StaticMesh->GetName()));
-					TSharedPtr<SNotificationItem> Notification = FSlateNotificationManager::Get().AddNotification(Info);
-					if (Notification.IsValid())
-					{
-						Notification->SetCompletionState(SNotificationItem::CS_Success);
-					}
-				}
-			}
+			this->CreateStaticMeshAsset(UserPackageName, MeshName, MajorRoadRawMeshVertices, MajorRoadRawMeshIndices);
 		}
 	}
 
 	return FReply::Handled();
+}
+
+void FStreetMapComponentDetails::CreateStaticMeshAsset(FString UserPackageName, FName MeshName, TArray<FStreetMapVertex> RawMeshVertices, TArray<uint32> RawMeshIndices) {
+	// Raw mesh data we are filling in
+	FRawMesh RawMesh;
+	// Materials to apply to new mesh
+	TArray<UMaterialInterface*> MeshMaterials = SelectedStreetMapComponent->GetMaterials();
+
+	// Copy verts
+	for (int32 VertIndex = 0; VertIndex < RawMeshVertices.Num(); VertIndex++)
+	{
+		RawMesh.VertexPositions.Add(RawMeshVertices[VertIndex].Position);
+	}
+
+	// Copy 'wedge' info
+	int32 NumIndices = RawMeshIndices.Num();
+	for (int32 IndexIdx = 0; IndexIdx < NumIndices; IndexIdx++)
+	{
+		int32 VertexIndex = RawMeshIndices[IndexIdx];
+
+		RawMesh.WedgeIndices.Add(VertexIndex);
+
+		const FStreetMapVertex& StreetMapVertex = RawMeshVertices[VertexIndex];
+
+		FVector TangentX = StreetMapVertex.TangentX;
+		FVector TangentZ = StreetMapVertex.TangentZ;
+		FVector TangentY = (TangentX ^ TangentZ).GetSafeNormal();
+
+		RawMesh.WedgeTangentX.Add(TangentX);
+		RawMesh.WedgeTangentY.Add(TangentY);
+		RawMesh.WedgeTangentZ.Add(TangentZ);
+
+		RawMesh.WedgeTexCoords[0].Add(StreetMapVertex.TextureCoordinate);
+		RawMesh.WedgeColors.Add(StreetMapVertex.Color);
+	}
+
+	// copy face info
+	int32 NumTris = NumIndices / 3;
+	for (int32 TriIdx = 0; TriIdx < NumTris; TriIdx++)
+	{
+		RawMesh.FaceMaterialIndices.Add(0);
+		RawMesh.FaceSmoothingMasks.Add(0); // Assume this is ignored as bRecomputeNormals is false
+	}
+
+	// If we got some valid data.
+	if (RawMesh.VertexPositions.Num() > 3 && RawMesh.WedgeIndices.Num() > 3)
+	{
+		// Then find/create it.
+		UPackage* Package = CreatePackage(NULL, *UserPackageName);
+		check(Package);
+
+		// Create StaticMesh object
+		UStaticMesh* StaticMesh = NewObject<UStaticMesh>(Package, MeshName, RF_Public | RF_Standalone);
+		StaticMesh->InitResources();
+
+		StaticMesh->LightingGuid = FGuid::NewGuid();
+
+		// Add source to new StaticMesh
+		FStaticMeshSourceModel* SrcModel = new (StaticMesh->SourceModels) FStaticMeshSourceModel();
+		SrcModel->BuildSettings.bRecomputeNormals = false;
+		SrcModel->BuildSettings.bRecomputeTangents = false;
+		SrcModel->BuildSettings.bRemoveDegenerates = false;
+		SrcModel->BuildSettings.bUseHighPrecisionTangentBasis = false;
+		SrcModel->BuildSettings.bUseFullPrecisionUVs = false;
+		SrcModel->BuildSettings.bGenerateLightmapUVs = true;
+		SrcModel->BuildSettings.SrcLightmapIndex = 0;
+		SrcModel->BuildSettings.DstLightmapIndex = 1;
+		SrcModel->RawMeshBulkData->SaveRawMesh(RawMesh);
+
+		// Copy materials to new mesh
+		for (UMaterialInterface* Material : MeshMaterials)
+		{
+			StaticMesh->StaticMaterials.Add(FStaticMaterial(Material));
+		}
+
+		//Set the Imported version before calling the build
+		StaticMesh->ImportVersion = EImportStaticMeshVersion::LastVersion;
+
+		// Build mesh from source
+		StaticMesh->Build(/** bSilent =*/ false);
+		StaticMesh->PostEditChange();
+
+		StaticMesh->MarkPackageDirty();
+
+		// Notify asset registry of new asset
+		FAssetRegistryModule::AssetCreated(StaticMesh);
+
+
+		// Display notification so users can quickly access the mesh
+		if (GIsEditor)
+		{
+			FNotificationInfo Info(FText::Format(LOCTEXT("StreetMapMeshConverted", "Successfully Converted Mesh"), FText::FromString(StaticMesh->GetName())));
+			Info.ExpireDuration = 8.0f;
+			Info.bUseLargeFont = false;
+			Info.Hyperlink = FSimpleDelegate::CreateLambda([=]() { FAssetEditorManager::Get().OpenEditorForAssets(TArray<UObject*>({ StaticMesh })); });
+			Info.HyperlinkText = FText::Format(LOCTEXT("OpenNewAnimationHyperlink", "Open {0}"), FText::FromString(StaticMesh->GetName()));
+			TSharedPtr<SNotificationItem> Notification = FSlateNotificationManager::Get().AddNotification(Info);
+			if (Notification.IsValid())
+			{
+				Notification->SetCompletionState(SNotificationItem::CS_Success);
+			}
+		}
+	}
 }
 
 FReply FStreetMapComponentDetails::OnBuildMeshClicked()
@@ -498,46 +470,6 @@ FReply FStreetMapComponentDetails::OnBuildMeshClicked()
 
 		// regenerates details panel layouts , to take in consideration new changes.
 		RefreshDetails();
-	}
-
-	return FReply::Handled();
-}
-
-
-FReply FStreetMapComponentDetails::OnBuildRoadMeshClicked()
-{
-
-	if (SelectedStreetMapComponent != nullptr)
-	{
-		//
-		SelectedStreetMapComponent->BuildRoadMesh();
-
-		// regenerates details panel layouts , to take in consideration new changes.
-		RefreshDetails();
-	}
-
-	return FReply::Handled();
-}
-
-FReply FStreetMapComponentDetails::OnIncRoadThicknessClicked()
-{
-
-	if (SelectedStreetMapComponent != nullptr)
-	{
-		//
-		SelectedStreetMapComponent->IncreaseRoadThickness(0.5);
-	}
-
-	return FReply::Handled();
-}
-
-FReply FStreetMapComponentDetails::OnDecRoadThicknessClicked()
-{
-
-	if (SelectedStreetMapComponent != nullptr)
-	{
-		//
-		SelectedStreetMapComponent->DecreaseRoadThickness(0.5);
 	}
 
 	return FReply::Handled();

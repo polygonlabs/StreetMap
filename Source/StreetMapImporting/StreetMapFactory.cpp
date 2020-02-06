@@ -157,9 +157,11 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile(UStreetMap* StreetMap, FStr
 		{
 			NewRoad.RoadName = OSMWay.Ref;
 		}
+
 		NewRoad.RoadType = RoadType;
 		NewRoad.BoundsMin = BoundsMin;
 		NewRoad.BoundsMax = BoundsMax;
+		NewRoad.ID = OSMWay.Id;
 
 		NewRoad.bIsOneWay = OSMWay.bIsOneWay;
 

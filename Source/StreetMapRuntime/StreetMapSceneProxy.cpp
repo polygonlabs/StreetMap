@@ -9,22 +9,41 @@
 
 FStreetMapSceneProxy::FStreetMapSceneProxy(const UStreetMapComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent),
-	VertexFactory(GetScene().GetFeatureLevel(), "FStreetMapSceneProxy"),
+	BuildingVertexFactory(GetScene().GetFeatureLevel(), "FStreetMapSceneProxy"),
+	StreetVertexFactory(GetScene().GetFeatureLevel(), "FStreetMapSceneProxy"),
+	MajorRoadVertexFactory(GetScene().GetFeatureLevel(), "FStreetMapSceneProxy"),
+	HighwayVertexFactory(GetScene().GetFeatureLevel(), "FStreetMapSceneProxy"),
 	StreetMapComp(InComponent),
 	CollisionResponse(InComponent->GetCollisionResponseToChannels())
 {
 
 }
 
-void FStreetMapSceneProxy::Init(const UStreetMapComponent* InComponent, const TArray< FStreetMapVertex >& Vertices, const TArray< uint32 >& Indices)
+void FStreetMapSceneProxy::Init(const UStreetMapComponent* InComponent, EVertexType Type, const TArray< FStreetMapVertex >& Vertices, const TArray< uint32 >& Indices)
 {
 	// Copy index buffer
-	IndexBuffer32.Indices = Indices;
+	switch (Type) {
+	case EVertexType::VBuilding:
+		BuildingIndexBuffer32.Indices = Indices;
+		break;
+	case EVertexType::VStreet:
+		StreetIndexBuffer32.Indices = Indices;
+		break;
+	case EVertexType::VMajorRoad:
+		MajorRoadIndexBuffer32.Indices = Indices;
+		break;
+	case EVertexType::VHighway:
+		HighwayIndexBuffer32.Indices = Indices;
+		break;
+	}
 
+	if (Indices.Num() == 0) return;
+	
 	MaterialInterface = nullptr;
 	this->MaterialRelevance = InComponent->GetMaterialRelevance(GetScene().GetFeatureLevel());
 
 	const int32 NumVerts = Vertices.Num();
+
 	TArray<FDynamicMeshVertex> DynamicVertices;
 	DynamicVertices.SetNumUninitialized(NumVerts);
 
@@ -39,11 +58,29 @@ void FStreetMapSceneProxy::Init(const UStreetMapComponent* InComponent, const TA
 		Vert.TangentZ = StreetMapVert.TangentZ;
 	}
 
-	VertexBuffer.InitFromDynamicVertex(&VertexFactory, DynamicVertices);
+	switch (Type) {
+	case EVertexType::VBuilding:
+		BuildingVertexBuffer.InitFromDynamicVertex(&BuildingVertexFactory, DynamicVertices);
+		
+		InitResources(BuildingVertexBuffer, BuildingIndexBuffer32, BuildingVertexFactory);
+		break;
+	case EVertexType::VStreet:
+		StreetVertexBuffer.InitFromDynamicVertex(&StreetVertexFactory, DynamicVertices);
 
-	// Enqueue initialization of render resource
-	InitResources();
+		InitResources(StreetVertexBuffer, StreetIndexBuffer32, StreetVertexFactory);
+		break;
+	case EVertexType::VMajorRoad:
+		MajorRoadVertexBuffer.InitFromDynamicVertex(&MajorRoadVertexFactory, DynamicVertices);
 
+		InitResources(MajorRoadVertexBuffer, MajorRoadIndexBuffer32, MajorRoadVertexFactory);
+		break;
+	case EVertexType::VHighway:
+		HighwayVertexBuffer.InitFromDynamicVertex(&HighwayVertexFactory, DynamicVertices);
+		
+		InitResources(HighwayVertexBuffer, HighwayIndexBuffer32, HighwayVertexFactory);
+		break;
+	}
+	
 	// Set a material
 	{
 		if (InComponent->GetNumMaterials() > 0)
@@ -61,11 +98,31 @@ void FStreetMapSceneProxy::Init(const UStreetMapComponent* InComponent, const TA
 
 FStreetMapSceneProxy::~FStreetMapSceneProxy()
 {
-	VertexBuffer.PositionVertexBuffer.ReleaseResource();
-	VertexBuffer.StaticMeshVertexBuffer.ReleaseResource();
-	VertexBuffer.ColorVertexBuffer.ReleaseResource();
-	IndexBuffer32.ReleaseResource();
-	VertexFactory.ReleaseResource();
+	StreetVertexBuffer.PositionVertexBuffer.ReleaseResource();
+	StreetVertexBuffer.StaticMeshVertexBuffer.ReleaseResource();
+	StreetVertexBuffer.ColorVertexBuffer.ReleaseResource();
+
+	MajorRoadVertexBuffer.PositionVertexBuffer.ReleaseResource();
+	MajorRoadVertexBuffer.StaticMeshVertexBuffer.ReleaseResource();
+	MajorRoadVertexBuffer.ColorVertexBuffer.ReleaseResource();
+
+	HighwayVertexBuffer.PositionVertexBuffer.ReleaseResource();
+	HighwayVertexBuffer.StaticMeshVertexBuffer.ReleaseResource();
+	HighwayVertexBuffer.ColorVertexBuffer.ReleaseResource();
+
+	BuildingVertexBuffer.PositionVertexBuffer.ReleaseResource();
+	BuildingVertexBuffer.StaticMeshVertexBuffer.ReleaseResource();
+	BuildingVertexBuffer.ColorVertexBuffer.ReleaseResource();
+
+	StreetIndexBuffer32.ReleaseResource();
+	MajorRoadIndexBuffer32.ReleaseResource();
+	HighwayIndexBuffer32.ReleaseResource();
+	BuildingIndexBuffer32.ReleaseResource();
+
+	StreetVertexFactory.ReleaseResource();
+	MajorRoadVertexFactory.ReleaseResource();
+	HighwayVertexFactory.ReleaseResource();
+	BuildingVertexFactory.ReleaseResource();
 }
 
 SIZE_T FStreetMapSceneProxy::GetTypeHash() const
@@ -75,7 +132,7 @@ SIZE_T FStreetMapSceneProxy::GetTypeHash() const
 }
 
 
-void FStreetMapSceneProxy::InitResources()
+void FStreetMapSceneProxy::InitResources(FStaticMeshVertexBuffers& VertexBuffer, FDynamicMeshIndexBuffer32& IndexBuffer32, FLocalVertexFactory& VertexFactory)
 {
 	// Start initializing our vertex buffer, index buffer, and vertex factory.  This will be kicked off on the render thread.
 	BeginInitResource(&VertexBuffer.PositionVertexBuffer);
@@ -121,7 +178,7 @@ bool FStreetMapSceneProxy::CanBeOccluded() const
 }
 
 
-void FStreetMapSceneProxy::MakeMeshBatch(FMeshBatch& Mesh, class FMeshElementCollector& Collector, FMaterialRenderProxy* WireframeMaterialRenderProxyOrNull, bool bDrawCollision) const
+void FStreetMapSceneProxy::MakeMeshBatch(FMeshBatch& Mesh, class FMeshElementCollector& Collector, FMaterialRenderProxy* WireframeMaterialRenderProxyOrNull, const FStaticMeshVertexBuffers& VertexBuffer, const FDynamicMeshIndexBuffer32& IndexBuffer32, const FLocalVertexFactory& VertexFactory, bool bDrawCollision) const
 {
 	FMaterialRenderProxy* MaterialProxy = NULL;
 	if( WireframeMaterialRenderProxyOrNull != nullptr )
@@ -178,6 +235,14 @@ void FStreetMapSceneProxy::MakeMeshBatch(FMeshBatch& Mesh, class FMeshElementCol
 
 void FStreetMapSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, class FMeshElementCollector& Collector) const
 {
+	this->AddDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector, StreetVertexBuffer, StreetIndexBuffer32, StreetVertexFactory);
+	this->AddDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector, MajorRoadVertexBuffer, MajorRoadIndexBuffer32, MajorRoadVertexFactory);
+	this->AddDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector, HighwayVertexBuffer, HighwayIndexBuffer32, HighwayVertexFactory);
+	this->AddDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector, BuildingVertexBuffer, BuildingIndexBuffer32, BuildingVertexFactory);
+}
+
+void FStreetMapSceneProxy::AddDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, class FMeshElementCollector& Collector, const FStaticMeshVertexBuffers& VertexBuffer, const FDynamicMeshIndexBuffer32& IndexBuffer32, const FLocalVertexFactory& VertexFactory) const
+{
 	const int IndexCount = IndexBuffer32.Indices.Num();
 	if (VertexBuffer.PositionVertexBuffer.GetNumVertices() > 0 && IndexCount > 0)
 	{
@@ -202,7 +267,7 @@ void FStreetMapSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*
 
 				// Draw the mesh!
 				FMeshBatch& MeshBatch = Collector.AllocateMesh();
-				MakeMeshBatch(MeshBatch, Collector, WireframeMaterialRenderProxy, bCanDrawCollision);
+				MakeMeshBatch(MeshBatch, Collector, WireframeMaterialRenderProxy, VertexBuffer, IndexBuffer32, VertexFactory, bCanDrawCollision);
 				Collector.AddMesh(ViewIndex, MeshBatch);
 			}
 		}

@@ -138,6 +138,7 @@ public:
 		FString Name;
 		FString Ref;
 		int64 Id;
+		FString TMC;
 
 		TArray<FOSMNodeInfo*> Nodes;
 		EOSMWayType WayType;

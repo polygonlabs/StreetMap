@@ -14,8 +14,8 @@ struct FStreetMapVertex
 
 	GENERATED_USTRUCT_BODY()
 
-		/** Location of the vertex in local space */
-		UPROPERTY()
+	/** Location of the vertex in local space */
+	UPROPERTY()
 		FVector Position;
 
 	/** Texture coordinate */
@@ -34,6 +34,13 @@ struct FStreetMapVertex
 	UPROPERTY()
 		FColor Color;
 
+	/** ID of road/building */
+	UPROPERTY()
+		int64 ID;
+
+	/** TMC of road */
+	UPROPERTY()
+		FString TMC;
 
 	/** Default constructor, leaves everything uninitialized */
 	FStreetMapVertex()
@@ -68,7 +75,7 @@ public:
 	* @param	Vertices			The vertices for this street map mesh
 	* @param	Indices				The vertex indices for this street map mesh
 	*/
-	void Init(const UStreetMapComponent* InComponent, const TArray< FStreetMapVertex >& Vertices, const TArray< uint32 >& Indices);
+	void Init(const UStreetMapComponent* InComponent, EVertexType Type, const TArray< FStreetMapVertex >& Vertices, const TArray< uint32 >& Indices);
 
 	/** Destructor that cleans up our rendering data */
 	virtual ~FStreetMapSceneProxy();
@@ -78,10 +85,10 @@ public:
 protected:
 
 	/** Initializes this scene proxy's vertex buffer, index buffer and vertex factory (on the render thread.) */
-	void InitResources();
+	void InitResources(FStaticMeshVertexBuffers& VertexBuffer, FDynamicMeshIndexBuffer32& IndexBuffer, FLocalVertexFactory& VertexFactory);
 
 	/** Makes a MeshBatch for rendering.  Called every time the mesh is drawn */
-	void MakeMeshBatch(struct FMeshBatch& Mesh, class FMeshElementCollector& Collector, class FMaterialRenderProxy* WireframeMaterialRenderProxyOrNull, bool bDrawCollision = false) const;
+	void MakeMeshBatch(struct FMeshBatch& Mesh, class FMeshElementCollector& Collector, class FMaterialRenderProxy* WireframeMaterialRenderProxyOrNull, const FStaticMeshVertexBuffers& VertexBuffer, const FDynamicMeshIndexBuffer32& IndexBuffer, const FLocalVertexFactory& VertexFactory, bool bDrawCollision = false) const;
 
 	/** Checks to see if this mesh must be drawn during the dynamic pass.  Note that even when this returns false, we may still
 	have other (debug) geometry to render as dynamic */
@@ -93,6 +100,7 @@ protected:
 	// FPrimitiveSceneProxy interface
 	//virtual void DrawStaticElements(class FStaticPrimitiveDrawInterface* PDI) override;
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, class FMeshElementCollector& Collector) const override;
+	void AddDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, class FMeshElementCollector& Collector, const FStaticMeshVertexBuffers& VertexBuffer, const FDynamicMeshIndexBuffer32& IndexBuffer, const FLocalVertexFactory& VertexFactory) const;
 	virtual uint32 GetMemoryFootprint(void) const override;
 	virtual FPrimitiveViewRelevance GetViewRelevance(const class FSceneView* View) const override;
 	virtual bool CanBeOccluded() const override;
@@ -100,12 +108,21 @@ protected:
 protected:
 
 	/** Contains all of the vertices in our street map mesh */
-	FStaticMeshVertexBuffers VertexBuffer;
+	FStaticMeshVertexBuffers StreetVertexBuffer;
+	FStaticMeshVertexBuffers MajorRoadVertexBuffer;
+	FStaticMeshVertexBuffers HighwayVertexBuffer;
+	FStaticMeshVertexBuffers BuildingVertexBuffer;
 
 	/** All of the vertex indices32 in our street map mesh */
-	FDynamicMeshIndexBuffer32 IndexBuffer32;
+	FDynamicMeshIndexBuffer32 StreetIndexBuffer32;
+	FDynamicMeshIndexBuffer32 MajorRoadIndexBuffer32;
+	FDynamicMeshIndexBuffer32 HighwayIndexBuffer32;
+	FDynamicMeshIndexBuffer32 BuildingIndexBuffer32;
 
-	FLocalVertexFactory VertexFactory;
+	FLocalVertexFactory StreetVertexFactory;
+	FLocalVertexFactory MajorRoadVertexFactory;
+	FLocalVertexFactory HighwayVertexFactory;
+	FLocalVertexFactory BuildingVertexFactory;
 
 	/** Cached material relevance */
 	FMaterialRelevance MaterialRelevance;
