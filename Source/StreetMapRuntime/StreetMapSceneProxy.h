@@ -58,6 +58,33 @@ struct FStreetMapVertex
 	}
 };
 
+/* A quad that can be connected to another quad */
+USTRUCT()
+struct FStreetMapQuad
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY()
+		FStreetMapVertex startLeft;
+
+	UPROPERTY()
+		FStreetMapVertex startRight;
+
+	UPROPERTY()
+		FStreetMapVertex endLeft;
+
+	UPROPERTY()
+		FStreetMapVertex endRight;
+
+	FStreetMapQuad(const FStreetMapVertex& startLeft, const FStreetMapVertex& startRight, const FStreetMapVertex& endLeft, const FStreetMapVertex& endRight)
+		: startLeft(vertex0)
+		, startRight(vertex1)
+		, endLeft(vertex2)
+		, endRight(vertex3)
+	{
+	}
+};
+
 
 /** Scene proxy for rendering a section of a street map mesh on the rendering thread */
 class FStreetMapSceneProxy : public FPrimitiveSceneProxy

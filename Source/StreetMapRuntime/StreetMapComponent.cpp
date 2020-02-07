@@ -960,6 +960,57 @@ void UStreetMapComponent::AddTriangles(const TArray<FVector>& Points, const TArr
 	}
 };
 
+/** Generate a quad for a road segment */
+void UStreetMapComponent::AddQuad(const FVector2D Start, const FVector2D End, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapQuad>& Quads, int64 ID = -1, FString TMC = "")
+{
+	const float HalfThickness = Thickness * 0.5f;
+
+	const FVector2D LineDirection = (End - Start).GetSafeNormal();
+	const FVector2D RightVector(-LineDirection.Y, LineDirection.X);
+
+	FStreetMapVertex BottomLeftVertex;
+	BottomLeftVertex.ID = ID;
+	BottomLeftVertex.TMC = TMC;
+	BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
+	BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
+	BottomLeftVertex.TangentX = FVector(LineDirection, 0.0f);
+	BottomLeftVertex.TangentZ = FVector::UpVector;
+	BottomLeftVertex.Color = StartColor;
+	MeshBoundingBox += BottomLeftVertex.Position;
+
+	FStreetMapVertex BottomRightVertex;
+	BottomRightVertex.ID = ID;
+	BottomRightVertex.TMC = TMC;
+	BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
+	BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
+	BottomRightVertex.TangentX = FVector(LineDirection, 0.0f);
+	BottomRightVertex.TangentZ = FVector::UpVector;
+	BottomRightVertex.Color = StartColor;
+	MeshBoundingBox += BottomRightVertex.Position;
+
+	FStreetMapVertex TopRightVertex;
+	TopRightVertex.ID = ID;
+	TopRightVertex.TMC = TMC;
+	TopRightVertex.Position = FVector(End + RightVector * HalfThickness, Z);
+	TopRightVertex.TextureCoordinate = FVector2D(1.0f, 1.0f);
+	TopRightVertex.TangentX = FVector(LineDirection, 0.0f);
+	TopRightVertex.TangentZ = FVector::UpVector;
+	TopRightVertex.Color = EndColor;
+	MeshBoundingBox += TopRightVertex.Position;
+
+	FStreetMapVertex TopLeftVertex;
+	TopLeftVertex.ID = ID;
+	TopLeftVertex.TMC = TMC;
+	TopLeftVertex.Position = FVector(End - RightVector * HalfThickness, Z);
+	TopLeftVertex.TextureCoordinate = FVector2D(0.0f, 1.0f);
+	TopLeftVertex.TangentX = FVector(LineDirection, 0.0f);
+	TopLeftVertex.TangentZ = FVector::UpVector;
+	TopLeftVertex.Color = EndColor;
+	MeshBoundingBox += TopLeftVertex.Position;
+
+	FStreetMapQuad& quad = *new(Quads)FStreetMapQuad(BottomLeftVertex, BottomRightVertex, TopLeftVertex, TopRightVertex);
+}
+
 
 FString UStreetMapComponent::GetStreetMapAssetName() const
 {
