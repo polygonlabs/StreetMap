@@ -152,7 +152,10 @@ public:
 	void BuildRoadMesh(EStreetMapRoadType Type);
 
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices);
-	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, int64 ID);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, int64 LinkId, FString LinkDir);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TMultiMap<int64, FString> Links);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FString TMC);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FString> TMCs);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetThickness(float val, EStreetMapRoadType type);
@@ -161,7 +164,16 @@ public:
 		void ChangeStreetColor(FLinearColor val, EStreetMapRoadType type);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void ChangeStreetColorByID(FLinearColor val, EStreetMapRoadType type, int64 ID);
+		void ChangeStreetColorByLinkId(FLinearColor val, EStreetMapRoadType type, int64 LinkId, FString LinkDir);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void ChangeStreetColorByLinks(FLinearColor val, EStreetMapRoadType type, TArray<int64> LinkIds, TArray<FString> LinkDirs);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void ChangeStreetColorByTMC(FLinearColor val, EStreetMapRoadType type, FString TMC);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void ChangeStreetColorByTMCs(FLinearColor val, EStreetMapRoadType type, TArray<FString> TMCs);
 
 protected:
 
@@ -175,7 +187,7 @@ protected:
 	void GenerateMesh();
 
 	/** Adds a 2D line to the raw mesh */
-	void AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices, int64 ID = -1, FString TMC = "");
+	void AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices, int64 LinkId = -1, FString LinkDir = "", FString TMC = "");
 
 	/** Adds 3D triangles to the raw mesh */
 	void AddTriangles(const TArray<FVector>& Points, const TArray<int32>& PointIndices, const FVector& ForwardVector, const FVector& UpVector, const FColor& Color, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices);

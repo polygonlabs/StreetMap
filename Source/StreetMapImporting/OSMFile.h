@@ -137,7 +137,8 @@ public:
 	{
 		FString Name;
 		FString Ref;
-		int64 Id;
+		int64 LinkId;
+		FString LinkDir;
 		FString TMC;
 
 		TArray<FOSMNodeInfo*> Nodes;

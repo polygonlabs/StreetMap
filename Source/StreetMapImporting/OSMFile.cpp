@@ -253,9 +253,13 @@ bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* Attrib
 			}
 			else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("link_id")))
 			{
-				CurrentWayInfo->Id = FPlatformString::Atoi64(AttributeValue);
+				CurrentWayInfo->LinkId = FPlatformString::Atoi64(AttributeValue);
 			}
-			else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("tmc_link_id")))
+			else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("linkdir")))
+			{
+				CurrentWayInfo->LinkDir = AttributeValue;
+			}
+			else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("tmc")))
 			{
 				CurrentWayInfo->TMC = AttributeValue;
 			}

@@ -323,7 +323,8 @@ void UStreetMapComponent::GenerateMesh()
 						MeshBoundingBox,
 						StreetVertices,
 						StreetIndices,
-						Road.ID,
+						Road.LinkId,
+						Road.LinkDir,
 						Road.TMC
 					);
 					break;
@@ -338,7 +339,8 @@ void UStreetMapComponent::GenerateMesh()
 						MeshBoundingBox,
 						MajorRoadVertices,
 						MajorRoadIndices,
-						Road.ID,
+						Road.LinkId,
+						Road.LinkDir,
 						Road.TMC
 					);
 					break;
@@ -353,7 +355,8 @@ void UStreetMapComponent::GenerateMesh()
 						MeshBoundingBox,
 						HighwayVertices,
 						HighwayIndices,
-						Road.ID,
+						Road.LinkId,
+						Road.LinkDir,
 						Road.TMC
 					);
 					break;
@@ -368,7 +371,8 @@ void UStreetMapComponent::GenerateMesh()
 						MeshBoundingBox,
 						BuildingVertices,
 						BuildingIndices,
-						Road.ID,
+						Road.LinkId,
+						Road.LinkDir,
 						Road.TMC
 					);
 					break;
@@ -603,7 +607,9 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 							MeshBoundingBox,
 							HighwayVertices,
 							HighwayIndices,
-							Road.ID);
+							Road.LinkId,
+							Road.LinkDir,
+							Road.TMC);
 						break;
 					case EStreetMapRoadType::MajorRoad:
 						AddThick2DLine(
@@ -616,7 +622,9 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 							MeshBoundingBox,
 							MajorRoadVertices,
 							MajorRoadIndices,
-							Road.ID);
+							Road.LinkId,
+							Road.LinkDir,
+							Road.TMC);
 						break;
 					case EStreetMapRoadType::Street:
 						AddThick2DLine(
@@ -629,7 +637,9 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 							MeshBoundingBox,
 							StreetVertices,
 							StreetIndices,
-							Road.ID);
+							Road.LinkId,
+							Road.LinkDir,
+							Road.TMC);
 						break;
 					}
 				}
@@ -659,14 +669,14 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 	}
 }
 
-void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices) 
+void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices)
 {
 	int NumVertices = Vertices.Num();
 
 	for (int i = 0; i < NumVertices; i++) {
 		Vertices[i].Color = val.ToFColor(false);
 	}
-	
+
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
@@ -675,16 +685,84 @@ void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVerte
 	Modify();
 }
 
-void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, int64 ID)
+void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, int64 LinkId, FString LinkDir)
 {
-	auto FilteredVertices = Vertices.FilterByPredicate([ID](const FStreetMapVertex& Vertex) {
-		return Vertex.ID == ID;
-	});
+	/*auto FilteredVertices = Vertices.FilterByPredicate([LinkId, LinkDir](const FStreetMapVertex& Vertex) {
+		return Vertex.LinkId == LinkId && Vertex.LinkDir.Equals(LinkDir, ESearchCase::IgnoreCase);
+		});*/
 
-	int NumVertices = FilteredVertices.Num();
+	int NumVertices = Vertices.Num();
 
 	for (int i = 0; i < NumVertices; i++) {
-		FilteredVertices[i].Color = val.ToFColor(false);
+		if (Vertices[i].LinkId == LinkId && Vertices[i].LinkDir.Equals(LinkDir, ESearchCase::IgnoreCase)) {
+			Vertices[i].Color = val.ToFColor(false);
+		}
+	}
+
+	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
+	MarkRenderStateDirty();
+
+	AssignDefaultMaterialIfNeeded();
+
+	Modify();
+}
+
+void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TMultiMap<int64, FString> Links)
+{
+	/*auto FilteredVertices = Vertices.FilterByPredicate([Links](const FStreetMapVertex& Vertex) {
+		return Links.FindPair(Vertex.LinkId, Vertex.LinkDir) != nullptr;
+		});*/
+
+	int NumVertices = Vertices.Num();
+
+	for (int i = 0; i < NumVertices; i++) {
+		if (Links.FindPair(Vertices[i].LinkId, Vertices[i].LinkDir) != nullptr) {
+			Vertices[i].Color = val.ToFColor(false);
+		}
+	}
+
+	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
+	MarkRenderStateDirty();
+
+	AssignDefaultMaterialIfNeeded();
+
+	Modify();
+}
+
+void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FString TMC)
+{
+	/*auto FilteredVertices = Vertices.FilterByPredicate([TMC](const FStreetMapVertex& Vertex) {
+		return Vertex.TMC == TMC;
+		});*/
+
+	int NumVertices = Vertices.Num();
+
+	for (int i = 0; i < NumVertices; i++) {
+		if (TMC.Equals(Vertices[i].TMC)) {
+			Vertices[i].Color = val.ToFColor(false);
+		}
+	}
+
+	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
+	MarkRenderStateDirty();
+
+	AssignDefaultMaterialIfNeeded();
+
+	Modify();
+}
+
+void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FString> TMCs)
+{
+	/*auto FilteredVertices = Vertices.FilterByPredicate([TMCs](const FStreetMapVertex& Vertex) {
+		return TMCs.Find(Vertex.TMC) != INDEX_NONE;
+		});*/
+
+	int NumVertices = Vertices.Num();
+
+	for (int i = 0; i < NumVertices; i++) {
+		if (TMCs.Find(Vertices[i].TMC) != INDEX_NONE) {
+			Vertices[i].Color = val.ToFColor(false);
+		}
 	}
 
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
@@ -736,18 +814,82 @@ void UStreetMapComponent::ChangeStreetColor(FLinearColor val, EStreetMapRoadType
 	}
 }
 
-void UStreetMapComponent::ChangeStreetColorByID(FLinearColor val, EStreetMapRoadType type, int64 ID)
+void UStreetMapComponent::ChangeStreetColorByLinkId(FLinearColor val, EStreetMapRoadType type, int64 LinkId, FString LinkDir)
 {
 	switch (type)
 	{
 	case EStreetMapRoadType::Highway:
-		ColorRoadMesh(val, HighwayVertices, ID);
+		ColorRoadMesh(val, HighwayVertices, LinkId, LinkDir);
 		break;
 	case EStreetMapRoadType::MajorRoad:
-		ColorRoadMesh(val, MajorRoadVertices, ID);
+		ColorRoadMesh(val, MajorRoadVertices, LinkId, LinkDir);
 		break;
 	case EStreetMapRoadType::Street:
-		ColorRoadMesh(val, StreetVertices, ID);
+		ColorRoadMesh(val, StreetVertices, LinkId, LinkDir);
+		break;
+
+	default:
+		break;
+	}
+}
+
+void UStreetMapComponent::ChangeStreetColorByLinks(FLinearColor val, EStreetMapRoadType type, TArray<int64> LinkIds, TArray<FString> LinkDirs)
+{
+	if (LinkIds.Num() != LinkDirs.Num()) return;
+
+	TMultiMap<int64, FString> Links;
+	for (int i = 0; i < LinkIds.Num(); i++) {
+		Links.Add(LinkIds[i], LinkDirs[i]);
+	}
+
+	switch (type)
+	{
+	case EStreetMapRoadType::Highway:
+		ColorRoadMesh(val, HighwayVertices, Links);
+		break;
+	case EStreetMapRoadType::MajorRoad:
+		ColorRoadMesh(val, MajorRoadVertices, Links);
+		break;
+	case EStreetMapRoadType::Street:
+		ColorRoadMesh(val, StreetVertices, Links);
+		break;
+
+	default:
+		break;
+	}
+}
+
+void UStreetMapComponent::ChangeStreetColorByTMC(FLinearColor val, EStreetMapRoadType type, FString TMC)
+{
+	switch (type)
+	{
+	case EStreetMapRoadType::Highway:
+		ColorRoadMesh(val, HighwayVertices, TMC);
+		break;
+	case EStreetMapRoadType::MajorRoad:
+		ColorRoadMesh(val, MajorRoadVertices, TMC);
+		break;
+	case EStreetMapRoadType::Street:
+		ColorRoadMesh(val, StreetVertices, TMC);
+		break;
+
+	default:
+		break;
+	}
+}
+
+void UStreetMapComponent::ChangeStreetColorByTMCs(FLinearColor val, EStreetMapRoadType type, TArray<FString> TMCs)
+{
+	switch (type)
+	{
+	case EStreetMapRoadType::Highway:
+		ColorRoadMesh(val, HighwayVertices, TMCs);
+		break;
+	case EStreetMapRoadType::MajorRoad:
+		ColorRoadMesh(val, MajorRoadVertices, TMCs);
+		break;
+	case EStreetMapRoadType::Street:
+		ColorRoadMesh(val, StreetVertices, TMCs);
 		break;
 
 	default:
@@ -877,7 +1019,7 @@ FBoxSphereBounds UStreetMapComponent::CalcBounds(const FTransform& LocalToWorld)
 }
 
 
-void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices, int64 ID, FString TMC)
+void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices, int64 LinkId, FString LinkDir, FString TMC)
 {
 	const float HalfThickness = Thickness * 0.5f;
 
@@ -886,7 +1028,8 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 
 	const int32 BottomLeftVertexIndex = Vertices.Num();
 	FStreetMapVertex& BottomLeftVertex = *new(Vertices)FStreetMapVertex();
-	BottomLeftVertex.ID = ID;
+	BottomLeftVertex.LinkId = LinkId;
+	BottomLeftVertex.LinkDir = LinkDir;
 	BottomLeftVertex.TMC = TMC;
 	BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
 	BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
@@ -897,7 +1040,8 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 
 	const int32 BottomRightVertexIndex = Vertices.Num();
 	FStreetMapVertex& BottomRightVertex = *new(Vertices)FStreetMapVertex();
-	BottomRightVertex.ID = ID;
+	BottomRightVertex.LinkId = LinkId;
+	BottomRightVertex.LinkDir = LinkDir;
 	BottomRightVertex.TMC = TMC;
 	BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
 	BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
@@ -908,7 +1052,8 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 
 	const int32 TopRightVertexIndex = Vertices.Num();
 	FStreetMapVertex& TopRightVertex = *new(Vertices)FStreetMapVertex();
-	TopRightVertex.ID = ID;
+	TopRightVertex.LinkId = LinkId;
+	TopRightVertex.LinkDir = LinkDir;
 	TopRightVertex.TMC = TMC;
 	TopRightVertex.Position = FVector(End + RightVector * HalfThickness, Z);
 	TopRightVertex.TextureCoordinate = FVector2D(1.0f, 1.0f);
@@ -919,7 +1064,8 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 
 	const int32 TopLeftVertexIndex = Vertices.Num();
 	FStreetMapVertex& TopLeftVertex = *new(Vertices)FStreetMapVertex();
-	TopLeftVertex.ID = ID;
+	TopLeftVertex.LinkId = LinkId;
+	TopLeftVertex.LinkDir = LinkDir;
 	TopLeftVertex.TMC = TMC;
 	TopLeftVertex.Position = FVector(End - RightVector * HalfThickness, Z);
 	TopLeftVertex.TextureCoordinate = FVector2D(0.0f, 1.0f);

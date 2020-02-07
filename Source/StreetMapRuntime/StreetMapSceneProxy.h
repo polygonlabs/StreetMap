@@ -34,9 +34,13 @@ struct FStreetMapVertex
 	UPROPERTY()
 		FColor Color;
 
-	/** ID of road/building */
+	/** Link ID of road */
 	UPROPERTY()
-		int64 ID;
+		int64 LinkId;
+
+	/** Link Direction of road */
+	UPROPERTY()
+		FString LinkDir;
 
 	/** TMC of road */
 	UPROPERTY()

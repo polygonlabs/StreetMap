@@ -434,7 +434,10 @@ struct STREETMAPRUNTIME_API FStreetMapRoad
 		FString RoadName;
 
 	UPROPERTY(Category = StreetMap, EditAnywhere)
-		int64 ID;
+		int64 LinkId;
+
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FString LinkDir;
 
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		FString TMC;
