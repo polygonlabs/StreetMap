@@ -1,4 +1,4 @@
-#include "StreetMapImporting.h"
+#include "../StreetMapImporting.h"
 #include "SpatialReferenceSystem.h"
 
 // Latitude/longitude scale factor

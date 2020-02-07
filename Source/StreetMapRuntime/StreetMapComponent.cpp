@@ -1,7 +1,7 @@
 // Copyright 2017 Mike Fricker. All Rights Reserved.
 
 #include "StreetMapRuntime.h"
-#include "StreetMapComponent.h"
+#include "Public/StreetMapComponent.h"
 #include "StreetMapSceneProxy.h"
 #include "Runtime/Engine/Classes/Engine/StaticMesh.h"
 #include "Runtime/Engine/Public/StaticMeshResources.h"
@@ -10,7 +10,7 @@
 #include "PhysicsEngine/BodySetup.h"
 
 #if WITH_EDITOR
-#include "ModuleManager.h"
+#include "Modules/ModuleManager.h"
 #include "PropertyEditorModule.h"
 #include "LandscapeLayerInfoObject.h"
 #include "Public\StreetMapComponent.h"
@@ -961,7 +961,7 @@ void UStreetMapComponent::AddTriangles(const TArray<FVector>& Points, const TArr
 };
 
 /** Generate a quad for a road segment */
-void UStreetMapComponent::AddQuad(const FVector2D Start, const FVector2D End, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapQuad>& Quads, int64 ID = -1, FString TMC = "")
+void UStreetMapComponent::AddQuad(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapQuad>& Quads, int64 ID, FString TMC)
 {
 	const float HalfThickness = Thickness * 0.5f;
 

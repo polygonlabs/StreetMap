@@ -48,10 +48,10 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile(UStreetMap* StreetMap, FStr
 	// OSM data is stored in meters.  This is the scale factor to convert those units into UE4's native units (cm)
 	// Keep in mind that if this is changed, UStreetMapComponent sizes for roads may need to be updated too!
 	// @todo: We should make this scale factor customizable as an import option
-	const float OSMToCentimetersScaleFactor = 100.0f;
+	const float OSMToCentimetersScaleFac = OSMToCentimetersScaleFactor;
 
 	// Adds a road to the street map using the OpenStreetMap data, flattening the road's coordinates into our map's space
-	auto AddRoadForWay = [OSMToCentimetersScaleFactor](
+	auto AddRoadForWay = [OSMToCentimetersScaleFac](
 		const FOSMFile& OSMFile,
 		UStreetMap& StreetMapRef,
 		const FOSMFile::FOSMWayInfo& OSMWay,
@@ -175,7 +175,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile(UStreetMap* StreetMap, FStr
 
 
 	// Adds a building to the street map using the OpenStreetMap data, flattening the road's coordinates into our map's space
-	auto AddBuildingForWay = [OSMToCentimetersScaleFactor](
+	auto AddBuildingForWay = [OSMToCentimetersScaleFac](
 		const FOSMFile& OSMFile,
 		UStreetMap& StreetMapRef,
 		const FOSMFile::FOSMWayInfo& OSMWay) -> bool
@@ -261,7 +261,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile(UStreetMap* StreetMap, FStr
 	};
 
 	// Adds a railway to the street map using the OpenStreetMap data, flattening the railway's coordinates into our map's space
-	auto AddRailwayForWay = [OSMToCentimetersScaleFactor](
+	auto AddRailwayForWay = [OSMToCentimetersScaleFac](
 		const FOSMFile& OSMFile,
 		UStreetMap& StreetMapRef,
 		const FOSMFile::FOSMWayInfo& OSMWay,
@@ -357,7 +357,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile(UStreetMap* StreetMap, FStr
 	};
 
 	// Adds a remaining recognized ways to the street map using the OpenStreetMap data
-	auto AddMiscWay = [OSMToCentimetersScaleFactor](
+	auto AddMiscWay = [OSMToCentimetersScaleFac](
 		const FOSMFile& OSMFile,
 		UStreetMap& StreetMapRef,
 		const FOSMFile::FOSMWayInfo& OSMWay) -> bool
@@ -447,7 +447,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile(UStreetMap* StreetMap, FStr
 	};
 
 	// Adds multipolygons recognized as MiscWays - the ways are actually already present but with 
-	auto AddMultipolygon = [OSMToCentimetersScaleFactor, AddMiscWay](
+	auto AddMultipolygon = [OSMToCentimetersScaleFac, AddMiscWay](
 		const FOSMFile& OSMFile,
 		UStreetMap& StreetMapRef,
 		const FOSMFile::FOSMRelation& OSMRelation) -> bool

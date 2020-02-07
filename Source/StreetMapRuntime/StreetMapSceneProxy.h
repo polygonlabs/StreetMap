@@ -76,11 +76,15 @@ struct FStreetMapQuad
 	UPROPERTY()
 		FStreetMapVertex endRight;
 
+	FStreetMapQuad()
+	{
+	}
+
 	FStreetMapQuad(const FStreetMapVertex& startLeft, const FStreetMapVertex& startRight, const FStreetMapVertex& endLeft, const FStreetMapVertex& endRight)
-		: startLeft(vertex0)
-		, startRight(vertex1)
-		, endLeft(vertex2)
-		, endRight(vertex3)
+		: startLeft(startLeft)
+		, startRight(startRight)
+		, endLeft(endLeft)
+		, endRight(endRight)
 	{
 	}
 };

@@ -4,7 +4,7 @@
 #include "StreetMap.h"
 #include "Components/MeshComponent.h"
 #include "Interfaces/Interface_CollisionDataProvider.h"
-#include "StreetMapSceneProxy.h"
+#include "../StreetMapSceneProxy.h"
 #include "StreetMapComponent.generated.h"
 
 
@@ -181,7 +181,7 @@ protected:
 	void AddTriangles(const TArray<FVector>& Points, const TArray<int32>& PointIndices, const FVector& ForwardVector, const FVector& UpVector, const FColor& Color, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices);
 
 	/** Generate a quad for a road segment */
-	void AddQuad(const FVector2D Start, const FVector2D End, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapQuad>& Quads, int64 ID = -1, FString TMC = "");
+	void AddQuad(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapQuad>& Quads, int64 ID = -1, FString TMC = "");
 protected:
 
 	/** The street map we're representing. */
