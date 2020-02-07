@@ -1257,6 +1257,101 @@ void UStreetMapComponent::AddTriangles(const TArray<FVector>& Points, const TArr
 	}
 };
 
+/** Generate a quad for a road segment */
+void UStreetMapComponent::AddSmoothQuad(const FVector2D Start, const FVector2D& Mid, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices, int64 ID, FString TMC)
+{
+	const float HalfThickness = Thickness * 0.5f;
+
+	const FVector2D LineDirection1 = (Mid - Start).GetSafeNormal();
+	const FVector2D LineDirection2 = (End - Mid).GetSafeNormal();
+
+	auto alteredLineDirection = LineDirection1 + LineDirection2;
+	alteredLineDirection.Normalize();
+	const FVector2D RightVector(-alteredLineDirection.Y, alteredLineDirection.X);
+
+	const int32 BottomLeftVertexIndex = Vertices.Num();
+	FStreetMapVertex& BottomLeftVertex = *new(Vertices)FStreetMapVertex();
+	BottomLeftVertex.ID = ID;
+	BottomLeftVertex.TMC = TMC;
+	BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
+	BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
+	BottomLeftVertex.TangentX = FVector(LineDirection1, 0.0f);
+	BottomLeftVertex.TangentZ = FVector::UpVector;
+	BottomLeftVertex.Color = StartColor;
+	MeshBoundingBox += BottomLeftVertex.Position;
+
+	const int32 BottomRightVertexIndex = Vertices.Num();
+	FStreetMapVertex& BottomRightVertex = *new(Vertices)FStreetMapVertex();
+	BottomRightVertex.ID = ID;
+	BottomRightVertex.TMC = TMC;
+	BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
+	BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
+	BottomRightVertex.TangentX = FVector(LineDirection1, 0.0f);
+	BottomRightVertex.TangentZ = FVector::UpVector;
+	BottomRightVertex.Color = StartColor;
+	MeshBoundingBox += BottomRightVertex.Position;
+
+	const int32 MidLeftVertexIndex = Vertices.Num();
+	FStreetMapVertex& MidLeftVertex = *new(Vertices)FStreetMapVertex();
+	MidLeftVertex.ID = ID;
+	MidLeftVertex.TMC = TMC;
+	MidLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
+	MidLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
+	MidLeftVertex.TangentX = FVector(alteredLineDirection, 0.0f);
+	MidLeftVertex.TangentZ = FVector::UpVector;
+	MidLeftVertex.Color = StartColor;
+	MeshBoundingBox += MidLeftVertex.Position;
+
+	const int32 MidRightVertexIndex = Vertices.Num();
+	FStreetMapVertex& MidRightVertex = *new(Vertices)FStreetMapVertex();
+	MidRightVertex.ID = ID;
+	MidRightVertex.TMC = TMC;
+	MidRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
+	MidRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
+	MidRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
+	MidRightVertex.TangentZ = FVector::UpVector;
+	MidRightVertex.Color = StartColor;
+	MeshBoundingBox += MidRightVertex.Position;
+
+	const int32 TopRightVertexIndex = Vertices.Num();
+	FStreetMapVertex& TopRightVertex = *new(Vertices)FStreetMapVertex();
+	TopRightVertex.ID = ID;
+	TopRightVertex.TMC = TMC;
+	TopRightVertex.Position = FVector(End + RightVector * HalfThickness, Z);
+	TopRightVertex.TextureCoordinate = FVector2D(1.0f, 1.0f);
+	TopRightVertex.TangentX = FVector(LineDirection2, 0.0f);
+	TopRightVertex.TangentZ = FVector::UpVector;
+	TopRightVertex.Color = EndColor;
+	MeshBoundingBox += TopRightVertex.Position;
+
+	const int32 TopLeftVertexIndex = Vertices.Num();
+	FStreetMapVertex& TopLeftVertex = *new(Vertices)FStreetMapVertex();
+	TopLeftVertex.ID = ID;
+	TopLeftVertex.TMC = TMC;
+	TopLeftVertex.Position = FVector(End - RightVector * HalfThickness, Z);
+	TopLeftVertex.TextureCoordinate = FVector2D(0.0f, 1.0f);
+	TopLeftVertex.TangentX = FVector(LineDirection2, 0.0f);
+	TopLeftVertex.TangentZ = FVector::UpVector;
+	TopLeftVertex.Color = EndColor;
+	MeshBoundingBox += TopLeftVertex.Position;
+
+	Indices.Add(BottomLeftVertexIndex);
+	Indices.Add(BottomRightVertexIndex);
+	Indices.Add(MidRightVertexIndex);
+
+	Indices.Add(BottomLeftVertexIndex);
+	Indices.Add(MidRightVertexIndex);
+	Indices.Add(MidLeftVertexIndex);
+
+	Indices.Add(MidLeftVertexIndex);
+	Indices.Add(MidRightVertexIndex);
+	Indices.Add(TopRightVertexIndex);
+
+	Indices.Add(MidLeftVertexIndex);
+	Indices.Add(TopRightVertexIndex);
+	Indices.Add(TopLeftVertexIndex);
+}
+
 FString UStreetMapComponent::GetStreetMapAssetName() const
 {
 	return StreetMap != nullptr ? StreetMap->GetName() : FString(TEXT("NONE"));
