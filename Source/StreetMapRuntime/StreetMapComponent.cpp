@@ -242,7 +242,7 @@ void UStreetMapComponent::GenerateMesh()
 	// Visual tweakables for generated Street Map mesh
 	//
 	const float RoadZ = MeshBuildSettings.RoadOffsetZ;
-	const bool bWantSmoothStrees = MeshBuildSettings.bWantSmoothStreets;
+	const bool bWantSmoothStreets = MeshBuildSettings.bWantSmoothStreets;
 	const bool bWant3DBuildings = MeshBuildSettings.bWant3DBuildings;
 	const float BuildingLevelFloorFactor = MeshBuildSettings.BuildingLevelFloorFactor;
 	const bool bWantLitBuildings = MeshBuildSettings.bWantLitBuildings;
@@ -309,7 +309,7 @@ void UStreetMapComponent::GenerateMesh()
 				check(0);
 				break;
 			}
-			auto newWay = bWantSmoothStrees && Road.RoadPoints.Num() > 2;
+			auto newWay = bWantSmoothStreets && Road.RoadPoints.Num() > 2;
 			if (newWay)
 			{
 				TArray<FStreetMapVertex>* Vertices = nullptr;
@@ -1205,8 +1205,6 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D Start
 	auto MidRightVertexIndex = (*Indices)[numIdx - 1];
 	auto MidLeftVertexIndex = (*Indices)[numIdx - 2];
 
-	//Indices->Add(MidLeftVertexIndex);
-	//Indices->Add(MidRightVertexIndex);
 	Indices->Add(TopRightVertexIndex);
 
 	Indices->Add(MidLeftVertexIndex);
