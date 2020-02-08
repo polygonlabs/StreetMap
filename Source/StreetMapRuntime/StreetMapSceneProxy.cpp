@@ -9,8 +9,8 @@
 
 FStreetMapSceneProxy::FStreetMapSceneProxy(const UStreetMapComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent),
-	BuildingVertexFactory(GetScene().GetFeatureLevel(), "FStreetMapSceneProxy"),
 	StreetVertexFactory(GetScene().GetFeatureLevel(), "FStreetMapSceneProxy"),
+	BuildingVertexFactory(GetScene().GetFeatureLevel(), "FStreetMapSceneProxy"),
 	MajorRoadVertexFactory(GetScene().GetFeatureLevel(), "FStreetMapSceneProxy"),
 	HighwayVertexFactory(GetScene().GetFeatureLevel(), "FStreetMapSceneProxy"),
 	StreetMapComp(InComponent),

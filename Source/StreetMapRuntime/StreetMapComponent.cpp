@@ -308,70 +308,154 @@ void UStreetMapComponent::GenerateMesh()
 				check(0);
 				break;
 			}
-
-			for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
+			auto newWay = Road.RoadPoints.Num() > 2;
+			if (newWay)
 			{
+				TArray<FStreetMapVertex>* Vertices = nullptr;
+				TArray<uint32>* Indices = nullptr;
+
 				switch (Type) {
 				case EVertexType::VStreet:
-					AddThick2DLine(
-						Road.RoadPoints[PointIndex],
-						Road.RoadPoints[PointIndex + 1],
-						RoadZ,
-						RoadThickness,
-						RoadColor,
-						RoadColor,
-						MeshBoundingBox,
-						StreetVertices,
-						StreetIndices,
-						Road.ID,
-						Road.TMC
-					);
+				{
+					Vertices = &StreetVertices;
+					Indices = &StreetIndices;
 					break;
+				}
 				case EVertexType::VMajorRoad:
-					AddThick2DLine(
-						Road.RoadPoints[PointIndex],
-						Road.RoadPoints[PointIndex + 1],
-						RoadZ,
-						RoadThickness,
-						RoadColor,
-						RoadColor,
-						MeshBoundingBox,
-						MajorRoadVertices,
-						MajorRoadIndices,
-						Road.ID,
-						Road.TMC
-					);
+				{
+					Vertices = &MajorRoadVertices;
+					Indices = &MajorRoadIndices;
 					break;
+				}
 				case EVertexType::VHighway:
-					AddThick2DLine(
-						Road.RoadPoints[PointIndex],
-						Road.RoadPoints[PointIndex + 1],
-						RoadZ,
-						RoadThickness,
-						RoadColor,
-						RoadColor,
-						MeshBoundingBox,
-						HighwayVertices,
-						HighwayIndices,
-						Road.ID,
-						Road.TMC
-					);
+				{
+					Vertices = &HighwayVertices;
+					Indices = &HighwayIndices;
 					break;
+				}
 				case EVertexType::VBuilding:
-					AddThick2DLine(
-						Road.RoadPoints[PointIndex],
-						Road.RoadPoints[PointIndex + 1],
+				{
+					Vertices = &BuildingVertices;
+					Indices = &BuildingIndices;
+					break;
+				}
+				}
+
+				if (Vertices && Indices)
+				{
+					StartSmoothQuadList(
+						Road.RoadPoints[0],
+						Road.RoadPoints[1],
+						Road.RoadPoints[2],
 						RoadZ,
 						RoadThickness,
 						RoadColor,
 						RoadColor,
 						MeshBoundingBox,
-						BuildingVertices,
-						BuildingIndices,
+						Vertices,
+						Indices,
 						Road.ID,
 						Road.TMC
 					);
-					break;
+					int32 PointIndex = 0;
+					for (; PointIndex < Road.RoadPoints.Num() - 2; ++PointIndex)
+					{
+						AddSmoothQuad(
+							Road.RoadPoints[PointIndex],
+							Road.RoadPoints[PointIndex + 1],
+							Road.RoadPoints[PointIndex + 2],
+							RoadZ,
+							RoadThickness,
+							RoadColor,
+							RoadColor,
+							MeshBoundingBox,
+							Vertices,
+							Indices,
+							Road.ID,
+							Road.TMC
+						);
+					}
+					PointIndex -= 1;
+					EndSmoothQuadList(Road.RoadPoints[PointIndex],
+						Road.RoadPoints[PointIndex + 1],
+						Road.RoadPoints[PointIndex + 2],
+						RoadZ,
+						RoadThickness,
+						RoadColor,
+						RoadColor,
+						MeshBoundingBox,
+						Vertices,
+						Indices,
+						Road.ID,
+						Road.TMC);
+				}
+			}
+			else
+			{
+				for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
+				{
+					switch (Type) {
+					case EVertexType::VStreet:
+						AddThick2DLine(
+							Road.RoadPoints[PointIndex],
+							Road.RoadPoints[PointIndex + 1],
+							RoadZ,
+							RoadThickness,
+							RoadColor,
+							RoadColor,
+							MeshBoundingBox,
+							StreetVertices,
+							StreetIndices,
+							Road.ID,
+							Road.TMC
+						);
+						break;
+					case EVertexType::VMajorRoad:
+						AddThick2DLine(
+							Road.RoadPoints[PointIndex],
+							Road.RoadPoints[PointIndex + 1],
+							RoadZ,
+							RoadThickness,
+							RoadColor,
+							RoadColor,
+							MeshBoundingBox,
+							MajorRoadVertices,
+							MajorRoadIndices,
+							Road.ID,
+							Road.TMC
+						);
+						break;
+					case EVertexType::VHighway:
+						AddThick2DLine(
+							Road.RoadPoints[PointIndex],
+							Road.RoadPoints[PointIndex + 1],
+							RoadZ,
+							RoadThickness,
+							RoadColor,
+							RoadColor,
+							MeshBoundingBox,
+							HighwayVertices,
+							HighwayIndices,
+							Road.ID,
+							Road.TMC
+						);
+						break;
+					case EVertexType::VBuilding:
+						AddThick2DLine(
+							Road.RoadPoints[PointIndex],
+							Road.RoadPoints[PointIndex + 1],
+							RoadZ,
+							RoadThickness,
+							RoadColor,
+							RoadColor,
+							MeshBoundingBox,
+							BuildingVertices,
+							BuildingIndices,
+							Road.ID,
+							Road.TMC
+						);
+						break;
+					}
 				}
 			}
 		}
@@ -960,8 +1044,68 @@ void UStreetMapComponent::AddTriangles(const TArray<FVector>& Points, const TArr
 	}
 };
 
+void UStreetMapComponent::StartSmoothQuadList(const FVector2D Start
+	, const FVector2D& Mid
+	, const FVector2D End
+	, const float Z
+	, const float Thickness
+	, const FColor& StartColor
+	, const FColor& EndColor
+	, FBox& MeshBoundingBox
+	, TArray<FStreetMapVertex>* Vertices
+	, TArray<uint32>* Indices
+	, int64 ID
+	, FString TMC)
+{
+	const float HalfThickness = Thickness * 0.5f;
+
+	const FVector2D LineDirection1 = (Mid - Start).GetSafeNormal();
+	const FVector2D LineDirection2 = (End - Mid).GetSafeNormal();
+
+	auto alteredLineDirection = LineDirection1 + LineDirection2;
+	alteredLineDirection.Normalize();
+
+	const FVector2D RightVector(-alteredLineDirection.Y, alteredLineDirection.X);
+	const int32 BottomLeftVertexIndex = Vertices->Num();
+	FStreetMapVertex& BottomLeftVertex = *new(*Vertices)FStreetMapVertex();
+	BottomLeftVertex.ID = ID;
+	BottomLeftVertex.TMC = TMC;
+	BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
+	BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
+	BottomLeftVertex.TangentX = FVector(LineDirection1, 0.0f);
+	BottomLeftVertex.TangentZ = FVector::UpVector;
+	BottomLeftVertex.Color = StartColor;
+	MeshBoundingBox += BottomLeftVertex.Position;
+
+	const int32 BottomRightVertexIndex = Vertices->Num();
+	FStreetMapVertex& BottomRightVertex = *new(*Vertices)FStreetMapVertex();
+	BottomRightVertex.ID = ID;
+	BottomRightVertex.TMC = TMC;
+	BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
+	BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
+	BottomRightVertex.TangentX = FVector(LineDirection1, 0.0f);
+	BottomRightVertex.TangentZ = FVector::UpVector;
+	BottomRightVertex.Color = StartColor;
+	MeshBoundingBox += BottomRightVertex.Position;
+
+	Indices->Add(BottomLeftVertexIndex);
+	Indices->Add(BottomRightVertexIndex);
+}
+
+
 /** Generate a quad for a road segment */
-void UStreetMapComponent::AddSmoothQuad(const FVector2D Start, const FVector2D& Mid, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices, int64 ID, FString TMC)
+void UStreetMapComponent::AddSmoothQuad(const FVector2D Start
+	, const FVector2D& Mid
+	, const FVector2D End
+	, const float Z
+	, const float Thickness
+	, const FColor& StartColor
+	, const FColor& EndColor
+	, FBox& MeshBoundingBox
+	, TArray<FStreetMapVertex>* Vertices
+	, TArray<uint32>* Indices
+	, int64 ID
+	, FString TMC)
 {
 	const float HalfThickness = Thickness * 0.5f;
 
@@ -972,30 +1116,8 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D Start, const FVector2D& 
 	alteredLineDirection.Normalize();
 	const FVector2D RightVector(-alteredLineDirection.Y, alteredLineDirection.X);
 
-	const int32 BottomLeftVertexIndex = Vertices.Num();
-	FStreetMapVertex& BottomLeftVertex = *new(Vertices)FStreetMapVertex();
-	BottomLeftVertex.ID = ID;
-	BottomLeftVertex.TMC = TMC;
-	BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
-	BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
-	BottomLeftVertex.TangentX = FVector(LineDirection1, 0.0f);
-	BottomLeftVertex.TangentZ = FVector::UpVector;
-	BottomLeftVertex.Color = StartColor;
-	MeshBoundingBox += BottomLeftVertex.Position;
-
-	const int32 BottomRightVertexIndex = Vertices.Num();
-	FStreetMapVertex& BottomRightVertex = *new(Vertices)FStreetMapVertex();
-	BottomRightVertex.ID = ID;
-	BottomRightVertex.TMC = TMC;
-	BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
-	BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
-	BottomRightVertex.TangentX = FVector(LineDirection1, 0.0f);
-	BottomRightVertex.TangentZ = FVector::UpVector;
-	BottomRightVertex.Color = StartColor;
-	MeshBoundingBox += BottomRightVertex.Position;
-
-	const int32 MidLeftVertexIndex = Vertices.Num();
-	FStreetMapVertex& MidLeftVertex = *new(Vertices)FStreetMapVertex();
+	const int32 MidLeftVertexIndex = Vertices->Num();
+	FStreetMapVertex& MidLeftVertex = *new(*Vertices)FStreetMapVertex();
 	MidLeftVertex.ID = ID;
 	MidLeftVertex.TMC = TMC;
 	MidLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
@@ -1005,8 +1127,8 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D Start, const FVector2D& 
 	MidLeftVertex.Color = StartColor;
 	MeshBoundingBox += MidLeftVertex.Position;
 
-	const int32 MidRightVertexIndex = Vertices.Num();
-	FStreetMapVertex& MidRightVertex = *new(Vertices)FStreetMapVertex();
+	const int32 MidRightVertexIndex = Vertices->Num();
+	FStreetMapVertex& MidRightVertex = *new(*Vertices)FStreetMapVertex();
 	MidRightVertex.ID = ID;
 	MidRightVertex.TMC = TMC;
 	MidRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
@@ -1016,19 +1138,47 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D Start, const FVector2D& 
 	MidRightVertex.Color = StartColor;
 	MeshBoundingBox += MidRightVertex.Position;
 
-	const int32 TopRightVertexIndex = Vertices.Num();
-	FStreetMapVertex& TopRightVertex = *new(Vertices)FStreetMapVertex();
-	TopRightVertex.ID = ID;
-	TopRightVertex.TMC = TMC;
-	TopRightVertex.Position = FVector(End + RightVector * HalfThickness, Z);
-	TopRightVertex.TextureCoordinate = FVector2D(1.0f, 1.0f);
-	TopRightVertex.TangentX = FVector(LineDirection2, 0.0f);
-	TopRightVertex.TangentZ = FVector::UpVector;
-	TopRightVertex.Color = EndColor;
-	MeshBoundingBox += TopRightVertex.Position;
+	auto numIdx = Indices->Num();
+	auto BottomRightVertexIndex = (*Indices)[numIdx - 1];
+	auto BottomLeftVertexIndex = (*Indices)[numIdx - 2];
+	
+	Indices->Add(MidRightVertexIndex);
 
-	const int32 TopLeftVertexIndex = Vertices.Num();
-	FStreetMapVertex& TopLeftVertex = *new(Vertices)FStreetMapVertex();
+	Indices->Add(BottomLeftVertexIndex);
+	Indices->Add(MidRightVertexIndex);
+	Indices->Add(MidLeftVertexIndex);
+
+	// Start of next triangle
+	Indices->Add(MidLeftVertexIndex);
+	Indices->Add(MidRightVertexIndex);
+
+}
+
+
+void UStreetMapComponent::EndSmoothQuadList(const FVector2D Start
+	, const FVector2D& Mid
+	, const FVector2D End
+	, const float Z
+	, const float Thickness
+	, const FColor& StartColor
+	, const FColor& EndColor
+	, FBox& MeshBoundingBox
+	, TArray<FStreetMapVertex>* Vertices
+	, TArray<uint32>* Indices
+	, int64 ID
+	, FString TMC)
+{
+	const float HalfThickness = Thickness * 0.5f;
+
+	const FVector2D LineDirection1 = (Mid - Start).GetSafeNormal();
+	const FVector2D LineDirection2 = (End - Mid).GetSafeNormal();
+
+	auto alteredLineDirection = LineDirection1 + LineDirection2;
+	alteredLineDirection.Normalize();
+	const FVector2D RightVector(-alteredLineDirection.Y, alteredLineDirection.X);
+
+	const int32 TopLeftVertexIndex = Vertices->Num();
+	FStreetMapVertex& TopLeftVertex = *new(*Vertices)FStreetMapVertex();
 	TopLeftVertex.ID = ID;
 	TopLeftVertex.TMC = TMC;
 	TopLeftVertex.Position = FVector(End - RightVector * HalfThickness, Z);
@@ -1038,21 +1188,31 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D Start, const FVector2D& 
 	TopLeftVertex.Color = EndColor;
 	MeshBoundingBox += TopLeftVertex.Position;
 
-	Indices.Add(BottomLeftVertexIndex);
-	Indices.Add(BottomRightVertexIndex);
-	Indices.Add(MidRightVertexIndex);
+	const int32 TopRightVertexIndex = Vertices->Num();
+	FStreetMapVertex& TopRightVertex = *new(*Vertices)FStreetMapVertex();
+	TopRightVertex.ID = ID;
+	TopRightVertex.TMC = TMC;
+	TopRightVertex.Position = FVector(End + RightVector * HalfThickness, Z);
+	TopRightVertex.TextureCoordinate = FVector2D(1.0f, 1.0f);
+	TopRightVertex.TangentX = FVector(LineDirection2, 0.0f);
+	TopRightVertex.TangentZ = FVector::UpVector;
+	TopRightVertex.Color = EndColor;
+	MeshBoundingBox += TopRightVertex.Position;
 
-	Indices.Add(BottomLeftVertexIndex);
-	Indices.Add(MidRightVertexIndex);
-	Indices.Add(MidLeftVertexIndex);
+	auto numIdx = Indices->Num();
 
-	Indices.Add(MidLeftVertexIndex);
-	Indices.Add(MidRightVertexIndex);
-	Indices.Add(TopRightVertexIndex);
+	auto MidRightVertexIndex = (*Indices)[numIdx - 1];
+	auto MidLeftVertexIndex = (*Indices)[numIdx - 2];
 
-	Indices.Add(MidLeftVertexIndex);
-	Indices.Add(TopRightVertexIndex);
-	Indices.Add(TopLeftVertexIndex);
+	//Indices->Add(MidLeftVertexIndex);
+	//Indices->Add(MidRightVertexIndex);
+	Indices->Add(TopRightVertexIndex);
+
+	Indices->Add(MidLeftVertexIndex);
+	Indices->Add(TopRightVertexIndex);
+	Indices->Add(TopLeftVertexIndex);
+
+
 }
 
 
