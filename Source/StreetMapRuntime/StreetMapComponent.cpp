@@ -1121,7 +1121,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D Start
 	FStreetMapVertex& MidLeftVertex = *new(*Vertices)FStreetMapVertex();
 	MidLeftVertex.ID = ID;
 	MidLeftVertex.TMC = TMC;
-	MidLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
+	MidLeftVertex.Position = FVector(Mid - RightVector * HalfThickness, Z);
 	MidLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
 	MidLeftVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	MidLeftVertex.TangentZ = FVector::UpVector;
@@ -1132,7 +1132,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D Start
 	FStreetMapVertex& MidRightVertex = *new(*Vertices)FStreetMapVertex();
 	MidRightVertex.ID = ID;
 	MidRightVertex.TMC = TMC;
-	MidRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
+	MidRightVertex.Position = FVector(Mid + RightVector * HalfThickness, Z);
 	MidRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
 	MidRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	MidRightVertex.TangentZ = FVector::UpVector;
