@@ -65,6 +65,10 @@ public:
 	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Road Vertical Offset")
 		float RoadOffsetZ;
 
+	/** if true streets will be a single mesh instead of a list of quads. */
+	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Smooth streets")
+		uint32 bWantSmoothStreets : 1;
+
 	/** if true buildings mesh will be 3D instead of flat representation. */
 	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Create 3D Buildings")
 		uint32 bWant3DBuildings : 1;
@@ -124,6 +128,7 @@ public:
 
 	FStreetMapMeshBuildSettings() :
 		RoadOffsetZ(0.0f),
+		bWantSmoothStreets(true),
 		bWant3DBuildings(true),
 		bWantLitBuildings(true),
 		StreetThickness(800.0f),
