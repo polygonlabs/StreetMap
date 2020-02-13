@@ -47,6 +47,9 @@ UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitial
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> DefaultMaterialAsset(TEXT("/StreetMap/StreetMapDefaultMaterial"));
 	StreetMapDefaultMaterial = DefaultMaterialAsset.Object;
 
+	mFlowData.Empty();
+	mHighlights.Empty();
+
 #if WITH_EDITOR
 	if (GEngine)
 	{
@@ -257,6 +260,10 @@ void UStreetMapComponent::GenerateMesh()
 	const float BuildingBorderZ = MeshBuildSettings.BuildingBorderZ;
 	const FColor BuildingBorderColor(BuildingBorderLinearColor.ToFColor(false));
 	const FColor BuildingFillColor(FLinearColor(BuildingBorderLinearColor * 0.33f).CopyWithNewOpacity(1.0f).ToFColor(false));
+	const FColor LowFlowColor = MeshBuildSettings.LowFlowColor.ToFColor(false);
+	const FColor MedFlowColor = MeshBuildSettings.MedFlowColor.ToFColor(false);
+	const FColor HighFlowColor = MeshBuildSettings.HighFlowColor.ToFColor(false);
+	const bool bColorByFlow = MeshBuildSettings.bColorByFlow;
 	/////////////////////////////////////////////////////////
 
 
@@ -282,26 +289,61 @@ void UStreetMapComponent::GenerateMesh()
 
 		for (const auto& Road : Roads)
 		{
-			float RoadThickness = StreetThickness;
-			FColor RoadColor = StreetColor;
-			EVertexType Type = EVertexType::VStreet;
+			float RoadThickness;
+			FColor RoadColor;
+			EVertexType Type;
+			TArray<FStreetMapVertex>* Vertices = nullptr;
+			TArray<uint32>* Indices = nullptr;
+
+			const int FlowNum = mFlowData.Num();
+			if (bColorByFlow && FlowNum > 0) {
+				const FString TMC = Road.TMC;
+				const float Speed = mFlowData[TMC];
+				const float SpeedRatio = Speed / Road.SpeedLimit;
+
+				if (SpeedRatio > 0.8f) {
+					RoadColor = HighFlowColor;
+				}
+				else if (SpeedRatio > 0.5f) {
+					RoadColor = MedFlowColor;
+				}
+				else {
+					RoadColor = LowFlowColor;
+				}
+			}
+
 			switch (Road.RoadType)
 			{
 			case EStreetMapRoadType::Highway:
 				RoadThickness = HighwayThickness;
-				RoadColor = HighwayColor;
+				if (!bColorByFlow || FlowNum == 0) {
+					RoadColor = HighwayColor;
+				}
 				Type = EVertexType::VHighway;
+				Vertices = &HighwayVertices; 
+				Indices = &HighwayIndices;
 				break;
 
 			case EStreetMapRoadType::MajorRoad:
 				RoadThickness = MajorRoadThickness;
-				RoadColor = MajorRoadColor;
+				if (!bColorByFlow || FlowNum == 0) {
+					RoadColor = MajorRoadColor;
+				}
 				Type = EVertexType::VMajorRoad;
+				Vertices = &MajorRoadVertices;
+				Indices = &MajorRoadIndices;
 				break;
 
 			case EStreetMapRoadType::Street:
 			case EStreetMapRoadType::Other:
 			case EStreetMapRoadType::Bridge:
+				RoadThickness = StreetThickness;
+				if (!bColorByFlow || FlowNum == 0) {
+					RoadColor = StreetColor;
+				}
+				Type = EVertexType::VStreet;
+				Vertices = &StreetVertices;
+				Indices = &StreetIndices;
 				break;
 
 			default:
@@ -309,10 +351,9 @@ void UStreetMapComponent::GenerateMesh()
 				break;
 			}
 
-			for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
-			{
-				switch (Type) {
-				case EVertexType::VStreet:
+			if (Vertices && Indices) {
+				for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
+				{
 					AddThick2DLine(
 						Road.RoadPoints[PointIndex],
 						Road.RoadPoints[PointIndex + 1],
@@ -321,61 +362,13 @@ void UStreetMapComponent::GenerateMesh()
 						RoadColor,
 						RoadColor,
 						MeshBoundingBox,
-						StreetVertices,
-						StreetIndices,
+						Vertices,
+						Indices,
 						Road.LinkId,
 						Road.LinkDir,
-						Road.TMC
+						Road.TMC,
+						Road.SpeedLimit
 					);
-					break;
-				case EVertexType::VMajorRoad:
-					AddThick2DLine(
-						Road.RoadPoints[PointIndex],
-						Road.RoadPoints[PointIndex + 1],
-						RoadZ,
-						RoadThickness,
-						RoadColor,
-						RoadColor,
-						MeshBoundingBox,
-						MajorRoadVertices,
-						MajorRoadIndices,
-						Road.LinkId,
-						Road.LinkDir,
-						Road.TMC
-					);
-					break;
-				case EVertexType::VHighway:
-					AddThick2DLine(
-						Road.RoadPoints[PointIndex],
-						Road.RoadPoints[PointIndex + 1],
-						RoadZ,
-						RoadThickness,
-						RoadColor,
-						RoadColor,
-						MeshBoundingBox,
-						HighwayVertices,
-						HighwayIndices,
-						Road.LinkId,
-						Road.LinkDir,
-						Road.TMC
-					);
-					break;
-				case EVertexType::VBuilding:
-					AddThick2DLine(
-						Road.RoadPoints[PointIndex],
-						Road.RoadPoints[PointIndex + 1],
-						RoadZ,
-						RoadThickness,
-						RoadColor,
-						RoadColor,
-						MeshBoundingBox,
-						BuildingVertices,
-						BuildingIndices,
-						Road.LinkId,
-						Road.LinkDir,
-						Road.TMC
-					);
-					break;
 				}
 			}
 		}
@@ -521,8 +514,8 @@ void UStreetMapComponent::GenerateMesh()
 						BuildingBorderColor,
 						BuildingBorderColor,
 						MeshBoundingBox,
-						BuildingVertices,
-						BuildingIndices);
+						&BuildingVertices,
+						&BuildingIndices);
 				}
 			}
 		}
@@ -543,6 +536,10 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 	const FColor MajorRoadColor = MeshBuildSettings.MajorRoadColor.ToFColor(false);
 	const float HighwayThickness = MeshBuildSettings.HighwayThickness;
 	const FColor HighwayColor = MeshBuildSettings.HighwayColor.ToFColor(false);
+	const FColor LowFlowColor = MeshBuildSettings.LowFlowColor.ToFColor(false);
+	const FColor MedFlowColor = MeshBuildSettings.MedFlowColor.ToFColor(false);
+	const FColor HighFlowColor = MeshBuildSettings.HighFlowColor.ToFColor(false);
+	const bool bColorByFlow = MeshBuildSettings.bColorByFlow;
 	/////////////////////////////////////////////////////////
 
 
@@ -570,22 +567,56 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 		for (const auto& Road : Roads)
 		{
 			if (Road.RoadType == Type) {
-				float RoadThickness = StreetThickness;
-				FColor RoadColor = StreetColor;
+				float RoadThickness;
+				FColor RoadColor;
+				TArray<FStreetMapVertex>* Vertices = nullptr;
+				TArray<uint32>* Indices = nullptr;
+				
+				const int FlowNum = mFlowData.Num();
+				if (bColorByFlow && FlowNum > 0) {
+					const FString TMC = Road.TMC;
+					const float Speed = mFlowData[TMC];
+					const float SpeedRatio = Speed / Road.SpeedLimit;
+
+					if (SpeedRatio > 0.8f) {
+						RoadColor = HighFlowColor;
+					}
+					else if (SpeedRatio > 0.5f) {
+						RoadColor = MedFlowColor;
+					}
+					else {
+						RoadColor = LowFlowColor;
+					}
+				}
+
 				switch (Road.RoadType)
 				{
 				case EStreetMapRoadType::Highway:
 					RoadThickness = HighwayThickness;
-					RoadColor = HighwayColor;
+					if (!bColorByFlow || FlowNum == 0) {
+						RoadColor = HighwayColor;
+					}
+					Vertices = &HighwayVertices;
+					Indices = &HighwayIndices;
 					break;
 
 				case EStreetMapRoadType::MajorRoad:
 					RoadThickness = MajorRoadThickness;
-					RoadColor = MajorRoadColor;
+					if (!bColorByFlow || FlowNum == 0) {
+						RoadColor = MajorRoadColor;
+					}
+					Vertices = &MajorRoadVertices;
+					Indices = &MajorRoadIndices;
 					break;
 
 				case EStreetMapRoadType::Street:
 				case EStreetMapRoadType::Other:
+					RoadThickness = StreetThickness;
+					if (!bColorByFlow || FlowNum == 0) {
+						RoadColor = StreetColor;
+					}
+					Vertices = &StreetVertices;
+					Indices = &StreetIndices;
 					break;
 
 				default:
@@ -593,10 +624,9 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 					break;
 				}
 
-				for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
-				{
-					switch (Type) {
-					case EStreetMapRoadType::Highway:
+				if (Vertices && Indices) {
+					for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
+					{
 						AddThick2DLine(
 							Road.RoadPoints[PointIndex],
 							Road.RoadPoints[PointIndex + 1],
@@ -605,42 +635,12 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 							RoadColor,
 							RoadColor,
 							MeshBoundingBox,
-							HighwayVertices,
-							HighwayIndices,
+							Vertices,
+							Indices,
 							Road.LinkId,
 							Road.LinkDir,
-							Road.TMC);
-						break;
-					case EStreetMapRoadType::MajorRoad:
-						AddThick2DLine(
-							Road.RoadPoints[PointIndex],
-							Road.RoadPoints[PointIndex + 1],
-							RoadZ,
-							RoadThickness,
-							RoadColor,
-							RoadColor,
-							MeshBoundingBox,
-							MajorRoadVertices,
-							MajorRoadIndices,
-							Road.LinkId,
-							Road.LinkDir,
-							Road.TMC);
-						break;
-					case EStreetMapRoadType::Street:
-						AddThick2DLine(
-							Road.RoadPoints[PointIndex],
-							Road.RoadPoints[PointIndex + 1],
-							RoadZ,
-							RoadThickness,
-							RoadColor,
-							RoadColor,
-							MeshBoundingBox,
-							StreetVertices,
-							StreetIndices,
-							Road.LinkId,
-							Road.LinkDir,
-							Road.TMC);
-						break;
+							Road.TMC,
+							Road.SpeedLimit);
 					}
 				}
 			}
@@ -791,6 +791,62 @@ void UStreetMapComponent::ChangeStreetThickness(float val, EStreetMapRoadType ty
 	}
 
 	BuildRoadMesh(type);
+}
+
+void UStreetMapComponent::ColorRoadMeshFromFlowData(TArray<FStreetMapVertex>& Vertices, FLinearColor DefaultColor) {
+	const FColor LowFlowColor = MeshBuildSettings.LowFlowColor.ToFColor(false);
+	const FColor MedFlowColor = MeshBuildSettings.MedFlowColor.ToFColor(false);
+	const FColor HighFlowColor = MeshBuildSettings.HighFlowColor.ToFColor(false);
+	
+	const int FlowNum = mFlowData.Num();
+	int NumVertices = Vertices.Num();
+	for (int i = 0; i < NumVertices; i++) {
+		auto* Vertex = &Vertices[i];
+		auto RoadColor = DefaultColor;
+		const FString TMC = Vertex->TMC;
+
+		if (FlowNum > 0 && mFlowData.Find(TMC) != nullptr) {			
+			const float Speed = mFlowData[TMC];
+			const float SpeedRatio = Speed / Vertex->SpeedLimit;
+
+			if (SpeedRatio > 0.8f) {
+				RoadColor = HighFlowColor;
+			}
+			else if (SpeedRatio > 0.5f) {
+				RoadColor = MedFlowColor;
+			}
+			else {
+				RoadColor = LowFlowColor;
+			}
+		}
+
+		Vertex->Color = RoadColor.ToFColor(false);
+	}
+
+	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
+	MarkRenderStateDirty();
+
+	AssignDefaultMaterialIfNeeded();
+
+	Modify();
+}
+
+void UStreetMapComponent::RefreshStreetColor()
+{
+	const FColor StreetColor = MeshBuildSettings.StreetColor.ToFColor(false);
+	const FColor MajorRoadColor = MeshBuildSettings.MajorRoadColor.ToFColor(false);
+	const FColor HighwayColor = MeshBuildSettings.HighwayColor.ToFColor(false);
+	const bool bColorByFlow = MeshBuildSettings.bColorByFlow;
+
+	if (bColorByFlow) {
+		ColorRoadMeshFromFlowData(HighwayVertices, HighwayColor);
+		ColorRoadMeshFromFlowData(MajorRoadVertices, MajorRoadColor);
+		ColorRoadMeshFromFlowData(StreetVertices, StreetColor);
+	} else  {
+		ColorRoadMesh(HighwayColor, HighwayVertices);
+		ColorRoadMesh(MajorRoadColor, MajorRoadVertices);
+		ColorRoadMesh(StreetColor, StreetVertices);
+	}
 }
 
 void UStreetMapComponent::ChangeStreetColor(FLinearColor val, EStreetMapRoadType type)
@@ -1019,18 +1075,21 @@ FBoxSphereBounds UStreetMapComponent::CalcBounds(const FTransform& LocalToWorld)
 }
 
 
-void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices, int64 LinkId, FString LinkDir, FString TMC)
+void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>* Vertices, TArray<uint32>* Indices, int64 LinkId, FString LinkDir, FString TMC, int SpeedLimit)
 {
 	const float HalfThickness = Thickness * 0.5f;
-
+	
+	const float Distance = (End - Start).Size();
+	const float XRatio = Distance / Thickness;
 	const FVector2D LineDirection = (End - Start).GetSafeNormal();
 	const FVector2D RightVector(-LineDirection.Y, LineDirection.X);
 
-	const int32 BottomLeftVertexIndex = Vertices.Num();
-	FStreetMapVertex& BottomLeftVertex = *new(Vertices)FStreetMapVertex();
+	const int32 BottomLeftVertexIndex = Vertices->Num();
+	FStreetMapVertex& BottomLeftVertex = *new(*Vertices)FStreetMapVertex();
 	BottomLeftVertex.LinkId = LinkId;
 	BottomLeftVertex.LinkDir = LinkDir;
 	BottomLeftVertex.TMC = TMC;
+	BottomLeftVertex.SpeedLimit = SpeedLimit;
 	BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
 	BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
 	BottomLeftVertex.TangentX = FVector(LineDirection, 0.0f);
@@ -1038,11 +1097,12 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	BottomLeftVertex.Color = StartColor;
 	MeshBoundingBox += BottomLeftVertex.Position;
 
-	const int32 BottomRightVertexIndex = Vertices.Num();
-	FStreetMapVertex& BottomRightVertex = *new(Vertices)FStreetMapVertex();
+	const int32 BottomRightVertexIndex = Vertices->Num();
+	FStreetMapVertex& BottomRightVertex = *new(*Vertices)FStreetMapVertex();
 	BottomRightVertex.LinkId = LinkId;
 	BottomRightVertex.LinkDir = LinkDir;
 	BottomRightVertex.TMC = TMC;
+	BottomRightVertex.SpeedLimit = SpeedLimit;
 	BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
 	BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
 	BottomRightVertex.TangentX = FVector(LineDirection, 0.0f);
@@ -1050,37 +1110,39 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	BottomRightVertex.Color = StartColor;
 	MeshBoundingBox += BottomRightVertex.Position;
 
-	const int32 TopRightVertexIndex = Vertices.Num();
-	FStreetMapVertex& TopRightVertex = *new(Vertices)FStreetMapVertex();
+	const int32 TopRightVertexIndex = Vertices->Num();
+	FStreetMapVertex& TopRightVertex = *new(*Vertices)FStreetMapVertex();
 	TopRightVertex.LinkId = LinkId;
 	TopRightVertex.LinkDir = LinkDir;
 	TopRightVertex.TMC = TMC;
+	TopRightVertex.SpeedLimit = SpeedLimit;
 	TopRightVertex.Position = FVector(End + RightVector * HalfThickness, Z);
-	TopRightVertex.TextureCoordinate = FVector2D(1.0f, 1.0f);
+	TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
 	TopRightVertex.TangentX = FVector(LineDirection, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;
 	MeshBoundingBox += TopRightVertex.Position;
 
-	const int32 TopLeftVertexIndex = Vertices.Num();
-	FStreetMapVertex& TopLeftVertex = *new(Vertices)FStreetMapVertex();
+	const int32 TopLeftVertexIndex = Vertices->Num();
+	FStreetMapVertex& TopLeftVertex = *new(*Vertices)FStreetMapVertex();
 	TopLeftVertex.LinkId = LinkId;
 	TopLeftVertex.LinkDir = LinkDir;
 	TopLeftVertex.TMC = TMC;
+	TopLeftVertex.SpeedLimit = SpeedLimit;
 	TopLeftVertex.Position = FVector(End - RightVector * HalfThickness, Z);
-	TopLeftVertex.TextureCoordinate = FVector2D(0.0f, 1.0f);
+	TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
 	TopLeftVertex.TangentX = FVector(LineDirection, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
 	MeshBoundingBox += TopLeftVertex.Position;
 
-	Indices.Add(BottomLeftVertexIndex);
-	Indices.Add(BottomRightVertexIndex);
-	Indices.Add(TopRightVertexIndex);
+	Indices->Add(BottomLeftVertexIndex);
+	Indices->Add(BottomRightVertexIndex);
+	Indices->Add(TopRightVertexIndex);
 
-	Indices.Add(BottomLeftVertexIndex);
-	Indices.Add(TopRightVertexIndex);
-	Indices.Add(TopLeftVertexIndex);
+	Indices->Add(BottomLeftVertexIndex);
+	Indices->Add(TopRightVertexIndex);
+	Indices->Add(TopLeftVertexIndex);
 };
 
 
@@ -1112,3 +1174,27 @@ FString UStreetMapComponent::GetStreetMapAssetName() const
 	return StreetMap != nullptr ? StreetMap->GetName() : FString(TEXT("NONE"));
 }
 
+void UStreetMapComponent::AddOrUpdateFlowData(FString TMC, float Speed)
+{
+	if (mFlowData.Find(TMC) == nullptr) {
+		mFlowData.Add(TMC, Speed);
+	}
+	else {
+		mFlowData[TMC] = Speed;
+	}
+}
+
+void UStreetMapComponent::DeleteFlowData(FString TMC)
+{
+	mFlowData.Remove(TMC);
+}
+
+FGuid UStreetMapComponent::AddHighlight(TArray<int64> LinkIds)
+{
+	return FGuid::NewGuid();
+}
+
+void UStreetMapComponent::DeleteHighlight(FGuid GUID)
+{
+	
+}

@@ -140,6 +140,7 @@ public:
 		int64 LinkId;
 		FString LinkDir;
 		FString TMC;
+		int SpeedLimit;
 
 		TArray<FOSMNodeInfo*> Nodes;
 		EOSMWayType WayType;

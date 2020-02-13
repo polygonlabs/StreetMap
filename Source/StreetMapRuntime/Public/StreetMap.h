@@ -122,6 +122,19 @@ public:
 	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"))
 		float BuildingBorderZ;
 
+	/** Flow vertex colors */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FLinearColor LowFlowColor;
+
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FLinearColor MedFlowColor;
+
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FLinearColor HighFlowColor;
+
+	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Color By Flow")
+		uint32 bColorByFlow : 1;
+
 	FStreetMapMeshBuildSettings() :
 		RoadOffsetZ(0.0f),
 		bWant3DBuildings(true),
@@ -134,7 +147,11 @@ public:
 		HighwayColor(FLinearColor(0.25f, 0.95f, 0.25f)),
 		BuildingBorderThickness(20.0f),
 		BuildingBorderLinearColor(0.85f, 0.85f, 0.85f),
-		BuildingBorderZ(10.0f)
+		BuildingBorderZ(10.0f),
+		LowFlowColor(FLinearColor(1.0f, 0.0f, 0.0f)),
+		MedFlowColor(FLinearColor(1.0f, 1.05f, 0.0f)),
+		HighFlowColor(FLinearColor(0.2f, 0.8f, 0.0f)),
+		bColorByFlow(false)
 	{
 	}
 
@@ -441,6 +458,9 @@ struct STREETMAPRUNTIME_API FStreetMapRoad
 
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		FString TMC;
+
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		int SpeedLimit;
 
 	/** Type of road */
 	UPROPERTY(Category = StreetMap, EditAnywhere)

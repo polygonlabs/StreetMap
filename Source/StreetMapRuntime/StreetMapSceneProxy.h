@@ -46,6 +46,10 @@ struct FStreetMapVertex
 	UPROPERTY()
 		FString TMC;
 
+	/** Speed limit of road (mph) */
+	UPROPERTY()
+		int SpeedLimit;
+
 	/** Default constructor, leaves everything uninitialized */
 	FStreetMapVertex()
 	{

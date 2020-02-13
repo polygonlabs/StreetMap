@@ -164,6 +164,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile(UStreetMap* StreetMap, FStr
 		NewRoad.LinkId = OSMWay.LinkId;
 		NewRoad.LinkDir = OSMWay.LinkDir;
 		NewRoad.TMC = OSMWay.TMC;
+		NewRoad.SpeedLimit = OSMWay.SpeedLimit;
 
 		NewRoad.bIsOneWay = OSMWay.bIsOneWay;
 

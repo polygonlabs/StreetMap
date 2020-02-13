@@ -19,6 +19,10 @@ class STREETMAPRUNTIME_API UStreetMapComponent : public UMeshComponent, public I
 {
 	GENERATED_BODY()
 
+private: 
+	TMap<FString, float> mFlowData;
+	TMap<FGuid, TArray<int64>> mHighlights;
+
 public:
 
 	/** UStreetMapComponent constructor */
@@ -151,6 +155,7 @@ public:
 
 	void BuildRoadMesh(EStreetMapRoadType Type);
 
+	void ColorRoadMeshFromFlowData(TArray<FStreetMapVertex>& Vertices, FLinearColor DefaultColor);
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices);
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, int64 LinkId, FString LinkDir);
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TMultiMap<int64, FString> Links);
@@ -159,6 +164,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetThickness(float val, EStreetMapRoadType type);
+	
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void RefreshStreetColor();
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetColor(FLinearColor val, EStreetMapRoadType type);
@@ -175,6 +183,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetColorByTMCs(FLinearColor val, EStreetMapRoadType type, TArray<FString> TMCs);
 
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void AddOrUpdateFlowData(FString TMC, float Speed);
+	
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void DeleteFlowData(FString TMC);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		FGuid AddHighlight(TArray<int64> LinkIds);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void DeleteHighlight(FGuid GUID);
+
 protected:
 
 	/** Giving a default material to the mesh if no valid material is already assigned or materials array is empty. */
@@ -187,7 +207,7 @@ protected:
 	void GenerateMesh();
 
 	/** Adds a 2D line to the raw mesh */
-	void AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices, int64 LinkId = -1, FString LinkDir = "", FString TMC = "");
+	void AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>* Vertices, TArray<uint32>* Indices, int64 LinkId = -1, FString LinkDir = "", FString TMC = "", int SpeedLimit = 25);
 
 	/** Adds 3D triangles to the raw mesh */
 	void AddTriangles(const TArray<FVector>& Points, const TArray<int32>& PointIndices, const FVector& ForwardVector, const FVector& UpVector, const FColor& Color, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices);
@@ -220,6 +240,8 @@ protected:
 	//** Physics data for mesh collision. */
 	UPROPERTY(Transient)
 		UBodySetup* StreetMapBodySetup;
+
+
 
 	friend class FStreetMapComponentDetails;
 
