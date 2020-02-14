@@ -50,6 +50,10 @@ struct FStreetMapVertex
 	UPROPERTY()
 		int SpeedLimit;
 
+	/** Is flagged as trace */
+	UPROPERTY()
+		uint32 IsTrace:1;
+
 	/** Default constructor, leaves everything uninitialized */
 	FStreetMapVertex()
 	{
@@ -61,7 +65,8 @@ struct FStreetMapVertex
 		TextureCoordinate(InitTextureCoordinate),
 		TangentX(InitTangentX),
 		TangentZ(InitTangentZ),
-		Color(InitColor)
+		Color(InitColor),
+		IsTrace(false)
 	{
 	}
 };

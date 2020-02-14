@@ -21,7 +21,7 @@ class STREETMAPRUNTIME_API UStreetMapComponent : public UMeshComponent, public I
 
 private: 
 	TMap<FString, float> mFlowData;
-	TMap<FGuid, TArray<int64>> mHighlights;
+	TMap<FGuid, TArray<FStreetMapLink>> mTraces;
 
 public:
 
@@ -155,12 +155,13 @@ public:
 
 	void BuildRoadMesh(EStreetMapRoadType Type);
 
-	void ColorRoadMeshFromFlowData(TArray<FStreetMapVertex>& Vertices, FLinearColor DefaultColor);
-	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices);
-	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, int64 LinkId, FString LinkDir);
-	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TMultiMap<int64, FString> Links);
-	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FString TMC);
-	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FString> TMCs);
+	void ColorRoadMeshFromFlowData(TArray<FStreetMapVertex>& Vertices, FLinearColor DefaultColor, bool OverwriteTrace = false, float ZOffset = 0.0f);
+	void ColorRoadMeshFromFlowData(TArray<FStreetMapVertex>& Vertices, FLinearColor DefaultColor, TArray<FStreetMapLink> Links, bool OverwriteTrace, float ZOffset = 0.0f);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, bool IsTrace = false, float ZOffset = 0.0f);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FStreetMapLink Link, bool IsTrace = false, float ZOffset = 0.0f);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, bool IsTrace = false, float ZOffset = 0.0f);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FString TMC, bool IsTrace = false, float ZOffset = 0.0f);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FString> TMCs, bool IsTrace = false, float ZOffset = 0.0f);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetThickness(float val, EStreetMapRoadType type);
@@ -172,10 +173,10 @@ public:
 		void ChangeStreetColor(FLinearColor val, EStreetMapRoadType type);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void ChangeStreetColorByLinkId(FLinearColor val, EStreetMapRoadType type, int64 LinkId, FString LinkDir);
+		void ChangeStreetColorByLink(FLinearColor val, EStreetMapRoadType type, FStreetMapLink Link);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void ChangeStreetColorByLinks(FLinearColor val, EStreetMapRoadType type, TArray<int64> LinkIds, TArray<FString> LinkDirs);
+		void ChangeStreetColorByLinks(FLinearColor val, EStreetMapRoadType type, TArray<FStreetMapLink> Links);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetColorByTMC(FLinearColor val, EStreetMapRoadType type, FString TMC);
@@ -190,10 +191,10 @@ public:
 		void DeleteFlowData(FString TMC);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		FGuid AddHighlight(TArray<int64> LinkIds);
+		FGuid AddTrace(FLinearColor Color, TArray<FStreetMapLink> Links);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void DeleteHighlight(FGuid GUID);
+		void DeleteTrace(FGuid GUID);
 
 protected:
 

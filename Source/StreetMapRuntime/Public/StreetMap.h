@@ -4,6 +4,7 @@
 
 #include "LandscapeProxy.h"
 #include "Components/SplineMeshComponent.h"
+#include "Engine/DataTable.h"
 #include "StreetMap.generated.h"
 
 /** Types of miscellaneous ways */
@@ -62,8 +63,12 @@ struct STREETMAPRUNTIME_API FStreetMapMeshBuildSettings
 public:
 
 	/** Roads base vertical offset */
-	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Road Vertical Offset")
-		float RoadOffsetZ;
+	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Street Vertical Offset")
+		float StreetOffsetZ;
+	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Major Road Vertical Offset")
+		float MajorRoadOffsetZ;
+	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Highway Vertical Offset")
+		float HighwayOffsetZ;
 
 	/** if true buildings mesh will be 3D instead of flat representation. */
 	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Create 3D Buildings")
@@ -136,7 +141,9 @@ public:
 		uint32 bColorByFlow : 1;
 
 	FStreetMapMeshBuildSettings() :
-		RoadOffsetZ(0.0f),
+		StreetOffsetZ(0.0f),
+		MajorRoadOffsetZ(1.0f),
+		HighwayOffsetZ(2.0f),
 		bWant3DBuildings(true),
 		bWantLitBuildings(true),
 		StreetThickness(800.0f),
@@ -439,6 +446,19 @@ enum EStreetMapRoadType
 	Other
 };
 
+/** A road */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapLink : public FTableRowBase
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		int64 LinkId;
+
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FString LinkDir;
+};
+
 
 /** A road */
 USTRUCT(BlueprintType)
@@ -446,15 +466,12 @@ struct STREETMAPRUNTIME_API FStreetMapRoad
 {
 	GENERATED_USTRUCT_BODY()
 
-		/** Name of the road */
+	/** Name of the road */
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		FString RoadName;
 
 	UPROPERTY(Category = StreetMap, EditAnywhere)
-		int64 LinkId;
-
-	UPROPERTY(Category = StreetMap, EditAnywhere)
-		FString LinkDir;
+		FStreetMapLink Link;
 
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		FString TMC;
