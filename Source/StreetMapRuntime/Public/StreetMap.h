@@ -141,9 +141,9 @@ public:
 		uint32 bColorByFlow : 1;
 
 	FStreetMapMeshBuildSettings() :
-		StreetOffsetZ(0.0f),
-		MajorRoadOffsetZ(1.0f),
-		HighwayOffsetZ(2.0f),
+		StreetOffsetZ(100.0f),
+		MajorRoadOffsetZ(200.0f),
+		HighwayOffsetZ(300.0f),
 		bWant3DBuildings(true),
 		bWantLitBuildings(true),
 		StreetThickness(800.0f),
@@ -452,10 +452,16 @@ struct STREETMAPRUNTIME_API FStreetMapLink : public FTableRowBase
 {
 	GENERATED_USTRUCT_BODY()
 
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	FStreetMapLink(int64 linkId = 0, FString linkDir = "T")
+	{
+		LinkId = linkId;
+		LinkDir = linkDir;
+	}
+
+	UPROPERTY(Category = StreetMap, BlueprintReadWrite)
 		int64 LinkId;
 
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, BlueprintReadWrite)
 		FString LinkDir;
 };
 

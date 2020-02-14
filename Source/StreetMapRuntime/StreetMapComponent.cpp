@@ -1283,9 +1283,9 @@ FGuid UStreetMapComponent::AddTrace(FLinearColor Color, TArray<FStreetMapLink> L
 
 	mTraces.Add(NewGuid, Links);
 
-	this->ColorRoadMesh(Color, HighwayVertices, Links, true, 10.0f);
-	this->ColorRoadMesh(Color, MajorRoadVertices, Links, true, 10.0f);
-	this->ColorRoadMesh(Color, StreetVertices, Links, true, 10.0f);
+	this->ColorRoadMesh(Color, HighwayVertices, Links, true, 600.0f);
+	this->ColorRoadMesh(Color, MajorRoadVertices, Links, true, 600.0f);
+	this->ColorRoadMesh(Color, StreetVertices, Links, true, 600.0f);
 
 	return NewGuid;
 }
