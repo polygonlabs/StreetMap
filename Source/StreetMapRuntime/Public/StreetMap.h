@@ -75,9 +75,9 @@ public:
 	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Connect streets")
 		uint32 bWantConnectStreets : 1;
 
-	/** if true streets of the same type that share nodes will be merged. */
+	/** threshold for angle btween roads to merge */
 	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Connect streets threshold")
-		float fThresholdConnectStreets = 0.9;
+		float fThresholdConnectStreets = 0.96;
 
 	/** if true buildings mesh will be 3D instead of flat representation. */
 	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Create 3D Buildings")

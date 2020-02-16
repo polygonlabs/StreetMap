@@ -311,7 +311,8 @@ void UStreetMapComponent::GenerateMesh()
 				check(0);
 				break;
 			}
-			auto newWay = bWantSmoothStreets && Road.RoadPoints.Num() > 2;
+
+			auto newWay = bWantSmoothStreets && Road.RoadPoints.Num() >= 2;
 			if (newWay)
 			{
 				TArray<FStreetMapVertex>* Vertices = nullptr;
@@ -1105,12 +1106,9 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 	if (Road.NodeIndices[RoadCheckIndex] < Nodes.Num())
 	{
 		auto& Node = Nodes[Road.NodeIndices[RoadCheckIndex]];
+		auto RoadIndex = Road.GetRoadIndex(*StreetMap);
 		if (Node.RoadRefs.Num() > 1)
 		{
-			auto RoadIndex = Road.GetRoadIndex(*StreetMap);
-			UE_LOG(LogTemp, Log, TEXT("Road %d/%s/%" PRIi8 ": {\n"), RoadIndex, Road.RoadName.GetCharArray().GetData(), Road.RoadType);
-			UE_LOG(LogTemp, Log, TEXT(" Refs: %d\n"), Node.RoadRefs.Num());
-
 			auto RoadInNodeIndex = Node.RoadRefs.IndexOfByKey(RoadIndex);
 			int32 ChosenRoadIndex = -1;
 			bool fromBack = false;
@@ -1120,12 +1118,9 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 			{
 				if (OtherRoadNode.RoadIndex != RoadIndex)
 				{
-					UE_LOG(LogTemp, Log, TEXT(" {\n"));
 					auto& OtherRoad = Roads[OtherRoadNode.RoadIndex];
-					UE_LOG(LogTemp, Log, TEXT("  Against %d/%s/%" PRIi8 "\n"), OtherRoadNode.RoadIndex, OtherRoad.RoadName.GetCharArray().GetData(), OtherRoad.RoadType);
 					if (OtherRoad.RoadType != Road.RoadType)
 					{
-						UE_LOG(LogTemp, Warning, TEXT("  Road Types differ!\n"));
 						continue;
 					}
 
@@ -1139,16 +1134,9 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 					}
 					else
 					{
-						UE_LOG(LogTemp, Warning, TEXT("  No Nodes shared!\n"));
 						continue;
 					}
 
-					//if (OtherRoad.RoadName == Road.RoadName)
-					//{
-					//	ChosenRoadIndex = OtherRoad.GetRoadIndex(*StreetMap);
-					//	break;
-					//}
-					//else
 					{
 						// check angle between the 2 road segments
 						const FVector2D* Prev = nullptr, *Mid = nullptr, *Next = nullptr;
@@ -1172,24 +1160,15 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 
 							auto cosAlpha = std::abs(FVector2D::DotProduct(direction1, direction2));
 
-							UE_LOG(LogTemp, Log, TEXT(" threshold value %f"), cosAlpha);
-
 							if (cosAlpha > CosAlpha)
 							{
-								UE_LOG(LogTemp, Log, TEXT(" closer than former %f\n"), CosAlpha);
 								CosAlpha = cosAlpha;
 								ChosenRoadIndex = OtherRoad.GetRoadIndex(*StreetMap);
 							}
-							else
-							{
-								UE_LOG(LogTemp, Log, TEXT(" rejected against %f\n"), CosAlpha);
-							}
 						}
 					}
-					UE_LOG(LogTemp, Log, TEXT(" }\n"));
 				}
 			}
-			UE_LOG(LogTemp, Log, TEXT("}\n"));
 
 			if (ChosenRoadIndex >= 0)
 			{
