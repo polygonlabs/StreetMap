@@ -180,10 +180,8 @@ protected:
 	/** Adds 3D triangles to the raw mesh */
 	void AddTriangles(const TArray<FVector>& Points, const TArray<int32>& PointIndices, const FVector& ForwardVector, const FVector& UpVector, const FColor& Color, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices);
 
-	
-	void StartSmoothQuadList(const FVector2D Start
-		, const FVector2D& Mid
-		, const FVector2D End
+	void CheckRoadSmoothQuadList(const FStreetMapRoad& road
+		, const bool Start
 		, const float Z
 		, const float Thickness
 		, const FColor& StartColor
@@ -193,11 +191,37 @@ protected:
 		, TArray<uint32>* Indices
 		, int64 ID = -1
 		, FString TMC = "");
+
+	void StartSmoothQuadList(const FVector2D& Prev
+		, const FVector2D Start
+		, const FVector2D& Mid
+		, const float Z
+		, const float Thickness
+		, const FColor& StartColor
+		, const FColor& EndColor
+		, FBox& MeshBoundingBox
+		, TArray<FStreetMapVertex>* Vertices
+		, TArray<uint32>* Indices
+		, int64 ID = -1
+		, FString TMC = "");
+	
+	void StartSmoothQuadList(const FVector2D& Start
+		, const FVector2D& Mid
+		, const float Z
+		, const float Thickness
+		, const FColor& StartColor
+		, const FColor& EndColor
+		, FBox& MeshBoundingBox
+		, TArray<FStreetMapVertex>* Vertices
+		, TArray<uint32>* Indices
+		, int64 ID = -1
+		, FString TMC = "");
+
 
 	/** Generate a quad for a road segment */
-	void AddSmoothQuad(const FVector2D Start
+	void AddSmoothQuad(const FVector2D& Start
 		, const FVector2D& Mid
-		, const FVector2D End
+		, const FVector2D& End
 		, const float Z
 		, const float Thickness
 		, const FColor& StartColor
@@ -208,9 +232,21 @@ protected:
 		, int64 ID = -1
 		, FString TMC = "");
 
-	void EndSmoothQuadList(const FVector2D Start
-		, const FVector2D& Mid
-		, const FVector2D End
+	void EndSmoothQuadList(const FVector2D& Mid
+		, const FVector2D& End
+		, const float Z
+		, const float Thickness
+		, const FColor& StartColor
+		, const FColor& EndColor
+		, FBox& MeshBoundingBox
+		, TArray<FStreetMapVertex>* Vertices
+		, TArray<uint32>* Indices
+		, int64 ID = -1
+		, FString TMC = "");
+
+	void EndSmoothQuadList(const FVector2D& Mid
+		, const FVector2D& End
+		, const FVector2D& Next
 		, const float Z
 		, const float Thickness
 		, const FColor& StartColor
