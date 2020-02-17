@@ -1383,7 +1383,23 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 	{
 		auto& Node = Nodes[Road.NodeIndices[RoadCheckIndex]];
 		auto RoadIndex = Road.GetRoadIndex(*StreetMap);
-		if (Node.RoadRefs.Num() > 1)
+		int RefCount = Node.RoadRefs.Num();
+
+		int actualRefCount = 0;
+		// check the number of roads we can connect to
+		for (auto& OtherRoadNode : Node.RoadRefs)
+		{
+			if (OtherRoadNode.RoadIndex != RoadIndex)
+			{
+				auto& OtherRoad = Roads[OtherRoadNode.RoadIndex];
+				if (OtherRoad.RoadType == Road.RoadType)
+				{
+					++actualRefCount;
+				}
+			}
+		}
+
+		if (RefCount > 1)
 		{
 			auto RoadInNodeIndex = Node.RoadRefs.IndexOfByKey(RoadIndex);
 			int32 ChosenRoadIndex = -1;
@@ -1436,7 +1452,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 
 							auto cosAlpha = std::abs(FVector2D::DotProduct(direction1, direction2));
 
-							if (cosAlpha > CosAlpha)
+							if (cosAlpha > CosAlpha || actualRefCount == 1)
 							{
 								CosAlpha = cosAlpha;
 								ChosenRoadIndex = OtherRoad.GetRoadIndex(*StreetMap);
