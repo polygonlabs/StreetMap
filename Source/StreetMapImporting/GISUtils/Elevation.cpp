@@ -1,4 +1,4 @@
-#include "StreetMapImporting.h"
+#include "../StreetMapImporting.h"
 #include "StreetMapComponent.h"
 #include "Elevation.h"
 
@@ -10,8 +10,8 @@
 #include "Misc/Guid.h"
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
-#include "SNotificationList.h"
-#include "NotificationManager.h"
+#include "Widgets/Notifications/SNotificationList.h"
+#include "Framework/Notifications/NotificationManager.h"
 #include "ScopedTransaction.h"
 #include "SpatialReferenceSystem.h"
 #include "TiledMap.h"
@@ -90,7 +90,7 @@ private:
 	{
 		IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
 
-		IImageWrapperPtr PngImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
+		auto PngImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
 		if (PngImageWrapper.IsValid() && PngImageWrapper->SetCompressed(RawData.GetData(), RawData.Num()))
 		{
 			int32 BitDepth = PngImageWrapper->GetBitDepth();
