@@ -370,6 +370,7 @@ void UStreetMapComponent::GenerateMesh()
 						MeshBoundingBox,
 						Vertices,
 						Indices,
+						Type,
 						Road.Link.LinkId,
 						Road.Link.LinkDir,
 						Road.TMC,
@@ -521,7 +522,9 @@ void UStreetMapComponent::GenerateMesh()
 						BuildingBorderColor,
 						MeshBoundingBox,
 						&BuildingVertices,
-						&BuildingIndices);
+						&BuildingIndices,
+						EVertexType::VBuilding
+					);
 				}
 			}
 		}
@@ -578,6 +581,7 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 				float RoadThickness;
 				FColor RoadColor;
 				float RoadZ;
+				EVertexType Type;
 				TArray<FStreetMapVertex>* Vertices = nullptr;
 				TArray<uint32>* Indices = nullptr;
 				
@@ -608,6 +612,7 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 					RoadZ = HighwayOffsetZ;
 					Vertices = &HighwayVertices;
 					Indices = &HighwayIndices;
+					Type = EVertexType::VHighway;
 					break;
 
 				case EStreetMapRoadType::MajorRoad:
@@ -618,6 +623,7 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 					RoadZ = MajorRoadOffsetZ;
 					Vertices = &MajorRoadVertices;
 					Indices = &MajorRoadIndices;
+					Type = EVertexType::VMajorRoad;
 					break;
 
 				case EStreetMapRoadType::Street:
@@ -629,6 +635,7 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 					RoadZ = StreetOffsetZ;
 					Vertices = &StreetVertices;
 					Indices = &StreetIndices;
+					Type = EVertexType::VStreet;
 					break;
 
 				default:
@@ -649,6 +656,7 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType Type)
 							MeshBoundingBox,
 							Vertices,
 							Indices,
+							Type,
 							Road.Link.LinkId,
 							Road.Link.LinkDir,
 							Road.TMC,
@@ -1164,14 +1172,15 @@ FBoxSphereBounds UStreetMapComponent::CalcBounds(const FTransform& LocalToWorld)
 }
 
 
-void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>* Vertices, TArray<uint32>* Indices, int64 LinkId, FString LinkDir, FString TMC, int SpeedLimit)
+void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>* Vertices, TArray<uint32>* Indices, EVertexType VertexType, int64 LinkId, FString LinkDir, FString TMC, int SpeedLimit)
 {
 	const float HalfThickness = Thickness * 0.5f;
-	
+
 	const float Distance = (End - Start).Size();
-	const float XRatio = Distance / Thickness;
+	const float XRatio = Distance/ Thickness;
 	const FVector2D LineDirection = (End - Start).GetSafeNormal();
 	const FVector2D RightVector(-LineDirection.Y, LineDirection.X);
+	const bool IsForward = LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
 
 	const int32 BottomLeftVertexIndex = Vertices->Num();
 	FStreetMapVertex& BottomLeftVertex = *new(*Vertices)FStreetMapVertex();
@@ -1179,12 +1188,6 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	BottomLeftVertex.LinkDir = LinkDir;
 	BottomLeftVertex.TMC = TMC;
 	BottomLeftVertex.SpeedLimit = SpeedLimit;
-	BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
-	BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
-	BottomLeftVertex.TangentX = FVector(LineDirection, 0.0f);
-	BottomLeftVertex.TangentZ = FVector::UpVector;
-	BottomLeftVertex.Color = StartColor;
-	MeshBoundingBox += BottomLeftVertex.Position;
 
 	const int32 BottomRightVertexIndex = Vertices->Num();
 	FStreetMapVertex& BottomRightVertex = *new(*Vertices)FStreetMapVertex();
@@ -1192,12 +1195,6 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	BottomRightVertex.LinkDir = LinkDir;
 	BottomRightVertex.TMC = TMC;
 	BottomRightVertex.SpeedLimit = SpeedLimit;
-	BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
-	BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
-	BottomRightVertex.TangentX = FVector(LineDirection, 0.0f);
-	BottomRightVertex.TangentZ = FVector::UpVector;
-	BottomRightVertex.Color = StartColor;
-	MeshBoundingBox += BottomRightVertex.Position;
 
 	const int32 TopRightVertexIndex = Vertices->Num();
 	FStreetMapVertex& TopRightVertex = *new(*Vertices)FStreetMapVertex();
@@ -1205,12 +1202,6 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	TopRightVertex.LinkDir = LinkDir;
 	TopRightVertex.TMC = TMC;
 	TopRightVertex.SpeedLimit = SpeedLimit;
-	TopRightVertex.Position = FVector(End + RightVector * HalfThickness, Z);
-	TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
-	TopRightVertex.TangentX = FVector(LineDirection, 0.0f);
-	TopRightVertex.TangentZ = FVector::UpVector;
-	TopRightVertex.Color = EndColor;
-	MeshBoundingBox += TopRightVertex.Position;
 
 	const int32 TopLeftVertexIndex = Vertices->Num();
 	FStreetMapVertex& TopLeftVertex = *new(*Vertices)FStreetMapVertex();
@@ -1218,8 +1209,72 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	TopLeftVertex.LinkDir = LinkDir;
 	TopLeftVertex.TMC = TMC;
 	TopLeftVertex.SpeedLimit = SpeedLimit;
-	TopLeftVertex.Position = FVector(End - RightVector * HalfThickness, Z);
-	TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+
+	switch (VertexType)
+	{
+	case EVertexType::VStreet:
+	case EVertexType::VMajorRoad:
+	case EVertexType::VHighway:
+		if (IsForward)
+		{
+			BottomLeftVertex.Position = FVector(Start, Z);
+			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
+
+			BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
+			BottomRightVertex.TextureCoordinate = FVector2D(0.5f, 0.0f);
+
+			TopRightVertex.Position = FVector(End + RightVector * HalfThickness, Z);
+			TopRightVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+
+			TopLeftVertex.Position = FVector(End, Z);
+			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+		}
+		else
+		{
+			BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
+			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+
+			BottomRightVertex.Position = FVector(Start, Z);
+			BottomRightVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+
+			TopRightVertex.Position = FVector(End, Z);
+			TopRightVertex.TextureCoordinate = FVector2D(0.5f, 0.0f);
+
+			TopLeftVertex.Position = FVector(End - RightVector * HalfThickness, Z);
+			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
+		}
+		break;
+	default:
+		BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
+		BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
+
+		BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
+		BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
+
+		TopRightVertex.Position = FVector(End + RightVector * HalfThickness, Z);
+		TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+
+		TopLeftVertex.Position = FVector(End - RightVector * HalfThickness, Z);
+		TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+
+		break;
+	}
+
+	BottomLeftVertex.TangentX = FVector(LineDirection, 0.0f);
+	BottomLeftVertex.TangentZ = FVector::UpVector;
+	BottomLeftVertex.Color = StartColor;
+	MeshBoundingBox += BottomLeftVertex.Position;
+
+	BottomRightVertex.TangentX = FVector(LineDirection, 0.0f);
+	BottomRightVertex.TangentZ = FVector::UpVector;
+	BottomRightVertex.Color = StartColor;
+	MeshBoundingBox += BottomRightVertex.Position;
+
+	TopRightVertex.TangentX = FVector(LineDirection, 0.0f);
+	TopRightVertex.TangentZ = FVector::UpVector;
+	TopRightVertex.Color = EndColor;
+	MeshBoundingBox += TopRightVertex.Position;
+
 	TopLeftVertex.TangentX = FVector(LineDirection, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;

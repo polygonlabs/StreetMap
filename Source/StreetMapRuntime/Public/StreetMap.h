@@ -458,10 +458,10 @@ struct STREETMAPRUNTIME_API FStreetMapLink : public FTableRowBase
 		LinkDir = linkDir;
 	}
 
-	UPROPERTY(Category = StreetMap, BlueprintReadWrite)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		int64 LinkId;
 
-	UPROPERTY(Category = StreetMap, BlueprintReadWrite)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FString LinkDir;
 };
 
