@@ -4,7 +4,7 @@
 #include "StreetMap.h"
 #include "Components/MeshComponent.h"
 #include "Interfaces/Interface_CollisionDataProvider.h"
-#include "StreetMapSceneProxy.h"
+#include "../StreetMapSceneProxy.h"
 #include "StreetMapComponent.generated.h"
 
 
@@ -213,7 +213,95 @@ protected:
 	/** Adds 3D triangles to the raw mesh */
 	void AddTriangles(const TArray<FVector>& Points, const TArray<int32>& PointIndices, const FVector& ForwardVector, const FVector& UpVector, const FColor& Color, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices);
 
+	/** Generate a quad for a road segment */
+	void CheckRoadSmoothQuadList(const FStreetMapRoad& road
+		, const bool Start
+		, const float Z
+		, const float Thickness
+		, const FColor& StartColor
+		, const FColor& EndColor
+		, FBox& MeshBoundingBox
+		, TArray<FStreetMapVertex>* Vertices
+		, TArray<uint32>* Indices
+		, int64 LinkId = -1
+		, FString LinkDir = ""
+		, FString TMC = ""
+		, int SpeedLimit = 25);
 
+	void StartSmoothQuadList(const FVector2D& Prev
+		, const FVector2D Start
+		, const FVector2D& Mid
+		, const float Z
+		, const float Thickness
+		, const FColor& StartColor
+		, const FColor& EndColor
+		, FBox& MeshBoundingBox
+		, TArray<FStreetMapVertex>* Vertices
+		, TArray<uint32>* Indices
+		, int64 LinkId = -1
+		, FString LinkDir = ""
+		, FString TMC = ""
+		, int SpeedLimit = 25);
+	
+	void StartSmoothQuadList(const FVector2D& Start
+		, const FVector2D& Mid
+		, const float Z
+		, const float Thickness
+		, const FColor& StartColor
+		, const FColor& EndColor
+		, FBox& MeshBoundingBox
+		, TArray<FStreetMapVertex>* Vertices
+		, TArray<uint32>* Indices
+		, int64 LinkId = -1
+		, FString LinkDir = ""
+		, FString TMC = ""
+		, int SpeedLimit = 25);
+
+
+	/** Generate a quad for a road segment */
+	void AddSmoothQuad(const FVector2D& Start
+		, const FVector2D& Mid
+		, const FVector2D& End
+		, const float Z
+		, const float Thickness
+		, const FColor& StartColor
+		, const FColor& EndColor
+		, FBox& MeshBoundingBox
+		, TArray<FStreetMapVertex>* Vertices
+		, TArray<uint32>* Indices
+		, int64 LinkId = -1
+		, FString LinkDir = ""
+		, FString TMC = ""
+		, int SpeedLimit = 25);
+
+	void EndSmoothQuadList(const FVector2D& Mid
+		, const FVector2D& End
+		, const float Z
+		, const float Thickness
+		, const FColor& StartColor
+		, const FColor& EndColor
+		, FBox& MeshBoundingBox
+		, TArray<FStreetMapVertex>* Vertices
+		, TArray<uint32>* Indices
+		, int64 LinkId = -1
+		, FString LinkDir = ""
+		, FString TMC = ""
+		, int SpeedLimit = 25);
+
+	void EndSmoothQuadList(const FVector2D& Mid
+		, const FVector2D& End
+		, const FVector2D& Next
+		, const float Z
+		, const float Thickness
+		, const FColor& StartColor
+		, const FColor& EndColor
+		, FBox& MeshBoundingBox
+		, TArray<FStreetMapVertex>* Vertices
+		, TArray<uint32>* Indices
+		, int64 LinkId = -1
+		, FString LinkDir = ""
+		, FString TMC = ""
+		, int SpeedLimit = 25);
 protected:
 
 	/** The street map we're representing. */

@@ -7,6 +7,8 @@
 #include "Engine/DataTable.h"
 #include "StreetMap.generated.h"
 
+class FOSMNodeInfo;
+
 /** Types of miscellaneous ways */
 UENUM(BlueprintType)
 enum EStreetMapMiscWayType
@@ -69,6 +71,18 @@ public:
 		float MajorRoadOffsetZ;
 	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Highway Vertical Offset")
 		float HighwayOffsetZ;
+
+	/** if true streets will be a single mesh instead of a list of quads. */
+	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Smooth streets")
+		uint32 bWantSmoothStreets : 1;
+
+	/** if true streets of the same type that share nodes will be merged. */
+	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Connect streets")
+		uint32 bWantConnectStreets : 1;
+
+	/** threshold for angle btween roads to merge */
+	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Connect streets threshold")
+		float fThresholdConnectStreets = 0.96;
 
 	/** if true buildings mesh will be 3D instead of flat representation. */
 	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Create 3D Buildings")
@@ -144,6 +158,9 @@ public:
 		StreetOffsetZ(100.0f),
 		MajorRoadOffsetZ(200.0f),
 		HighwayOffsetZ(300.0f),
+		bWantSmoothStreets(true),
+		bWantConnectStreets(true),
+		fThresholdConnectStreets(0.96),
 		bWant3DBuildings(true),
 		bWantLitBuildings(true),
 		StreetThickness(800.0f),
@@ -558,13 +575,18 @@ struct STREETMAPRUNTIME_API FStreetMapRoadRef
 {
 	GENERATED_USTRUCT_BODY()
 
-		/** Index of road in the list of all roads in this street map */
-		UPROPERTY(Category = StreetMap, EditAnywhere)
-		int32 RoadIndex;
+	/** Index of road in the list of all roads in this street map */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+	int32 RoadIndex;
 
 	/** Index of the point along road where this node exists */
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		int32 RoadPointIndex;
+
+	bool operator==(const int32& rhs) const
+	{
+		return RoadIndex == rhs;
+	}
 };
 
 /** Nodes have a list of railway refs, one for each railway that intersects this node.  Each railway ref references a railway and also the
@@ -606,10 +628,10 @@ struct STREETMAPRUNTIME_API FStreetMapNode
 {
 	GENERATED_USTRUCT_BODY()
 
-		/** All of the roads that intersect this node.  We have references to each of these roads, as well as the point along each
-			road where this node exists */
-		UPROPERTY(Category = StreetMap, EditAnywhere)
-		TArray<FStreetMapRoadRef> RoadRefs;
+	/** All of the roads that intersect this node.  We have references to each of these roads, as well as the point along each
+		road where this node exists */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+	TArray<FStreetMapRoadRef> RoadRefs;
 
 	/** All of the Railways that intersect this node.  We have references to each of these railways, as well as the point along each
 		railway where this node exists */
