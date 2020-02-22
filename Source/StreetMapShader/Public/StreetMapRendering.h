@@ -23,8 +23,8 @@ public:
 
 		const bool bProjectAllowsAtmosphericFog = !SupportAtmosphericFog || SupportAtmosphericFog->GetValueOnAnyThread() != 0 || bForceAllPermutations;
 
-		bool bShouldCache = Super::ShouldCompilePermutation(Parameters);
-		bShouldCache &= (bEnableAtmosphericFog && bProjectAllowsAtmosphericFog && IsTranslucentBlendMode(Parameters.Material->GetBlendMode())) || !bEnableAtmosphericFog;
+		bool bShouldCache = false;//FMeshMaterialShader::ShouldCompilePermutation(Parameters);
+		bShouldCache &= (bProjectAllowsAtmosphericFog && IsTranslucentBlendMode(Parameters.Material->GetBlendMode()));
 
 		return bShouldCache
 			&& (IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5));

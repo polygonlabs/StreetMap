@@ -5,6 +5,7 @@
 #include "Runtime/Engine/Public/PrimitiveSceneProxy.h"
 #include "Runtime/Engine/Public/LocalVertexFactory.h"
 #include "Runtime/Engine/Public/DynamicMeshBuilder.h"
+#include "../StreetMapShader/Public/StreetMapVertexFactory.h"
 #include "StreetMapSceneProxy.generated.h"
 
 /**	A single vertex on a street map mesh */
@@ -132,7 +133,7 @@ protected:
 	FDynamicMeshIndexBuffer32 HighwayIndexBuffer32;
 	FDynamicMeshIndexBuffer32 BuildingIndexBuffer32;
 
-	FLocalVertexFactory StreetVertexFactory;
+	FStreetMapVertexFactory StreetVertexFactory;
 	FLocalVertexFactory MajorRoadVertexFactory;
 	FLocalVertexFactory HighwayVertexFactory;
 	FLocalVertexFactory BuildingVertexFactory;

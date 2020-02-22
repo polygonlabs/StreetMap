@@ -6,6 +6,7 @@
 #include "Runtime/Engine/Classes/Engine/StaticMesh.h"
 #include "Runtime/Engine/Public/StaticMeshResources.h"
 #include "PolygonTools.h"
+#include "../StreetMapShader/Public/StreetMapRendering.h"
 
 #include "PhysicsEngine/BodySetup.h"
 
@@ -46,6 +47,7 @@ UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitial
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> DefaultMaterialAsset(TEXT("/StreetMap/StreetMapDefaultMaterial"));
 	StreetMapDefaultMaterial = DefaultMaterialAsset.Object;
+	// StreetMapDefaultMaterial->GetRenderProxy()->GetMaterial(ERHIFeatureLevel::SM5)->GetShader<TStreetMapVS>();
 
 	mFlowData.Empty();
 	mTraces.Empty();

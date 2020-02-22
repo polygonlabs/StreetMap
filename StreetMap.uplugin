@@ -21,11 +21,17 @@
 			"Type" : "Runtime",
 			"LoadingPhase" : "Default"
 		},
-	
+
 		{
-			"Name" : "StreetMapImporting",
-			"Type" : "Editor",
-			"LoadingPhase" : "Default"
+			"Name": "StreetMapImporting",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		},
+
+		{
+			"Name": "StreetMapShader",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
 		}
   ]
 }

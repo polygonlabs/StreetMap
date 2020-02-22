@@ -2,11 +2,11 @@
 
 namespace UnrealBuildTool.Rules
 {
-	public class StreetMapRuntime : ModuleRules
+	public class StreetMapShader : ModuleRules
 	{
-        public StreetMapRuntime(ReadOnlyTargetRules Target) : base(Target)
+        public StreetMapShader(ReadOnlyTargetRules Target) : base(Target)
         {
-            PrivatePCHHeaderFile = "StreetMapRuntime.h";
+            PrivatePCHHeaderFile = "StreetMapShader.h";
             PrivateDependencyModuleNames.AddRange(
 				new string[] {
                     "Core",
@@ -14,8 +14,7 @@ namespace UnrealBuildTool.Rules
 					"Engine",
 					"RHI",
 					"RenderCore",
-                    "Renderer",
-                    "Landscape"
+					"Renderer"
                 }
 			);
 
