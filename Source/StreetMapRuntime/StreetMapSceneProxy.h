@@ -5,7 +5,7 @@
 #include "Runtime/Engine/Public/PrimitiveSceneProxy.h"
 #include "Runtime/Engine/Public/LocalVertexFactory.h"
 #include "Runtime/Engine/Public/DynamicMeshBuilder.h"
-#include "../StreetMapShader/Public/StreetMapVertexFactory.h"
+#include "Public/StreetMapVertexFactory.h"
 #include "StreetMapSceneProxy.generated.h"
 
 /**	A single vertex on a street map mesh */
@@ -22,6 +22,10 @@ struct FStreetMapVertex
 	/** Texture coordinate */
 	UPROPERTY()
 		FVector2D TextureCoordinate;
+
+	/** Texture coordinate */
+	UPROPERTY()
+		FVector2D TextureCoordinate2;
 
 	/** Tangent vector X */
 	UPROPERTY()
@@ -133,7 +137,7 @@ protected:
 	FDynamicMeshIndexBuffer32 HighwayIndexBuffer32;
 	FDynamicMeshIndexBuffer32 BuildingIndexBuffer32;
 
-	FStreetMapVertexFactory StreetVertexFactory;
+	FLocalVertexFactory StreetVertexFactory;
 	FLocalVertexFactory MajorRoadVertexFactory;
 	FLocalVertexFactory HighwayVertexFactory;
 	FLocalVertexFactory BuildingVertexFactory;

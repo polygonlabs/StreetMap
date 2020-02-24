@@ -388,6 +388,7 @@ void FStreetMapComponentDetails::CreateStaticMeshAsset(FString UserPackageName, 
 		RawMesh.WedgeTangentZ.Add(TangentZ);
 
 		RawMesh.WedgeTexCoords[0].Add(StreetMapVertex.TextureCoordinate);
+		RawMesh.WedgeTexCoords[1].Add(StreetMapVertex.TextureCoordinate2);
 		RawMesh.WedgeColors.Add(StreetMapVertex.Color);
 	}
 

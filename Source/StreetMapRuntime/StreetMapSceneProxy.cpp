@@ -54,6 +54,7 @@ void FStreetMapSceneProxy::Init(const UStreetMapComponent* InComponent, EVertexT
 		Vert.Position = StreetMapVert.Position;
 		Vert.Color = StreetMapVert.Color;
 		Vert.TextureCoordinate[0] = StreetMapVert.TextureCoordinate;
+		Vert.TextureCoordinate[1] = StreetMapVert.TextureCoordinate2;
 		Vert.TangentX = StreetMapVert.TangentX;
 		Vert.TangentZ = StreetMapVert.TangentZ;
 	}
@@ -65,17 +66,17 @@ void FStreetMapSceneProxy::Init(const UStreetMapComponent* InComponent, EVertexT
 		InitResources(BuildingVertexBuffer, BuildingIndexBuffer32, BuildingVertexFactory);
 		break;
 	case EVertexType::VStreet:
-		StreetVertexBuffer.InitFromDynamicVertex(&StreetVertexFactory, DynamicVertices);
+		StreetVertexBuffer.InitFromDynamicVertex(&StreetVertexFactory, DynamicVertices, 2);
 
 		InitResources(StreetVertexBuffer, StreetIndexBuffer32, StreetVertexFactory);
 		break;
 	case EVertexType::VMajorRoad:
-		MajorRoadVertexBuffer.InitFromDynamicVertex(&MajorRoadVertexFactory, DynamicVertices);
+		MajorRoadVertexBuffer.InitFromDynamicVertex(&MajorRoadVertexFactory, DynamicVertices, 2);
 
 		InitResources(MajorRoadVertexBuffer, MajorRoadIndexBuffer32, MajorRoadVertexFactory);
 		break;
 	case EVertexType::VHighway:
-		HighwayVertexBuffer.InitFromDynamicVertex(&HighwayVertexFactory, DynamicVertices);
+		HighwayVertexBuffer.InitFromDynamicVertex(&HighwayVertexFactory, DynamicVertices, 2);
 		
 		InitResources(HighwayVertexBuffer, HighwayIndexBuffer32, HighwayVertexFactory);
 		break;
