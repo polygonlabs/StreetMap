@@ -887,9 +887,17 @@ public:
 	{
 		return OriginLongitude;
 	}
+
 	double GetOriginLatitude() const
 	{
 		return OriginLatitude;
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		FVector2D GetOrigin() const
+	{
+		const FVector2D Origin(OriginLongitude, OriginLatitude);
+		return Origin;
 	}
 
 protected:
