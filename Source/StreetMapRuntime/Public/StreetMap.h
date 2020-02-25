@@ -463,7 +463,7 @@ enum EStreetMapRoadType
 	Other
 };
 
-/** A road */
+/** T3 Link */
 USTRUCT(BlueprintType)
 struct STREETMAPRUNTIME_API FStreetMapLink : public FTableRowBase
 {

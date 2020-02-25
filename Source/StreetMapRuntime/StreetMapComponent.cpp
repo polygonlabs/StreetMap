@@ -1949,3 +1949,23 @@ void UStreetMapComponent::DeleteTrace(FGuid GUID)
 		mTraces.Remove(GUID);
 	}	
 }
+
+bool UStreetMapComponent::GetSpeed(FStreetMapLink Link, int& OutSpeed, int& OutSpeedLimit, float& OutSpeedRatio)
+{
+	const auto& Roads = StreetMap->GetRoads();
+	const int64 LinkId = Link.LinkId;
+	const FString LinkDir = Link.LinkDir;
+	
+	auto RoadPtr = Roads.FindByPredicate([LinkId, LinkDir](const FStreetMapRoad& Road)
+		{
+			return Road.Link.LinkId == LinkId && Road.Link.LinkDir == LinkDir;
+		});
+	
+	if (RoadPtr == nullptr) return false;
+
+	OutSpeed = mFlowData[RoadPtr->TMC];
+	OutSpeedLimit = RoadPtr->SpeedLimit;
+	OutSpeedRatio = (float)OutSpeed / (float)OutSpeedLimit;
+
+	return true;
+}

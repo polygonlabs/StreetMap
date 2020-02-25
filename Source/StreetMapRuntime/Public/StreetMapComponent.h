@@ -196,6 +196,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void DeleteTrace(FGuid GUID);
 
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		bool GetSpeed(FStreetMapLink Link, int& OutSpeed, int& OutSpeedLimit, float& OutSpeedRatio);
+
 protected:
 
 	/** Giving a default material to the mesh if no valid material is already assigned or materials array is empty. */
