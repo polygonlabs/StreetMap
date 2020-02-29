@@ -6,7 +6,6 @@
 #include "Runtime/Engine/Classes/Engine/StaticMesh.h"
 #include "Runtime/Engine/Public/StaticMeshResources.h"
 #include "PolygonTools.h"
-#include "Public/StreetMapRendering.h"
 
 #include "PhysicsEngine/BodySetup.h"
 
@@ -45,7 +44,7 @@ UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitial
 	// Our mesh can influence navigation.
 	bCanEverAffectNavigation = true;
 
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> DefaultMaterialAsset(TEXT("/StreetMap/StreetMapDefaultMaterial"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> DefaultMaterialAsset(TEXT("/StreetMap/StreetMapDefaultInstanceMaterial"));
 	StreetMapDefaultMaterial = DefaultMaterialAsset.Object;
 	// StreetMapDefaultMaterial->GetRenderProxy()->GetMaterial(ERHIFeatureLevel::SM5)->GetShader<TStreetMapVS>();
 

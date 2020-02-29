@@ -5,7 +5,6 @@
 #include "Runtime/Engine/Public/PrimitiveSceneProxy.h"
 #include "Runtime/Engine/Public/LocalVertexFactory.h"
 #include "Runtime/Engine/Public/DynamicMeshBuilder.h"
-#include "Public/StreetMapVertexFactory.h"
 #include "StreetMapSceneProxy.generated.h"
 
 /**	A single vertex on a street map mesh */
