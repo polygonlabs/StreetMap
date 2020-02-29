@@ -194,6 +194,9 @@ public:
 		FGuid AddTrace(FLinearColor Color, TArray<FStreetMapLink> Links);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void GetTraceDetails(FGuid GUID, int& OutAvgSpeed, int& OutTravelTime);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void DeleteTrace(FGuid GUID);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
