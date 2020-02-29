@@ -46,7 +46,6 @@ UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitial
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> DefaultMaterialAsset(TEXT("/StreetMap/StreetMapDefaultInstanceMaterial"));
 	StreetMapDefaultMaterial = DefaultMaterialAsset.Object;
-	// StreetMapDefaultMaterial->GetRenderProxy()->GetMaterial(ERHIFeatureLevel::SM5)->GetShader<TStreetMapVS>();
 
 	mFlowData.Empty();
 	mTraces.Empty();
