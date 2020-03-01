@@ -1495,7 +1495,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 			if (OtherRoadNode.RoadIndex != RoadIndex)
 			{
 				auto& OtherRoad = Roads[OtherRoadNode.RoadIndex];
-				if (OtherRoad.RoadType == Road.RoadType)
+				if (OtherRoad.RoadType == Road.RoadType && OtherRoadNode.RoadIndex != RoadIndex)
 				{
 					++actualRefCount;
 				}
@@ -1514,16 +1514,17 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 				if (OtherRoadNode.RoadIndex != RoadIndex)
 				{
 					auto& OtherRoad = Roads[OtherRoadNode.RoadIndex];
-					if (OtherRoad.RoadType != Road.RoadType)
+					if (OtherRoad.RoadType != Road.RoadType
+						|| Road.NodeIndices[RoadCheckIndex] == INDEX_NONE)
 					{
 						continue;
 					}
 
-					if (OtherRoad.NodeIndices[0] == Road.NodeIndices[RoadCheckIndex])
+					if (INDEX_NONE != OtherRoad.NodeIndices[0] && OtherRoad.NodeIndices[0] == Road.NodeIndices[RoadCheckIndex])
 					{
 						fromBack = false;
 					}
-					else if (OtherRoad.NodeIndices.Last() == Road.NodeIndices[RoadCheckIndex])
+					else if (INDEX_NONE != OtherRoad.NodeIndices.Last() && OtherRoad.NodeIndices.Last() == Road.NodeIndices[RoadCheckIndex])
 					{
 						fromBack = true;
 					}
@@ -1550,14 +1551,14 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 
 						if (Prev && Mid && Next)
 						{
-							auto direction1 = (*Mid - *Prev).GetSafeNormal();
+							auto direction1 = (*Prev - *Mid).GetSafeNormal();
 							auto direction2 = (*Next - *Mid).GetSafeNormal();
 
-							auto cosAlpha = std::abs(FVector2D::DotProduct(direction1, direction2));
+							auto cosAlpha = FVector2D::DotProduct(direction1, direction2);
 
-							if (cosAlpha > CosAlpha || actualRefCount == 1)
+							if (cosAlpha < -CosAlpha || actualRefCount == 1)
 							{
-								CosAlpha = cosAlpha;
+								CosAlpha = -cosAlpha;
 								ChosenRoadIndex = OtherRoad.GetRoadIndex(*StreetMap);
 							}
 						}
