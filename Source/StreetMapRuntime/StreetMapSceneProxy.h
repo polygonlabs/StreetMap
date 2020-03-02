@@ -44,7 +44,7 @@ struct FStreetMapVertex
 
 	/** TMC of road */
 	UPROPERTY()
-		FString TMC;
+		FName TMC;
 
 	/** Speed limit of road (mph) */
 	UPROPERTY()

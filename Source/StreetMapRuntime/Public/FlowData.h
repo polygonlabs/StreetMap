@@ -11,7 +11,7 @@ class STREETMAPRUNTIME_API UFlowData : public UObject
 
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "StreetMap")
-		FString RdsTmc;
+		FName RdsTmc;
 
 	UPROPERTY(BlueprintReadOnly, Category = "StreetMap")
 		float Speed;

@@ -103,7 +103,6 @@ bool FOSMFile::ProcessElement( const TCHAR* ElementName, const TCHAR* ElementDat
 			CurrentWayInfo = new FOSMWayInfo();
 			CurrentWayInfo->Name.Empty();
 			CurrentWayInfo->Ref.Empty();
-			CurrentWayInfo->TMC.Empty();
 			CurrentWayInfo->SpeedLimit = 25;
 			CurrentWayInfo->WayType = EOSMWayType::Other;
 			CurrentWayInfo->Height = 0.0;
@@ -263,6 +262,10 @@ bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* Attrib
 			else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("tmc")))
 			{
 				CurrentWayInfo->TMC = AttributeValue;
+			}
+			else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("distance")))
+			{
+				CurrentWayInfo->Distance = FPlatformString::Atof(AttributeValue);
 			}
 			else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("speed_limit")))
 			{

@@ -20,8 +20,10 @@ class STREETMAPRUNTIME_API UStreetMapComponent : public UMeshComponent, public I
 	GENERATED_BODY()
 
 private: 
-	TMap<FString, float> mFlowData;
+	TMap<FName, float> mFlowData;
 	TMap<FGuid, TArray<FStreetMapLink>> mTraces;
+	TMap<FName, int> mTMC2RoadIndex;
+	TMap<FStreetMapLink, int> mLink2RoadIndex;
 
 public:
 
@@ -160,8 +162,8 @@ public:
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, bool IsTrace = false, float ZOffset = 0.0f);
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FStreetMapLink Link, bool IsTrace = false, float ZOffset = 0.0f);
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, bool IsTrace = false, float ZOffset = 0.0f);
-	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FString TMC, bool IsTrace = false, float ZOffset = 0.0f);
-	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FString> TMCs, bool IsTrace = false, float ZOffset = 0.0f);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FName TMC, bool IsTrace = false, float ZOffset = 0.0f);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FName> TMCs, bool IsTrace = false, float ZOffset = 0.0f);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetThickness(float val, EStreetMapRoadType type);
@@ -179,25 +181,25 @@ public:
 		void ChangeStreetColorByLinks(FLinearColor val, EStreetMapRoadType type, TArray<FStreetMapLink> Links);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void ChangeStreetColorByTMC(FLinearColor val, EStreetMapRoadType type, FString TMC);
+		void ChangeStreetColorByTMC(FLinearColor val, EStreetMapRoadType type, FName TMC);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void ChangeStreetColorByTMCs(FLinearColor val, EStreetMapRoadType type, TArray<FString> TMCs);
+		void ChangeStreetColorByTMCs(FLinearColor val, EStreetMapRoadType type, TArray<FName> TMCs);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void AddOrUpdateFlowData(FString TMC, float Speed);
+		void AddOrUpdateFlowData(FName TMC, float Speed);
 	
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void DeleteFlowData(FString TMC);
+		void DeleteFlowData(FName TMC);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		FGuid AddTrace(FLinearColor Color, TArray<FStreetMapLink> Links);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void GetTraceDetails(FGuid GUID, int& OutAvgSpeed, int& OutTravelTime);
+		bool GetTraceDetails(FGuid GUID, float& OutAvgSpeed, float& OutDistance, float& OutTravelTime, float& OutIdealTravelTime);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void DeleteTrace(FGuid GUID);
+		bool DeleteTrace(FGuid GUID);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		bool GetSpeed(FStreetMapLink Link, int& OutSpeed, int& OutSpeedLimit, float& OutSpeedRatio);
@@ -214,7 +216,7 @@ protected:
 	void GenerateMesh();
 
 	/** Adds a 2D line to the raw mesh */
-	void AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>* Vertices, TArray<uint32>* Indices, EVertexType VertexType, int64 LinkId = -1, FString LinkDir = "", FString TMC = "", int SpeedLimit = 25);
+	void AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>* Vertices, TArray<uint32>* Indices, EVertexType VertexType, int64 LinkId = -1, FString LinkDir = "", FName TMC = "", int SpeedLimit = 25);
 
 	/** Adds 3D triangles to the raw mesh */
 	void AddTriangles(const TArray<FVector>& Points, const TArray<int32>& PointIndices, const FVector& ForwardVector, const FVector& UpVector, const FColor& Color, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices);
@@ -231,7 +233,7 @@ protected:
 		, TArray<uint32>* Indices
 		, int64 LinkId = -1
 		, FString LinkDir = ""
-		, FString TMC = ""
+		, FName TMC = ""
 		, int SpeedLimit = 25);
 
 	void StartSmoothQuadList(const FVector2D& Prev
@@ -246,7 +248,7 @@ protected:
 		, TArray<uint32>* Indices
 		, int64 LinkId = -1
 		, FString LinkDir = ""
-		, FString TMC = ""
+		, FName TMC = ""
 		, int SpeedLimit = 25);
 	
 	void StartSmoothQuadList(const FVector2D& Start
@@ -260,7 +262,7 @@ protected:
 		, TArray<uint32>* Indices
 		, int64 LinkId = -1
 		, FString LinkDir = ""
-		, FString TMC = ""
+		, FName TMC = ""
 		, int SpeedLimit = 25);
 
 
@@ -277,7 +279,7 @@ protected:
 		, TArray<uint32>* Indices
 		, int64 LinkId = -1
 		, FString LinkDir = ""
-		, FString TMC = ""
+		, FName TMC = ""
 		, int SpeedLimit = 25);
 
 	void EndSmoothQuadList(const FVector2D& Mid
@@ -291,7 +293,7 @@ protected:
 		, TArray<uint32>* Indices
 		, int64 LinkId = -1
 		, FString LinkDir = ""
-		, FString TMC = ""
+		, FName TMC = ""
 		, int SpeedLimit = 25);
 
 	void EndSmoothQuadList(const FVector2D& Mid
@@ -306,7 +308,7 @@ protected:
 		, TArray<uint32>* Indices
 		, int64 LinkId = -1
 		, FString LinkDir = ""
-		, FString TMC = ""
+		, FName TMC = ""
 		, int SpeedLimit = 25);
 protected:
 

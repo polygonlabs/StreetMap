@@ -5,6 +5,7 @@
 #include "LandscapeProxy.h"
 #include "Components/SplineMeshComponent.h"
 #include "Engine/DataTable.h"
+#include "Misc/Crc.h"
 #include "StreetMap.generated.h"
 
 class FOSMNodeInfo;
@@ -482,6 +483,24 @@ struct STREETMAPRUNTIME_API FStreetMapLink : public FTableRowBase
 		FString LinkDir;
 };
 
+inline uint32 GetTypeHash(const FStreetMapLink& Value)
+{
+	uint32 LinkIdHash = GetTypeHash(Value.LinkId);
+	uint32 LinkDirHash = GetTypeHash(Value.LinkDir);
+	return LinkIdHash ^ LinkDirHash;
+}
+
+inline bool operator==(const FStreetMapLink& A, const FStreetMapLink& B)
+{
+	return (0 == A.LinkDir.Compare(B.LinkDir, ESearchCase::CaseSensitive)) &&
+		(A.LinkId == B.LinkId);
+}
+
+inline bool operator!=(const FStreetMapLink& A, const FStreetMapLink& B)
+{
+	return !(A == B);
+}
+
 
 /** A road */
 USTRUCT(BlueprintType)
@@ -497,10 +516,13 @@ struct STREETMAPRUNTIME_API FStreetMapRoad
 		FStreetMapLink Link;
 
 	UPROPERTY(Category = StreetMap, EditAnywhere)
-		FString TMC;
+		FName TMC;
 
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		int SpeedLimit;
+
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		float Distance;
 
 	/** Type of road */
 	UPROPERTY(Category = StreetMap, EditAnywhere)

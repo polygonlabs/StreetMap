@@ -4,7 +4,6 @@
 #include "StreetMapRuntime.h"
 #include "EditorFramework/AssetImportData.h"
 
-
 UStreetMap::UStreetMap()
 {
 #if WITH_EDITORONLY_DATA
