@@ -44,7 +44,7 @@ UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitial
 	// Our mesh can influence navigation.
 	bCanEverAffectNavigation = true;
 
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> DefaultMaterialAsset(TEXT("/StreetMap/StreetMapDefaultMaterial"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> DefaultMaterialAsset(TEXT("/StreetMap/StreetMapDefaultInstanceMaterial"));
 	StreetMapDefaultMaterial = DefaultMaterialAsset.Object;
 
 	mFlowData.Empty();
@@ -1677,6 +1677,7 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Prev
 	BottomLeftVertex.SpeedLimit = SpeedLimit;
 	BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
 	BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
+	BottomLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	BottomLeftVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	BottomLeftVertex.TangentZ = FVector::UpVector;
 	BottomLeftVertex.Color = StartColor;
@@ -1690,6 +1691,7 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Prev
 	BottomRightVertex.SpeedLimit = SpeedLimit;
 	BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
 	BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
+	BottomRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	BottomRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	BottomRightVertex.TangentZ = FVector::UpVector;
 	BottomRightVertex.Color = StartColor;
@@ -1726,6 +1728,7 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 	BottomLeftVertex.SpeedLimit = SpeedLimit;
 	BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
 	BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
+	BottomLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	BottomLeftVertex.TangentX = FVector(LineDirection1, 0.0f);
 	BottomLeftVertex.TangentZ = FVector::UpVector;
 	BottomLeftVertex.Color = StartColor;
@@ -1739,6 +1742,7 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 	BottomRightVertex.SpeedLimit = SpeedLimit;
 	BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
 	BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
+	BottomRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	BottomRightVertex.TangentX = FVector(LineDirection1, 0.0f);
 	BottomRightVertex.TangentZ = FVector::UpVector;
 	BottomRightVertex.Color = StartColor;
@@ -1782,6 +1786,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	MidLeftVertex.SpeedLimit = SpeedLimit;
 	MidLeftVertex.Position = FVector(Mid - RightVector * HalfThickness, Z);
 	MidLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
+	MidLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	MidLeftVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	MidLeftVertex.TangentZ = FVector::UpVector;
 	MidLeftVertex.Color = StartColor;
@@ -1795,6 +1800,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	MidRightVertex.SpeedLimit = SpeedLimit;
 	MidRightVertex.Position = FVector(Mid + RightVector * HalfThickness, Z);
 	MidRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
+	MidRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	MidRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	MidRightVertex.TangentZ = FVector::UpVector;
 	MidRightVertex.Color = StartColor;
@@ -1845,6 +1851,7 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Mid
 	TopLeftVertex.SpeedLimit = SpeedLimit;
 	TopLeftVertex.Position = FVector(End - RightVector * HalfThickness, Z);
 	TopLeftVertex.TextureCoordinate = FVector2D(0.0f, 1.0f);
+	TopLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	TopLeftVertex.TangentX = FVector(LineDirection2, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
@@ -1858,6 +1865,7 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Mid
 	TopRightVertex.SpeedLimit = SpeedLimit;
 	TopRightVertex.Position = FVector(End + RightVector * HalfThickness, Z);
 	TopRightVertex.TextureCoordinate = FVector2D(1.0f, 1.0f);
+	TopRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	TopRightVertex.TangentX = FVector(LineDirection2, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;
@@ -1907,6 +1915,7 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Start
 	TopLeftVertex.SpeedLimit = SpeedLimit;
 	TopLeftVertex.Position = FVector(Mid - RightVector * HalfThickness, Z);
 	TopLeftVertex.TextureCoordinate = FVector2D(0.0f, 1.0f);
+	TopLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	TopLeftVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
@@ -1920,6 +1929,7 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Start
 	TopRightVertex.SpeedLimit = SpeedLimit;
 	TopRightVertex.Position = FVector(Mid + RightVector * HalfThickness, Z);
 	TopRightVertex.TextureCoordinate = FVector2D(1.0f, 1.0f);
+	TopRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	TopRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;

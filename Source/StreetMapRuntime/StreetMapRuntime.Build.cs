@@ -14,6 +14,7 @@ namespace UnrealBuildTool.Rules
 					"Engine",
 					"RHI",
 					"RenderCore",
+                    "Renderer",
                     "Landscape"
                 }
 			);

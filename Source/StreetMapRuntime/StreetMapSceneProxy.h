@@ -22,6 +22,10 @@ struct FStreetMapVertex
 	UPROPERTY()
 		FVector2D TextureCoordinate;
 
+	/** Texture coordinate */
+	UPROPERTY()
+		FVector2D TextureCoordinate2;
+
 	/** Tangent vector X */
 	UPROPERTY()
 		FVector TangentX;
