@@ -218,6 +218,7 @@ protected:
 		, const bool Start
 		, const float Z
 		, const float Thickness
+		, const float MaxThickness
 		, const FColor& StartColor
 		, const FColor& EndColor
 		, FBox& MeshBoundingBox
@@ -233,6 +234,7 @@ protected:
 		, const FVector2D& Mid
 		, const float Z
 		, const float Thickness
+		, const float MaxThickness
 		, const FColor& StartColor
 		, const FColor& EndColor
 		, FBox& MeshBoundingBox
@@ -247,6 +249,7 @@ protected:
 		, const FVector2D& Mid
 		, const float Z
 		, const float Thickness
+		, const float MaxThickness
 		, const FColor& StartColor
 		, const FColor& EndColor
 		, FBox& MeshBoundingBox
@@ -264,6 +267,7 @@ protected:
 		, const FVector2D& End
 		, const float Z
 		, const float Thickness
+		, const float MaxThickness
 		, const FColor& StartColor
 		, const FColor& EndColor
 		, FBox& MeshBoundingBox
@@ -278,6 +282,7 @@ protected:
 		, const FVector2D& End
 		, const float Z
 		, const float Thickness
+		, const float MaxThickness
 		, const FColor& StartColor
 		, const FColor& EndColor
 		, FBox& MeshBoundingBox
@@ -293,6 +298,7 @@ protected:
 		, const FVector2D& Next
 		, const float Z
 		, const float Thickness
+		, const float MaxThickness
 		, const FColor& StartColor
 		, const FColor& EndColor
 		, FBox& MeshBoundingBox

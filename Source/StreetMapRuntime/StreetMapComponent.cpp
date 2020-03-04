@@ -7,6 +7,8 @@
 #include "Runtime/Engine/Public/StaticMeshResources.h"
 #include "PolygonTools.h"
 
+#include <algorithm>
+
 #include "PhysicsEngine/BodySetup.h"
 
 #if WITH_EDITOR
@@ -16,7 +18,7 @@
 #include "Public\StreetMapComponent.h"
 #endif //WITH_EDITOR
 
-
+#define BAKE_THICKNESS
 
 UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
@@ -282,6 +284,8 @@ void UStreetMapComponent::GenerateMesh()
 	HighwayVertices.Reset();
 	HighwayIndices.Reset();
 
+	const float MaxThickness = std::max(std::max(StreetThickness, MajorRoadThickness), HighwayThickness);
+
 	if (StreetMap != nullptr)
 	{
 		FBox MeshBoundingBox;
@@ -370,6 +374,7 @@ void UStreetMapComponent::GenerateMesh()
 							true,
 							RoadZ,
 							RoadThickness,
+							MaxThickness,
 							RoadColor,
 							RoadColor,
 							MeshBoundingBox,
@@ -386,6 +391,7 @@ void UStreetMapComponent::GenerateMesh()
 							Road.RoadPoints[1],
 							RoadZ,
 							RoadThickness,
+							MaxThickness,
 							RoadColor,
 							RoadColor,
 							MeshBoundingBox,
@@ -406,6 +412,7 @@ void UStreetMapComponent::GenerateMesh()
 							Road.RoadPoints[PointIndex + 2],
 							RoadZ,
 							RoadThickness,
+							MaxThickness,
 							RoadColor,
 							RoadColor,
 							MeshBoundingBox,
@@ -423,6 +430,7 @@ void UStreetMapComponent::GenerateMesh()
 							false,
 							RoadZ,
 							RoadThickness,
+							MaxThickness,
 							RoadColor,
 							RoadColor,
 							MeshBoundingBox,
@@ -439,6 +447,7 @@ void UStreetMapComponent::GenerateMesh()
 							Road.RoadPoints[PointIndex + 1],
 							RoadZ,
 							RoadThickness,
+							MaxThickness,
 							RoadColor,
 							RoadColor,
 							MeshBoundingBox,
@@ -568,6 +577,8 @@ void UStreetMapComponent::GenerateMesh()
 							FStreetMapVertex& NewVertex = *new(this->BuildingVertices)FStreetMapVertex();
 							NewVertex.Position = FVector(Point, 0.0f);
 							NewVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);	// NOTE: We're not using texture coordinates for anything yet
+							NewVertex.TextureCoordinate3 = FVector2D(0.0f, 0.0f);
+							NewVertex.TextureCoordinate3 = FVector2D(0.0f, 1.0f); // Thicknesses
 							NewVertex.TangentX = FVector::ForwardVector;	 // NOTE: Tangents aren't important for these unlit buildings
 							NewVertex.TangentZ = FVector::UpVector;
 							NewVertex.Color = BuildingFillColor;
@@ -1339,6 +1350,8 @@ void UStreetMapComponent::AddTriangles(const TArray<FVector>& Points, const TArr
 		FStreetMapVertex& NewVertex = *new(Vertices)FStreetMapVertex();
 		NewVertex.Position = Point;
 		NewVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);	// NOTE: We're not using texture coordinates for anything yet
+		NewVertex.TextureCoordinate3 = FVector2D(0.0f, 0.0f);
+		NewVertex.TextureCoordinate3 = FVector2D(0.0f, 1.0f); // Thicknesses
 		NewVertex.TangentX = ForwardVector;
 		NewVertex.TangentZ = UpVector;
 		NewVertex.Color = Color;
@@ -1356,6 +1369,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 	, const bool Start
 	, const float Z
 	, const float Thickness
+	, const float MaxThickness
 	, const FColor& StartColor
 	, const FColor& EndColor
 	, FBox& MeshBoundingBox
@@ -1473,6 +1487,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 						Road.RoadPoints[1],
 						Z,
 						Thickness,
+						MaxThickness,
 						StartColor,
 						EndColor,
 						MeshBoundingBox,
@@ -1490,6 +1505,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 						fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],
 						Z,
 						Thickness,
+						MaxThickness,
 						StartColor,
 						EndColor,
 						MeshBoundingBox,
@@ -1513,6 +1529,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 			Road.RoadPoints[1],
 			Z,
 			Thickness,
+			MaxThickness,
 			StartColor,
 			EndColor,
 			MeshBoundingBox,
@@ -1529,6 +1546,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 			Road.RoadPoints.Last(),
 			Z,
 			Thickness,
+			MaxThickness,
 			StartColor,
 			EndColor,
 			MeshBoundingBox,
@@ -1547,6 +1565,7 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Prev
 	, const FVector2D& Mid
 	, const float Z
 	, const float Thickness
+	, const float MaxThickness
 	, const FColor& StartColor
 	, const FColor& EndColor
 	, FBox& MeshBoundingBox
@@ -1573,9 +1592,14 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Prev
 	BottomLeftVertex.LinkDir = LinkDir;
 	BottomLeftVertex.TMC = TMC;
 	BottomLeftVertex.SpeedLimit = SpeedLimit;
-	BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
+#ifdef BAKE_THICKNESS
+	 BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
+#else
+	BottomLeftVertex.Position = FVector(Start, Z);
+#endif
 	BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
 	BottomLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
+	BottomLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
 	BottomLeftVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	BottomLeftVertex.TangentZ = FVector::UpVector;
 	BottomLeftVertex.Color = StartColor;
@@ -1587,9 +1611,14 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Prev
 	BottomRightVertex.LinkDir = LinkDir;
 	BottomRightVertex.TMC = TMC;
 	BottomRightVertex.SpeedLimit = SpeedLimit;
+#ifdef BAKE_THICKNESS
 	BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
+#else
+	BottomRightVertex.Position = FVector(Start, Z);
+#endif
 	BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
 	BottomRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
+	BottomRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
 	BottomRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	BottomRightVertex.TangentZ = FVector::UpVector;
 	BottomRightVertex.Color = StartColor;
@@ -1603,6 +1632,7 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 	, const FVector2D& Mid
 	, const float Z
 	, const float Thickness
+	, const float MaxThickness
 	, const FColor& StartColor
 	, const FColor& EndColor
 	, FBox& MeshBoundingBox
@@ -1624,9 +1654,14 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 	BottomLeftVertex.LinkDir = LinkDir;
 	BottomLeftVertex.TMC = TMC;
 	BottomLeftVertex.SpeedLimit = SpeedLimit;
+#ifdef BAKE_THICKNESS
 	BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness, Z);
+#else
+	BottomLeftVertex.Position = FVector(Start, Z);
+#endif
 	BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
 	BottomLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
+	BottomLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
 	BottomLeftVertex.TangentX = FVector(LineDirection1, 0.0f);
 	BottomLeftVertex.TangentZ = FVector::UpVector;
 	BottomLeftVertex.Color = StartColor;
@@ -1638,9 +1673,14 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 	BottomRightVertex.LinkDir = LinkDir;
 	BottomRightVertex.TMC = TMC;
 	BottomRightVertex.SpeedLimit = SpeedLimit;
+#ifdef BAKE_THICKNESS
 	BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness, Z);
+#else
+	BottomRightVertex.Position = FVector(Start, Z);
+#endif
 	BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
 	BottomRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
+	BottomRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
 	BottomRightVertex.TangentX = FVector(LineDirection1, 0.0f);
 	BottomRightVertex.TangentZ = FVector::UpVector;
 	BottomRightVertex.Color = StartColor;
@@ -1657,6 +1697,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	, const FVector2D& End
 	, const float Z
 	, const float Thickness
+	, const float MaxThickness
 	, const FColor& StartColor
 	, const FColor& EndColor
 	, FBox& MeshBoundingBox
@@ -1682,9 +1723,14 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	MidLeftVertex.LinkDir = LinkDir;
 	MidLeftVertex.TMC = TMC;
 	MidLeftVertex.SpeedLimit = SpeedLimit;
+#ifdef BAKE_THICKNESS
 	MidLeftVertex.Position = FVector(Mid - RightVector * HalfThickness, Z);
+#else
+	MidLeftVertex.Position = FVector(Mid, Z);
+#endif
 	MidLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);
 	MidLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
+	MidLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
 	MidLeftVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	MidLeftVertex.TangentZ = FVector::UpVector;
 	MidLeftVertex.Color = StartColor;
@@ -1696,9 +1742,14 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	MidRightVertex.LinkDir = LinkDir;
 	MidRightVertex.TMC = TMC;
 	MidRightVertex.SpeedLimit = SpeedLimit;
+#ifdef BAKE_THICKNESS
 	MidRightVertex.Position = FVector(Mid + RightVector * HalfThickness, Z);
+#else
+	MidRightVertex.Position = FVector(Mid, Z);
+#endif
 	MidRightVertex.TextureCoordinate = FVector2D(1.0f, 0.0f);
 	MidRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
+	MidRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
 	MidRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	MidRightVertex.TangentZ = FVector::UpVector;
 	MidRightVertex.Color = StartColor;
@@ -1726,6 +1777,7 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Mid
 	, const FVector2D& End
 	, const float Z
 	, const float Thickness
+	, const float MaxThickness
 	, const FColor& StartColor
 	, const FColor& EndColor
 	, FBox& MeshBoundingBox
@@ -1747,9 +1799,14 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Mid
 	TopLeftVertex.LinkDir = LinkDir;
 	TopLeftVertex.TMC = TMC;
 	TopLeftVertex.SpeedLimit = SpeedLimit;
+#ifdef BAKE_THICKNESS
 	TopLeftVertex.Position = FVector(End - RightVector * HalfThickness, Z);
+#else
+	TopLeftVertex.Position = FVector(End, Z);
+#endif
 	TopLeftVertex.TextureCoordinate = FVector2D(0.0f, 1.0f);
 	TopLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
+	TopLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
 	TopLeftVertex.TangentX = FVector(LineDirection2, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
@@ -1761,9 +1818,14 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Mid
 	TopRightVertex.LinkDir = LinkDir;
 	TopRightVertex.TMC = TMC;
 	TopRightVertex.SpeedLimit = SpeedLimit;
+#ifdef BAKE_THICKNESS
 	TopRightVertex.Position = FVector(End + RightVector * HalfThickness, Z);
+#else
+	TopRightVertex.Position = FVector(End, Z);
+#endif
 	TopRightVertex.TextureCoordinate = FVector2D(1.0f, 1.0f);
 	TopRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
+	TopRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
 	TopRightVertex.TangentX = FVector(LineDirection2, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;
@@ -1786,6 +1848,7 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Start
 	, const FVector2D& End
 	, const float Z
 	, const float Thickness
+	, const float MaxThickness
 	, const FColor& StartColor
 	, const FColor& EndColor
 	, FBox& MeshBoundingBox
@@ -1811,9 +1874,14 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Start
 	TopLeftVertex.LinkDir = LinkDir;
 	TopLeftVertex.TMC = TMC;
 	TopLeftVertex.SpeedLimit = SpeedLimit;
+#ifdef BAKE_THICKNESS
 	TopLeftVertex.Position = FVector(Mid - RightVector * HalfThickness, Z);
+#else
+	TopLeftVertex.Position = FVector(Mid, Z);
+#endif
 	TopLeftVertex.TextureCoordinate = FVector2D(0.0f, 1.0f);
 	TopLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
+	TopLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
 	TopLeftVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
@@ -1825,9 +1893,14 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Start
 	TopRightVertex.LinkDir = LinkDir;
 	TopRightVertex.TMC = TMC;
 	TopRightVertex.SpeedLimit = SpeedLimit;
+#ifdef BAKE_THICKNESS
 	TopRightVertex.Position = FVector(Mid + RightVector * HalfThickness, Z);
+#else
+	TopRightVertex.Position = FVector(Mid, Z);
+#endif
 	TopRightVertex.TextureCoordinate = FVector2D(1.0f, 1.0f);
 	TopRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
+	TopRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
 	TopRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;
