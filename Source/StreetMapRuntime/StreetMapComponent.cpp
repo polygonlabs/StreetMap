@@ -18,7 +18,7 @@
 #include "Public\StreetMapComponent.h"
 #endif //WITH_EDITOR
 
-#define BAKE_THICKNESS
+// #define BAKE_THICKNESS
 
 UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
@@ -1225,6 +1225,21 @@ void UStreetMapComponent::AssignDefaultMaterialIfNeeded()
 
 		this->SetMaterial(0, GetDefaultMaterial());
 	}
+
+	UMaterialInstanceDynamic* dynamicInstance = Cast<UMaterialInstanceDynamic>(this->GetMaterial(0));
+	if (dynamicInstance)
+	{
+		dynamicInstance->SetScalarParameterValue(TEXT("street_hide_threshold"), MeshBuildSettings.StreetThickness);
+		dynamicInstance->SetScalarParameterValue(TEXT("majorroad_hide_threshold"), MeshBuildSettings.MajorRoadThickness);
+	}
+	else
+	{
+		UMaterialInstanceDynamic* MI = UMaterialInstanceDynamic::Create(this->GetMaterial(0), this);
+		this->SetMaterial(0, MI);
+		MI->SetScalarParameterValue(TEXT("street_hide_threshold"), MeshBuildSettings.StreetThickness);
+		MI->SetScalarParameterValue(TEXT("majorroad_hide_threshold"), MeshBuildSettings.MajorRoadThickness);
+	}
+	
 }
 
 
@@ -1976,5 +1991,5 @@ void UStreetMapComponent::DeleteTrace(FGuid GUID)
 		}
 
 		mTraces.Remove(GUID);
-	}	
+	}
 }
