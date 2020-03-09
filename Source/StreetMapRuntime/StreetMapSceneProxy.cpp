@@ -195,7 +195,7 @@ void FStreetMapSceneProxy::MakeMeshBatch(FMeshBatch& Mesh, class FMeshElementCol
 		}
 		else if (MaterialProxy == nullptr)
 		{
-			MaterialProxy = StreetMapComp->GetDefaultMaterial()->GetRenderProxy();
+			MaterialProxy = StreetMapComp->GetMaterial(0)->GetRenderProxy();
 		}
 	}
 	
