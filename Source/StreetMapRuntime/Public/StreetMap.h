@@ -81,6 +81,10 @@ public:
 	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Connect streets")
 		uint32 bWantConnectStreets : 1;
 
+	/** if true streets of the same type that share nodes will be merged. */
+	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Respect direction")
+		float fStreetOffset;
+
 	/** threshold for angle btween roads to merge */
 	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Connect streets threshold")
 		float fThresholdConnectStreets = 0.96;
@@ -159,8 +163,9 @@ public:
 		StreetOffsetZ(100.0f),
 		MajorRoadOffsetZ(200.0f),
 		HighwayOffsetZ(300.0f),
-		bWantSmoothStreets(false),
-		bWantConnectStreets(false),
+		bWantSmoothStreets(true),
+		bWantConnectStreets(true),
+		fStreetOffset(1.2f),
 		fThresholdConnectStreets(0.96),
 		bWant3DBuildings(true),
 		bWantLitBuildings(true),

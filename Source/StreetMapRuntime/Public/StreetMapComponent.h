@@ -216,7 +216,7 @@ protected:
 	void GenerateMesh();
 
 	/** Adds a 2D line to the raw mesh */
-	void AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>* Vertices, TArray<uint32>* Indices, EVertexType VertexType, int64 LinkId = -1, FString LinkDir = "", FName TMC = "", int SpeedLimit = 25);
+	void AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const float MaxThickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>* Vertices, TArray<uint32>* Indices, EVertexType VertexType, int64 LinkId = -1, FString LinkDir = "", FName TMC = "", int SpeedLimit = 25);
 
 	/** Adds 3D triangles to the raw mesh */
 	void AddTriangles(const TArray<FVector>& Points, const TArray<int32>& PointIndices, const FVector& ForwardVector, const FVector& UpVector, const FColor& Color, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices);
@@ -229,9 +229,11 @@ protected:
 		, const float MaxThickness
 		, const FColor& StartColor
 		, const FColor& EndColor
+		, float& VAccumulation
 		, FBox& MeshBoundingBox
 		, TArray<FStreetMapVertex>* Vertices
 		, TArray<uint32>* Indices
+		, EVertexType VertexType
 		, int64 LinkId = -1
 		, FString LinkDir = ""
 		, FName TMC = ""
@@ -245,9 +247,11 @@ protected:
 		, const float MaxThickness
 		, const FColor& StartColor
 		, const FColor& EndColor
+		, float& VAccumulation
 		, FBox& MeshBoundingBox
 		, TArray<FStreetMapVertex>* Vertices
 		, TArray<uint32>* Indices
+		, EVertexType VertexType
 		, int64 LinkId = -1
 		, FString LinkDir = ""
 		, FName TMC = ""
@@ -260,9 +264,11 @@ protected:
 		, const float MaxThickness
 		, const FColor& StartColor
 		, const FColor& EndColor
+		, float& VAccumulation
 		, FBox& MeshBoundingBox
 		, TArray<FStreetMapVertex>* Vertices
 		, TArray<uint32>* Indices
+		, EVertexType VertexType
 		, int64 LinkId = -1
 		, FString LinkDir = ""
 		, FName TMC = ""
@@ -278,9 +284,11 @@ protected:
 		, const float MaxThickness
 		, const FColor& StartColor
 		, const FColor& EndColor
+		, float& VAccumulation
 		, FBox& MeshBoundingBox
 		, TArray<FStreetMapVertex>* Vertices
 		, TArray<uint32>* Indices
+		, EVertexType VertexType
 		, int64 LinkId = -1
 		, FString LinkDir = ""
 		, FName TMC = ""
@@ -293,9 +301,11 @@ protected:
 		, const float MaxThickness
 		, const FColor& StartColor
 		, const FColor& EndColor
+		, float& VAccumulation
 		, FBox& MeshBoundingBox
 		, TArray<FStreetMapVertex>* Vertices
 		, TArray<uint32>* Indices
+		, EVertexType VertexType
 		, int64 LinkId = -1
 		, FString LinkDir = ""
 		, FName TMC = ""
@@ -309,9 +319,11 @@ protected:
 		, const float MaxThickness
 		, const FColor& StartColor
 		, const FColor& EndColor
+		, float& VAccumulation
 		, FBox& MeshBoundingBox
 		, TArray<FStreetMapVertex>* Vertices
 		, TArray<uint32>* Indices
+		, EVertexType VertexType
 		, int64 LinkId = -1
 		, FString LinkDir = ""
 		, FName TMC = ""
