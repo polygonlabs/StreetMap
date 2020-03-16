@@ -1742,6 +1742,7 @@ void startSmoothVertices(const FVector2D Start
 {
 	const float QuarterThickness = HalfThickness * .5f;
 	const bool IsForward = LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
+	const bool IsBackward = LinkDir.Compare(TEXT("F"), ESearchCase::IgnoreCase) == 0;
 
 	const int32 BottomLeftVertexIndex = Vertices->Num();
 	FStreetMapVertex& BottomLeftVertex = *new(*Vertices)FStreetMapVertex();
@@ -1757,14 +1758,19 @@ void startSmoothVertices(const FVector2D Start
 		if (IsForward)
 		{
 			BottomLeftVertex.Position = FVector(Start + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.f);
+			BottomLeftVertex.TextureCoordinate = FVector2D(0.5f, 0.f);
+			break;
+		}
+		else if (IsBackward)
+		{
+			BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
+			BottomLeftVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+			break;
 		}
 		else
 		{
-			BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+			// fall through if neither
 		}
-		break;
 	default:
 		BottomLeftVertex.Position = FVector(Start, Z);
 		BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.f);
@@ -1793,16 +1799,21 @@ void startSmoothVertices(const FVector2D Start
 
 			BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.f);
+			break;
 		}
-		else
+		else if (IsBackward)
 		{
 			BottomRightVertex.Position = FVector(Start - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			BottomRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+			break;
 		}
-		break;
+		else
+		{
+		// fall through if neither
+		}
 	default:
 		BottomRightVertex.Position = FVector(Start, Z);
-		BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.f);
+		BottomRightVertex.TextureCoordinate = FVector2D(0.5f, 0.f);
 		break;
 	}
 	BottomRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
@@ -1942,6 +1953,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	const float XRatio = (Distance / Thickness) + VAccumulation;
 	VAccumulation = XRatio;
 	const bool IsForward = LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
+	const bool IsBackward = LinkDir.Compare(TEXT("F"), ESearchCase::IgnoreCase) == 0;
 
 	const FVector2D LineDirection1 = (Mid - Start).GetSafeNormal();
 	const FVector2D LineDirection2 = (End - Mid).GetSafeNormal();
@@ -1964,14 +1976,19 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		if (IsForward)
 		{
 			MidLeftVertex.Position = FVector(Mid + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+			MidLeftVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+			break;
+		}
+		else if (IsBackward)
+		{
+			MidLeftVertex.Position = FVector(Mid - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
+			MidLeftVertex.TextureCoordinate = FVector2D(0.5f, -XRatio);
+			break;
 		}
 		else
 		{
-			MidLeftVertex.Position = FVector(Mid - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
+			// fall through if neither
 		}
-		break;
 	default:
 		MidLeftVertex.Position = FVector(Mid, Z);
 		MidLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
@@ -1999,16 +2016,21 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		{
 			MidRightVertex.Position = FVector(Mid + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			MidRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+			break;
 		}
-		else
+		else if (IsBackward)
 		{
 			MidRightVertex.Position = FVector(Mid - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			MidRightVertex.TextureCoordinate = FVector2D(1.0f, -XRatio);
+			break;
 		}
-		break;
+		else
+		{
+		// fall through if neither
+		}
 	default:
 		MidRightVertex.Position = FVector(Mid, Z);
-		MidRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+		MidRightVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
 		break;
 	}
 	MidRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
@@ -2058,6 +2080,7 @@ void endSmoothVertices(const FVector2D End
 	//const float Distance = (End - Start).Size();
 	//const float XRatio = Distance / Thickness;
 	const bool IsForward = LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
+	const bool IsBackward = LinkDir.Compare(TEXT("F"), ESearchCase::IgnoreCase) == 0;
 	const int32 TopLeftVertexIndex = Vertices->Num();
 	FStreetMapVertex& TopLeftVertex = *new(*Vertices)FStreetMapVertex();
 	TopLeftVertex.LinkId = LinkId;
@@ -2072,14 +2095,19 @@ void endSmoothVertices(const FVector2D End
 		if (IsForward)
 		{
 			TopLeftVertex.Position = FVector(End + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+			TopLeftVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+			break;
+		}
+		else if (IsBackward)
+		{
+			TopLeftVertex.Position = FVector(End - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
+			TopLeftVertex.TextureCoordinate = FVector2D(0.5f, -XRatio);
+			break;
 		}
 		else
 		{
-			TopLeftVertex.Position = FVector(End - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
+		// fall through if neither
 		}
-		break;
 	default:
 		TopLeftVertex.Position = FVector(End, Z);
 		TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
@@ -2108,16 +2136,21 @@ void endSmoothVertices(const FVector2D End
 		{
 			TopRightVertex.Position = FVector(End + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+			break;
 		}
-		else
+		else if (IsBackward)
 		{
 			TopRightVertex.Position = FVector(End - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			TopRightVertex.TextureCoordinate = FVector2D(1.0f, -XRatio);
+			break;
 		}
-		break;
+		else
+		{
+		// fall through if neither
+		}
 	default:
 		TopRightVertex.Position = FVector(End, Z);
-		TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+		TopRightVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
 		break;
 	}
 	TopRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
