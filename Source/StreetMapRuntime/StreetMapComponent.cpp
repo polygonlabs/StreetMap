@@ -1905,7 +1905,6 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 
 	const FVector2D RightVector(-LineDirection1.Y, LineDirection1.X);
 
-
 	startSmoothVertices(Start
 		, RightVector
 		, LineDirection1
@@ -2015,7 +2014,6 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		if (IsForward)
 		{
 			MidRightVertex.Position = FVector(Mid + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			MidRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
 			break;
 		}
 		else if (IsBackward)
@@ -2034,14 +2032,6 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		break;
 	}
 	MidRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
-	MidRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	MidRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
-	MidRightVertex.TangentZ = FVector::UpVector;
-	MidRightVertex.Color = StartColor;
-	MeshBoundingBox += MidRightVertex.Position;
-
-	auto numIdx = Indices->Num();
-	auto BottomRightVertexIndex = (*Indices)[numIdx - 1];
 	auto BottomLeftVertexIndex = (*Indices)[numIdx - 2];
 
 	// Finish Last trinagle
@@ -2138,10 +2128,6 @@ void endSmoothVertices(const FVector2D End
 			TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
 			break;
 		}
-		else if (IsBackward)
-		{
-			TopRightVertex.Position = FVector(End - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			TopRightVertex.TextureCoordinate = FVector2D(1.0f, -XRatio);
 			break;
 		}
 		else
@@ -2157,53 +2143,9 @@ void endSmoothVertices(const FVector2D End
 	TopRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
 	TopRightVertex.TangentX = FVector(Tangent, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
-	TopRightVertex.Color = EndColor;
-	MeshBoundingBox += TopRightVertex.Position;
-
-	auto numIdx = Indices->Num();
-
-	auto MidRightVertexIndex = (*Indices)[numIdx - 1];
-	auto MidLeftVertexIndex = (*Indices)[numIdx - 2];
-
 	Indices->Add(TopRightVertexIndex);
-
-	Indices->Add(MidLeftVertexIndex);
-	Indices->Add(TopRightVertexIndex);
-	Indices->Add(TopLeftVertexIndex);
-}
-
-void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Mid
-	, const FVector2D& End
-	, const float Z
-	, const float Thickness
-	, const float MaxThickness
-	, const FColor& StartColor
-	, const FColor& EndColor
-	, float& VAccumulation
 	, FBox& MeshBoundingBox
-	, TArray<FStreetMapVertex>* Vertices
-	, TArray<uint32>* Indices
-	, EVertexType VertexType
-	, int64 LinkId
-	, FString LinkDir
-	, FName TMC
-	, int SpeedLimit)
-{
-	const float HalfThickness = Thickness * 0.5f;
-	const float Distance = (End - Mid).Size();
-	const float XRatio = (Distance / Thickness) + VAccumulation;
 	VAccumulation = XRatio;
-
-	const FVector2D LineDirection1 = (End - Mid).GetSafeNormal();
-	const FVector2D RightVector(-LineDirection1.Y, LineDirection1.X);
-
-	endSmoothVertices(End
-		, RightVector
-		, LineDirection1
-		, Z
-		, HalfThickness
-		, MaxThickness
-		, XRatio
 		, StartColor
 		, EndColor
 		, MeshBuildSettings
