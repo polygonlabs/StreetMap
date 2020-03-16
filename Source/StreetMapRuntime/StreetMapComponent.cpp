@@ -54,7 +54,7 @@ UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitial
 
 	mTMC2RoadIndex.Empty();
 	mLink2RoadIndex.Empty();
-	
+
 #if WITH_EDITOR
 	if (GEngine)
 	{
@@ -333,10 +333,10 @@ void UStreetMapComponent::GenerateMesh()
 
 			const FName TMC = Road.TMC;
 			const FStreetMapLink Link = Road.Link;
-			
+
 			const int FlowNum = mFlowData.Num();
 			if (bColorByFlow && FlowNum > 0) {
-				
+
 
 				const float Speed = mFlowData[TMC];
 				const float SpeedRatio = Speed / Road.SpeedLimit;
@@ -893,9 +893,9 @@ void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVerte
 		auto LinkId = Vertices[i].LinkId;
 		auto LinkDir = Vertices[i].LinkDir;
 		auto LinkPtr = Links.FindByPredicate([LinkId, LinkDir](const FStreetMapLink& Link)
-			{
-				return Link.LinkId == LinkId && Link.LinkDir == LinkDir;
-			});
+		{
+			return Link.LinkId == LinkId && Link.LinkDir == LinkDir;
+		});
 
 		if (LinkPtr != nullptr) {
 			Vertices[i].Color = val.ToFColor(false);
@@ -1016,9 +1016,9 @@ void UStreetMapComponent::ColorRoadMeshFromFlowData(TArray<FStreetMapVertex>& Ve
 			auto LinkId = Vertices[i].LinkId;
 			auto LinkDir = Vertices[i].LinkDir;
 			auto LinkPtr = Links.FindByPredicate([LinkId, LinkDir](const FStreetMapLink& Link)
-				{
-					return Link.LinkId == LinkId && Link.LinkDir == LinkDir;
-				});
+			{
+				return Link.LinkId == LinkId && Link.LinkDir == LinkDir;
+			});
 
 			if (LinkPtr != nullptr) {
 				const FName TMC = Vertex->TMC;
@@ -1281,7 +1281,7 @@ void UStreetMapComponent::AssignDefaultMaterialIfNeeded()
 		MI->SetScalarParameterValue(TEXT("street_hide_threshold"), MeshBuildSettings.StreetThickness);
 		MI->SetScalarParameterValue(TEXT("majorroad_hide_threshold"), MeshBuildSettings.MajorRoadThickness);
 	}
-	
+
 }
 
 
@@ -1599,7 +1599,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 
 					{
 						// check angle between the 2 road segments
-						const FVector2D* Prev = nullptr, *Mid = nullptr, *Next = nullptr;
+						const FVector2D* Prev = nullptr, * Mid = nullptr, * Next = nullptr;
 						if (Start)
 						{
 							Prev = fromBack ? &OtherRoad.RoadPoints.Last(1) : &OtherRoad.RoadPoints[1];
@@ -1789,7 +1789,7 @@ void startSmoothVertices(const FVector2D Start
 	BottomRightVertex.LinkDir = LinkDir;
 	BottomRightVertex.TMC = TMC;
 	BottomRightVertex.SpeedLimit = SpeedLimit;
-	switch(VertexType)
+	switch (VertexType)
 	{
 	case EVertexType::VStreet:
 	case EVertexType::VMajorRoad:
@@ -1809,7 +1809,7 @@ void startSmoothVertices(const FVector2D Start
 		}
 		else
 		{
-		// fall through if neither
+			// fall through if neither
 		}
 	default:
 		BottomRightVertex.Position = FVector(Start, Z);
@@ -1904,6 +1904,7 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 	const FVector2D LineDirection1 = (Mid - Start).GetSafeNormal();
 
 	const FVector2D RightVector(-LineDirection1.Y, LineDirection1.X);
+
 
 	startSmoothVertices(Start
 		, RightVector
@@ -2014,6 +2015,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		if (IsForward)
 		{
 			MidRightVertex.Position = FVector(Mid + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
+			MidRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
 			break;
 		}
 		else if (IsBackward)
@@ -2024,7 +2026,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		}
 		else
 		{
-		// fall through if neither
+			// fall through if neither
 		}
 	default:
 		MidRightVertex.Position = FVector(Mid, Z);
@@ -2032,6 +2034,14 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		break;
 	}
 	MidRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
+	MidRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	MidRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
+	MidRightVertex.TangentZ = FVector::UpVector;
+	MidRightVertex.Color = StartColor;
+	MeshBoundingBox += MidRightVertex.Position;
+
+	auto numIdx = Indices->Num();
+	auto BottomRightVertexIndex = (*Indices)[numIdx - 1];
 	auto BottomLeftVertexIndex = (*Indices)[numIdx - 2];
 
 	// Finish Last trinagle
@@ -2096,7 +2106,7 @@ void endSmoothVertices(const FVector2D End
 		}
 		else
 		{
-		// fall through if neither
+			// fall through if neither
 		}
 	default:
 		TopLeftVertex.Position = FVector(End, Z);
@@ -2105,7 +2115,7 @@ void endSmoothVertices(const FVector2D End
 	}
 	TopLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	TopLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	
+
 	TopLeftVertex.TangentX = FVector(Tangent, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
@@ -2128,11 +2138,15 @@ void endSmoothVertices(const FVector2D End
 			TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
 			break;
 		}
+		else if (IsBackward)
+		{
+			TopRightVertex.Position = FVector(End - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
+			TopRightVertex.TextureCoordinate = FVector2D(1.0f, -XRatio);
 			break;
 		}
 		else
 		{
-		// fall through if neither
+			// fall through if neither
 		}
 	default:
 		TopRightVertex.Position = FVector(End, Z);
@@ -2143,9 +2157,53 @@ void endSmoothVertices(const FVector2D End
 	TopRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
 	TopRightVertex.TangentX = FVector(Tangent, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
+	TopRightVertex.Color = EndColor;
+	MeshBoundingBox += TopRightVertex.Position;
+
+	auto numIdx = Indices->Num();
+
+	auto MidRightVertexIndex = (*Indices)[numIdx - 1];
+	auto MidLeftVertexIndex = (*Indices)[numIdx - 2];
+
 	Indices->Add(TopRightVertexIndex);
+
+	Indices->Add(MidLeftVertexIndex);
+	Indices->Add(TopRightVertexIndex);
+	Indices->Add(TopLeftVertexIndex);
+}
+
+void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Mid
+	, const FVector2D& End
+	, const float Z
+	, const float Thickness
+	, const float MaxThickness
+	, const FColor& StartColor
+	, const FColor& EndColor
+	, float& VAccumulation
 	, FBox& MeshBoundingBox
+	, TArray<FStreetMapVertex>* Vertices
+	, TArray<uint32>* Indices
+	, EVertexType VertexType
+	, int64 LinkId
+	, FString LinkDir
+	, FName TMC
+	, int SpeedLimit)
+{
+	const float HalfThickness = Thickness * 0.5f;
+	const float Distance = (End - Mid).Size();
+	const float XRatio = (Distance / Thickness) + VAccumulation;
 	VAccumulation = XRatio;
+
+	const FVector2D LineDirection1 = (End - Mid).GetSafeNormal();
+	const FVector2D RightVector(-LineDirection1.Y, LineDirection1.X);
+
+	endSmoothVertices(End
+		, RightVector
+		, LineDirection1
+		, Z
+		, HalfThickness
+		, MaxThickness
+		, XRatio
 		, StartColor
 		, EndColor
 		, MeshBuildSettings
@@ -2253,7 +2311,7 @@ bool UStreetMapComponent::GetTraceDetails(FGuid GUID, float& OutAvgSpeed, float&
 	const auto TraceLinks = mTraces[GUID];
 	float IdealTotalTimeMin = 0;
 	float TotalTimeMin = 0;
-	
+
 	for (const auto& TraceLink : TraceLinks)
 	{
 		if (mLink2RoadIndex.Contains(TraceLink))
@@ -2292,7 +2350,7 @@ bool UStreetMapComponent::DeleteTrace(FGuid GUID)
 	const float HighwayOffsetZ = MeshBuildSettings.HighwayOffsetZ;
 	const bool bColorByFlow = MeshBuildSettings.bColorByFlow;
 
-	if (!mTraces.Contains(GUID)) return false; 
+	if (!mTraces.Contains(GUID)) return false;
 
 	auto Trace = mTraces[GUID];
 
@@ -2319,9 +2377,9 @@ bool UStreetMapComponent::GetSpeed(FStreetMapLink Link, int& OutSpeed, int& OutS
 	const FString LinkDir = Link.LinkDir;
 
 	auto RoadPtr = Roads.FindByPredicate([LinkId, LinkDir](const FStreetMapRoad& Road)
-		{
-			return Road.Link.LinkId == LinkId && Road.Link.LinkDir == LinkDir;
-		});
+	{
+		return Road.Link.LinkId == LinkId && Road.Link.LinkDir == LinkDir;
+	});
 
 	if (RoadPtr == nullptr)
 	{
