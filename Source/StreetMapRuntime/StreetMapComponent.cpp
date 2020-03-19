@@ -1758,13 +1758,13 @@ void startSmoothVertices(const FVector2D Start
 		if (IsForward)
 		{
 			BottomLeftVertex.Position = FVector(Start + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			BottomLeftVertex.TextureCoordinate = FVector2D(0.5f, 0.f);
+			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.f);
 			break;
 		}
 		else if (IsBackward)
 		{
 			BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			BottomLeftVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
 			break;
 		}
 		else
@@ -1813,7 +1813,7 @@ void startSmoothVertices(const FVector2D Start
 		}
 	default:
 		BottomRightVertex.Position = FVector(Start, Z);
-		BottomRightVertex.TextureCoordinate = FVector2D(0.5f, 0.f);
+		BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.f);
 		break;
 	}
 	BottomRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
@@ -1976,13 +1976,13 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		if (IsForward)
 		{
 			MidLeftVertex.Position = FVector(Mid + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			MidLeftVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
 			break;
 		}
 		else if (IsBackward)
 		{
 			MidLeftVertex.Position = FVector(Mid - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			MidLeftVertex.TextureCoordinate = FVector2D(0.5f, -XRatio);
+			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
 			break;
 		}
 		else
@@ -2030,7 +2030,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		}
 	default:
 		MidRightVertex.Position = FVector(Mid, Z);
-		MidRightVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+		MidRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
 		break;
 	}
 	MidRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
@@ -2095,13 +2095,13 @@ void endSmoothVertices(const FVector2D End
 		if (IsForward)
 		{
 			TopLeftVertex.Position = FVector(End + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			TopLeftVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
 			break;
 		}
 		else if (IsBackward)
 		{
 			TopLeftVertex.Position = FVector(End - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			TopLeftVertex.TextureCoordinate = FVector2D(0.5f, -XRatio);
+			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
 			break;
 		}
 		else
@@ -2150,7 +2150,7 @@ void endSmoothVertices(const FVector2D End
 		}
 	default:
 		TopRightVertex.Position = FVector(End, Z);
-		TopRightVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+		TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
 		break;
 	}
 	TopRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
