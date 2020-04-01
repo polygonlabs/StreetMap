@@ -56,6 +56,7 @@ void FStreetMapSceneProxy::Init(const UStreetMapComponent* InComponent, EVertexT
 		Vert.TextureCoordinate[0] = StreetMapVert.TextureCoordinate;
 		Vert.TextureCoordinate[1] = StreetMapVert.TextureCoordinate2;
 		Vert.TextureCoordinate[2] = StreetMapVert.TextureCoordinate3;
+		Vert.TextureCoordinate[3] = StreetMapVert.TextureCoordinate4;
 		Vert.TangentX = StreetMapVert.TangentX;
 		Vert.TangentZ = StreetMapVert.TangentZ;
 	}

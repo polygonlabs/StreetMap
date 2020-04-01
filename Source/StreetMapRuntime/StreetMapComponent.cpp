@@ -623,8 +623,9 @@ void UStreetMapComponent::GenerateMesh()
 							FStreetMapVertex& NewVertex = *new(this->BuildingVertices)FStreetMapVertex();
 							NewVertex.Position = FVector(Point, 0.0f);
 							NewVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);	// NOTE: We're not using texture coordinates for anything yet
-							NewVertex.TextureCoordinate3 = FVector2D(0.0f, 0.0f);
+							NewVertex.TextureCoordinate2 = FVector2D(0.0f, 0.0f);
 							NewVertex.TextureCoordinate3 = FVector2D(0.0f, 1.0f); // Thicknesses
+							NewVertex.TextureCoordinate4 = FVector2D(0.0f, 0.0f);
 							NewVertex.TangentX = FVector::ForwardVector;	 // NOTE: Tangents aren't important for these unlit buildings
 							NewVertex.TangentZ = FVector::UpVector;
 							NewVertex.Color = BuildingFillColor;
@@ -1366,6 +1367,7 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	}
 	BottomLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	BottomLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	BottomLeftVertex.TangentX = FVector(LineDirection, 0.0f);
 	BottomLeftVertex.TangentZ = FVector::UpVector;
 	BottomLeftVertex.Color = StartColor;
@@ -1400,6 +1402,7 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	}
 	BottomRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	BottomRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	BottomRightVertex.TangentX = FVector(LineDirection, 0.0f);
 	BottomRightVertex.TangentZ = FVector::UpVector;
 	BottomRightVertex.Color = StartColor;
@@ -1434,6 +1437,7 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	}
 	TopRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	TopRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	TopRightVertex.TangentX = FVector(LineDirection, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;
@@ -1468,6 +1472,7 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	}
 	TopLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	TopLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	TopLeftVertex.TangentX = FVector(LineDirection, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
@@ -1492,8 +1497,9 @@ void UStreetMapComponent::AddTriangles(const TArray<FVector>& Points, const TArr
 		FStreetMapVertex& NewVertex = *new(Vertices)FStreetMapVertex();
 		NewVertex.Position = Point;
 		NewVertex.TextureCoordinate = FVector2D(0.0f, 0.0f);	// NOTE: We're not using texture coordinates for anything yet
-		NewVertex.TextureCoordinate3 = FVector2D(0.0f, 0.0f);
+		NewVertex.TextureCoordinate2 = FVector2D(0.0f, 0.0f);
 		NewVertex.TextureCoordinate3 = FVector2D(0.0f, 1.0f); // Thicknesses
+		NewVertex.TextureCoordinate4 = FVector2D(0.0f, 0.0f);
 		NewVertex.TangentX = ForwardVector;
 		NewVertex.TangentZ = UpVector;
 		NewVertex.Color = Color;
@@ -1758,13 +1764,13 @@ void startSmoothVertices(const FVector2D Start
 		if (IsForward)
 		{
 			BottomLeftVertex.Position = FVector(Start + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			BottomLeftVertex.TextureCoordinate = FVector2D(0.5f, 0.f);
+			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.f);
 			break;
 		}
 		else if (IsBackward)
 		{
 			BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			BottomLeftVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
 			break;
 		}
 		else
@@ -1778,6 +1784,7 @@ void startSmoothVertices(const FVector2D Start
 	}
 	BottomLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	BottomLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	BottomLeftVertex.TangentX = FVector(Tangent, 0.0f);
 	BottomLeftVertex.TangentZ = FVector::UpVector;
 	BottomLeftVertex.Color = StartColor;
@@ -1813,11 +1820,12 @@ void startSmoothVertices(const FVector2D Start
 		}
 	default:
 		BottomRightVertex.Position = FVector(Start, Z);
-		BottomRightVertex.TextureCoordinate = FVector2D(0.5f, 0.f);
+		BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.f);
 		break;
 	}
 	BottomRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	BottomRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	BottomRightVertex.TangentX = FVector(Tangent, 0.0f);
 	BottomRightVertex.TangentZ = FVector::UpVector;
 	BottomRightVertex.Color = StartColor;
@@ -1976,13 +1984,13 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		if (IsForward)
 		{
 			MidLeftVertex.Position = FVector(Mid + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			MidLeftVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
 			break;
 		}
 		else if (IsBackward)
 		{
 			MidLeftVertex.Position = FVector(Mid - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			MidLeftVertex.TextureCoordinate = FVector2D(0.5f, -XRatio);
+			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
 			break;
 		}
 		else
@@ -1996,6 +2004,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	}
 	MidLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	MidLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	MidLeftVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	MidLeftVertex.TangentZ = FVector::UpVector;
 	MidLeftVertex.Color = StartColor;
@@ -2030,11 +2039,12 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		}
 	default:
 		MidRightVertex.Position = FVector(Mid, Z);
-		MidRightVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+		MidRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
 		break;
 	}
 	MidRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	MidRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	MidRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	MidRightVertex.TangentZ = FVector::UpVector;
 	MidRightVertex.Color = StartColor;
@@ -2095,13 +2105,13 @@ void endSmoothVertices(const FVector2D End
 		if (IsForward)
 		{
 			TopLeftVertex.Position = FVector(End + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			TopLeftVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
 			break;
 		}
 		else if (IsBackward)
 		{
 			TopLeftVertex.Position = FVector(End - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
-			TopLeftVertex.TextureCoordinate = FVector2D(0.5f, -XRatio);
+			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
 			break;
 		}
 		else
@@ -2115,6 +2125,7 @@ void endSmoothVertices(const FVector2D End
 	}
 	TopLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	TopLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 
 	TopLeftVertex.TangentX = FVector(Tangent, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
@@ -2150,11 +2161,12 @@ void endSmoothVertices(const FVector2D End
 		}
 	default:
 		TopRightVertex.Position = FVector(End, Z);
-		TopRightVertex.TextureCoordinate = FVector2D(0.5f, XRatio);
+		TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
 		break;
 	}
 	TopRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	TopRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	TopRightVertex.TangentX = FVector(Tangent, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;
