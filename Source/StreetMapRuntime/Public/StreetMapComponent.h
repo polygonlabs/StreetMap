@@ -216,10 +216,36 @@ protected:
 	void GenerateMesh();
 
 	/** Adds a 2D line to the raw mesh */
-	void AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const float MaxThickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>* Vertices, TArray<uint32>* Indices, EVertexType VertexType, int64 LinkId = -1, FString LinkDir = "", FName TMC = "", int SpeedLimit = 25);
+	void AddThick2DLine(
+		const FVector2D Start, 
+		const FVector2D End, 
+		const float Z, 
+		const float Thickness, 
+		const float MaxThickness, 
+		const FColor& StartColor, 
+		const FColor& EndColor, 
+		FBox& MeshBoundingBox, 
+		TArray<FStreetMapVertex>* Vertices, 
+		TArray<uint32>* Indices, 
+		EVertexType VertexType, 
+		int64 LinkId = -1, 
+		FString LinkDir = "", 
+		FName TMC = "", 
+		int SpeedLimit = 25, 
+		float SpeedRatio = 1.0f
+	);
 
 	/** Adds 3D triangles to the raw mesh */
-	void AddTriangles(const TArray<FVector>& Points, const TArray<int32>& PointIndices, const FVector& ForwardVector, const FVector& UpVector, const FColor& Color, FBox& MeshBoundingBox, TArray<FStreetMapVertex>& Vertices, TArray<uint32>& Indices);
+	void AddTriangles(
+		const TArray<FVector>& Points, 
+		const TArray<int32>& PointIndices, 
+		const FVector& ForwardVector, 
+		const FVector& UpVector, 
+		const FColor& Color, 
+		FBox& MeshBoundingBox, 
+		TArray<FStreetMapVertex>& Vertices, 
+		TArray<uint32>& Indices
+	);
 
 	/** Generate a quad for a road segment */
 	void CheckRoadSmoothQuadList(const FStreetMapRoad& road
@@ -237,7 +263,9 @@ protected:
 		, int64 LinkId = -1
 		, FString LinkDir = ""
 		, FName TMC = ""
-		, int SpeedLimit = 25);
+		, int SpeedLimit = 25
+		, float SpeedRatio = 1.0f
+	);
 
 	void StartSmoothQuadList(const FVector2D& Prev
 		, const FVector2D Start
@@ -255,7 +283,9 @@ protected:
 		, int64 LinkId = -1
 		, FString LinkDir = ""
 		, FName TMC = ""
-		, int SpeedLimit = 25);
+		, int SpeedLimit = 25
+		, float SpeedRatio = 1.0f
+	);
 	
 	void StartSmoothQuadList(const FVector2D& Start
 		, const FVector2D& Mid
@@ -272,7 +302,9 @@ protected:
 		, int64 LinkId = -1
 		, FString LinkDir = ""
 		, FName TMC = ""
-		, int SpeedLimit = 25);
+		, int SpeedLimit = 25
+		, float SpeedRatio = 1.0f
+	);
 
 
 	/** Generate a quad for a road segment */
@@ -292,7 +324,9 @@ protected:
 		, int64 LinkId = -1
 		, FString LinkDir = ""
 		, FName TMC = ""
-		, int SpeedLimit = 25);
+		, int SpeedLimit = 25
+		, float SpeedRatio = 1.0f
+	);
 
 	void EndSmoothQuadList(const FVector2D& Mid
 		, const FVector2D& End
@@ -309,7 +343,9 @@ protected:
 		, int64 LinkId = -1
 		, FString LinkDir = ""
 		, FName TMC = ""
-		, int SpeedLimit = 25);
+		, int SpeedLimit = 25
+		, float SpeedRatio = 1.0f
+	);
 
 	void EndSmoothQuadList(const FVector2D& Mid
 		, const FVector2D& End
@@ -327,7 +363,9 @@ protected:
 		, int64 LinkId = -1
 		, FString LinkDir = ""
 		, FName TMC = ""
-		, int SpeedLimit = 25);
+		, int SpeedLimit = 25
+		, float SpeedRatio = 1.0f
+	);
 protected:
 
 	/** The street map we're representing. */
