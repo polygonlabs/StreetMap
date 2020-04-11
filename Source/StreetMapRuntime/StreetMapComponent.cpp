@@ -1367,7 +1367,7 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	}
 	BottomLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	BottomLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
+	BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0);
 	BottomLeftVertex.TangentX = FVector(LineDirection, 0.0f);
 	BottomLeftVertex.TangentZ = FVector::UpVector;
 	BottomLeftVertex.Color = StartColor;
@@ -1402,7 +1402,7 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	}
 	BottomRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	BottomRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
+	BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0);
 	BottomRightVertex.TangentX = FVector(LineDirection, 0.0f);
 	BottomRightVertex.TangentZ = FVector::UpVector;
 	BottomRightVertex.Color = StartColor;
@@ -1437,7 +1437,7 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	}
 	TopRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	TopRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
+	TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0);
 	TopRightVertex.TangentX = FVector(LineDirection, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;
@@ -1472,7 +1472,7 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	}
 	TopLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	TopLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
+	TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0);
 	TopLeftVertex.TangentX = FVector(LineDirection, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
@@ -1763,14 +1763,14 @@ void startSmoothVertices(const FVector2D Start
 	case EVertexType::VHighway:
 		if (IsForward)
 		{
-			BottomLeftVertex.Position = FVector(Start + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.f);
+			BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
-			BottomLeftVertex.Position = FVector(Start - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+			BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
 			break;
 		}
 		else
@@ -1778,13 +1778,13 @@ void startSmoothVertices(const FVector2D Start
 			// fall through if neither
 		}
 	default:
-		BottomLeftVertex.Position = FVector(Start, Z);
 		BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.f);
+		BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0);
 		break;
 	}
+	BottomLeftVertex.Position = FVector(Start, Z);
 	BottomLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	BottomLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	BottomLeftVertex.TangentX = FVector(Tangent, 0.0f);
 	BottomLeftVertex.TangentZ = FVector::UpVector;
 	BottomLeftVertex.Color = StartColor;
@@ -1803,15 +1803,14 @@ void startSmoothVertices(const FVector2D Start
 	case EVertexType::VHighway:
 		if (IsForward)
 		{
-
-			BottomRightVertex.Position = FVector(Start + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.f);
+			BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
-			BottomRightVertex.Position = FVector(Start - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			BottomRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+			BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
 			break;
 		}
 		else
@@ -1819,13 +1818,13 @@ void startSmoothVertices(const FVector2D Start
 			// fall through if neither
 		}
 	default:
-		BottomRightVertex.Position = FVector(Start, Z);
 		BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.f);
+		BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
 		break;
 	}
+	BottomRightVertex.Position = FVector(Start, Z);
 	BottomRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	BottomRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	BottomRightVertex.TangentX = FVector(Tangent, 0.0f);
 	BottomRightVertex.TangentZ = FVector::UpVector;
 	BottomRightVertex.Color = StartColor;
@@ -1983,14 +1982,14 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	case EVertexType::VHighway:
 		if (IsForward)
 		{
-			MidLeftVertex.Position = FVector(Mid + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+			MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
-			MidLeftVertex.Position = FVector(Mid - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
+			MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
 			break;
 		}
 		else
@@ -1998,13 +1997,13 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 			// fall through if neither
 		}
 	default:
-		MidLeftVertex.Position = FVector(Mid, Z);
 		MidLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+		MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
 		break;
 	}
+	MidLeftVertex.Position = FVector(Mid, Z);
 	MidLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	MidLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	MidLeftVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	MidLeftVertex.TangentZ = FVector::UpVector;
 	MidLeftVertex.Color = StartColor;
@@ -2023,14 +2022,14 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	case EVertexType::VHighway:
 		if (IsForward)
 		{
-			MidRightVertex.Position = FVector(Mid + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			MidRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+			MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
-			MidRightVertex.Position = FVector(Mid - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			MidRightVertex.TextureCoordinate = FVector2D(1.0f, -XRatio);
+			MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
 			break;
 		}
 		else
@@ -2038,13 +2037,13 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 			// fall through if neither
 		}
 	default:
-		MidRightVertex.Position = FVector(Mid, Z);
 		MidRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+		MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
 		break;
 	}
+	MidRightVertex.Position = FVector(Mid, Z);
 	MidRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	MidRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	MidRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	MidRightVertex.TangentZ = FVector::UpVector;
 	MidRightVertex.Color = StartColor;
@@ -2104,14 +2103,14 @@ void endSmoothVertices(const FVector2D End
 	case EVertexType::VHighway:
 		if (IsForward)
 		{
-			TopLeftVertex.Position = FVector(End + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+			TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
-			TopLeftVertex.Position = FVector(End - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
+			TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
 			break;
 		}
 		else
@@ -2119,13 +2118,13 @@ void endSmoothVertices(const FVector2D End
 			// fall through if neither
 		}
 	default:
-		TopLeftVertex.Position = FVector(End, Z);
 		TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+		TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
 		break;
 	}
+	TopLeftVertex.Position = FVector(End, Z);
 	TopLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	TopLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 
 	TopLeftVertex.TangentX = FVector(Tangent, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
@@ -2145,14 +2144,14 @@ void endSmoothVertices(const FVector2D End
 	case EVertexType::VHighway:
 		if (IsForward)
 		{
-			TopRightVertex.Position = FVector(End + RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+			TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
-			TopRightVertex.Position = FVector(End - RightVector * HalfThickness * MeshBuildSettings.fStreetOffset, Z);
 			TopRightVertex.TextureCoordinate = FVector2D(1.0f, -XRatio);
+			TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
 			break;
 		}
 		else
@@ -2160,13 +2159,13 @@ void endSmoothVertices(const FVector2D End
 			// fall through if neither
 		}
 	default:
-		TopRightVertex.Position = FVector(End, Z);
 		TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+		TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
 		break;
 	}
+	TopRightVertex.Position = FVector(End, Z);
 	TopRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	TopRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, SpeedLimit);
 	TopRightVertex.TangentX = FVector(Tangent, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;
