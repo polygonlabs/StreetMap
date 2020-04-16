@@ -1788,6 +1788,7 @@ void startSmoothVertices(const FVector2D Start
 	BottomLeftVertex.TangentX = FVector(Tangent, 0.0f);
 	BottomLeftVertex.TangentZ = FVector::UpVector;
 	BottomLeftVertex.Color = StartColor;
+	// BottomLeftVertex.Color = FColor(0, 0, 255);
 	MeshBoundingBox += BottomLeftVertex.Position;
 
 	const int32 BottomRightVertexIndex = Vertices->Num();
@@ -1828,6 +1829,7 @@ void startSmoothVertices(const FVector2D Start
 	BottomRightVertex.TangentX = FVector(Tangent, 0.0f);
 	BottomRightVertex.TangentZ = FVector::UpVector;
 	BottomRightVertex.Color = StartColor;
+	// BottomRightVertex.Color = FColor(0, 0, 255);
 	MeshBoundingBox += BottomRightVertex.Position;
 
 	Indices->Add(BottomLeftVertexIndex);
@@ -2129,6 +2131,7 @@ void endSmoothVertices(const FVector2D End
 	TopLeftVertex.TangentX = FVector(Tangent, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
+	// TopLeftVertex.Color = FColor(255, 0, 0);
 	MeshBoundingBox += TopLeftVertex.Position;
 
 	const int32 TopRightVertexIndex = Vertices->Num();
@@ -2169,6 +2172,7 @@ void endSmoothVertices(const FVector2D End
 	TopRightVertex.TangentX = FVector(Tangent, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;
+	// TopRightVertex.Color = FColor(255, 0, 0);
 	MeshBoundingBox += TopRightVertex.Position;
 
 	auto numIdx = Indices->Num();
