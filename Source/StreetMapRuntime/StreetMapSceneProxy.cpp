@@ -63,22 +63,22 @@ void FStreetMapSceneProxy::Init(const UStreetMapComponent* InComponent, EVertexT
 
 	switch (Type) {
 	case EVertexType::VBuilding:
-		BuildingVertexBuffer.InitFromDynamicVertex(&BuildingVertexFactory, DynamicVertices, 3);
+		BuildingVertexBuffer.InitFromDynamicVertex(&BuildingVertexFactory, DynamicVertices, 4);
 		
 		InitResources(BuildingVertexBuffer, BuildingIndexBuffer32, BuildingVertexFactory);
 		break;
 	case EVertexType::VStreet:
-		StreetVertexBuffer.InitFromDynamicVertex(&StreetVertexFactory, DynamicVertices, 3);
+		StreetVertexBuffer.InitFromDynamicVertex(&StreetVertexFactory, DynamicVertices, 4);
 
 		InitResources(StreetVertexBuffer, StreetIndexBuffer32, StreetVertexFactory);
 		break;
 	case EVertexType::VMajorRoad:
-		MajorRoadVertexBuffer.InitFromDynamicVertex(&MajorRoadVertexFactory, DynamicVertices, 3);
+		MajorRoadVertexBuffer.InitFromDynamicVertex(&MajorRoadVertexFactory, DynamicVertices, 4);
 
 		InitResources(MajorRoadVertexBuffer, MajorRoadIndexBuffer32, MajorRoadVertexFactory);
 		break;
 	case EVertexType::VHighway:
-		HighwayVertexBuffer.InitFromDynamicVertex(&HighwayVertexFactory, DynamicVertices, 3);
+		HighwayVertexBuffer.InitFromDynamicVertex(&HighwayVertexFactory, DynamicVertices, 4);
 		
 		InitResources(HighwayVertexBuffer, HighwayIndexBuffer32, HighwayVertexFactory);
 		break;
