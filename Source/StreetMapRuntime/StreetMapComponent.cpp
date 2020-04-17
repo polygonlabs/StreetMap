@@ -330,16 +330,16 @@ void UStreetMapComponent::GenerateMesh()
 			float RoadZ;
 			TArray<FStreetMapVertex>* Vertices = nullptr;
 			TArray<uint32>* Indices = nullptr;
+			float Speed = Road.SpeedLimit;
+			float SpeedRatio = 1.0f;
 
 			const FName TMC = Road.TMC;
 			const FStreetMapLink Link = Road.Link;
 
 			const int FlowNum = mFlowData.Num();
 			if (bColorByFlow && FlowNum > 0) {
-
-
-				const float Speed = mFlowData[TMC];
-				const float SpeedRatio = Speed / Road.SpeedLimit;
+				Speed = mFlowData[TMC];
+				SpeedRatio = Speed / Road.SpeedLimit;
 
 				if (SpeedRatio > 0.8f) {
 					RoadColor = HighFlowColor;
@@ -417,7 +417,9 @@ void UStreetMapComponent::GenerateMesh()
 							Road.Link.LinkId,
 							Road.Link.LinkDir,
 							Road.TMC,
-							Road.SpeedLimit);
+							Road.SpeedLimit,
+							SpeedRatio
+						);
 					}
 					else
 					{
@@ -436,7 +438,8 @@ void UStreetMapComponent::GenerateMesh()
 							Road.Link.LinkId,
 							Road.Link.LinkDir,
 							Road.TMC,
-							Road.SpeedLimit
+							Road.SpeedLimit,
+							SpeedRatio
 						);
 					}
 					int32 PointIndex = 0;
@@ -461,7 +464,8 @@ void UStreetMapComponent::GenerateMesh()
 							Road.Link.LinkId,
 							Road.Link.LinkDir,
 							Road.TMC,
-							Road.SpeedLimit
+							Road.SpeedLimit,
+							SpeedRatio
 						);
 					}
 					if (bWantConnectStreets)
@@ -481,7 +485,9 @@ void UStreetMapComponent::GenerateMesh()
 							Road.Link.LinkId,
 							Road.Link.LinkDir,
 							Road.TMC,
-							Road.SpeedLimit);
+							Road.SpeedLimit,
+							SpeedRatio
+						);
 					}
 					else
 					{
@@ -500,7 +506,9 @@ void UStreetMapComponent::GenerateMesh()
 							Road.Link.LinkId,
 							Road.Link.LinkDir,
 							Road.TMC,
-							Road.SpeedLimit);
+							Road.SpeedLimit,
+							SpeedRatio
+						);
 					}
 				}
 				else
@@ -522,7 +530,8 @@ void UStreetMapComponent::GenerateMesh()
 							Road.Link.LinkId,
 							Road.Link.LinkDir,
 							Road.TMC,
-							Road.SpeedLimit
+							Road.SpeedLimit,
+							SpeedRatio
 						);
 					}
 				}
@@ -737,12 +746,14 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType)
 				EVertexType VertexType;
 				TArray<FStreetMapVertex>* Vertices = nullptr;
 				TArray<uint32>* Indices = nullptr;
+				float Speed = Road.SpeedLimit;
+				float SpeedRatio = 1.0f;
 
 				const int FlowNum = mFlowData.Num();
 				if (bColorByFlow && FlowNum > 0) {
 					const FName TMC = Road.TMC;
-					const float Speed = mFlowData[TMC];
-					const float SpeedRatio = Speed / Road.SpeedLimit;
+					Speed = mFlowData[TMC];
+					SpeedRatio = Speed / Road.SpeedLimit;
 
 					if (SpeedRatio > 0.8f) {
 						RoadColor = HighFlowColor;
@@ -814,7 +825,9 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType)
 							Road.Link.LinkId,
 							Road.Link.LinkDir,
 							Road.TMC,
-							Road.SpeedLimit);
+							Road.SpeedLimit,
+							SpeedRatio
+						);
 					}
 				}
 			}
@@ -1328,7 +1341,24 @@ FBoxSphereBounds UStreetMapComponent::CalcBounds(const FTransform& LocalToWorld)
 }
 
 
-void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D End, const float Z, const float Thickness, const float MaxThickness, const FColor& StartColor, const FColor& EndColor, FBox& MeshBoundingBox, TArray<FStreetMapVertex>* Vertices, TArray<uint32>* Indices, EVertexType VertexType, int64 LinkId, FString LinkDir, FName TMC, int SpeedLimit)
+void UStreetMapComponent::AddThick2DLine(
+	const FVector2D Start, 
+	const FVector2D End, 
+	const float Z, 
+	const float Thickness, 
+	const float MaxThickness, 
+	const FColor& StartColor, 
+	const FColor& EndColor, 
+	FBox& MeshBoundingBox, 
+	TArray<FStreetMapVertex>* Vertices, 
+	TArray<uint32>* Indices, 
+	EVertexType VertexType, 
+	int64 LinkId, 
+	FString LinkDir, 
+	FName TMC, 
+	int SpeedLimit, 
+	float SpeedRatio
+)
 {
 	const float HalfThickness = Thickness * 0.5f;
 
@@ -1367,7 +1397,7 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	}
 	BottomLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	BottomLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0);
+	BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0);
 	BottomLeftVertex.TangentX = FVector(LineDirection, 0.0f);
 	BottomLeftVertex.TangentZ = FVector::UpVector;
 	BottomLeftVertex.Color = StartColor;
@@ -1402,7 +1432,7 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	}
 	BottomRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	BottomRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0);
+	BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0);
 	BottomRightVertex.TangentX = FVector(LineDirection, 0.0f);
 	BottomRightVertex.TangentZ = FVector::UpVector;
 	BottomRightVertex.Color = StartColor;
@@ -1437,7 +1467,7 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	}
 	TopRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	TopRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0);
+	TopRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0);
 	TopRightVertex.TangentX = FVector(LineDirection, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;
@@ -1472,7 +1502,7 @@ void UStreetMapComponent::AddThick2DLine(const FVector2D Start, const FVector2D 
 	}
 	TopLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	TopLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-	TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0);
+	TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0);
 	TopLeftVertex.TangentX = FVector(LineDirection, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
@@ -1513,7 +1543,8 @@ void UStreetMapComponent::AddTriangles(const TArray<FVector>& Points, const TArr
 	}
 };
 
-void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
+void UStreetMapComponent::CheckRoadSmoothQuadList(
+	const FStreetMapRoad& Road
 	, const bool Start
 	, const float Z
 	, const float Thickness
@@ -1528,7 +1559,9 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 	, int64 LinkId
 	, FString LinkDir
 	, FName TMC
-	, int SpeedLimit)
+	, int SpeedLimit
+	, float SpeedRatio
+)
 {
 	if (!StreetMap)
 	{
@@ -1605,7 +1638,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 
 					{
 						// check angle between the 2 road segments
-						const FVector2D* Prev = nullptr, * Mid = nullptr, * Next = nullptr;
+						const FVector2D* Prev = nullptr, *Mid = nullptr, *Next = nullptr;
 						if (Start)
 						{
 							Prev = fromBack ? &OtherRoad.RoadPoints.Last(1) : &OtherRoad.RoadPoints[1];
@@ -1657,7 +1690,9 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 						LinkId,
 						LinkDir,
 						TMC,
-						SpeedLimit);
+						SpeedLimit,
+						SpeedRatio
+					);
 				}
 				else
 				{
@@ -1677,7 +1712,9 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 						LinkId,
 						LinkDir,
 						TMC,
-						SpeedLimit);
+						SpeedLimit,
+						SpeedRatio
+					);
 				}
 				return;
 			}
@@ -1703,7 +1740,9 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 			LinkId,
 			LinkDir,
 			TMC,
-			SpeedLimit);
+			SpeedLimit,
+			SpeedRatio
+		);
 	}
 	else
 	{
@@ -1722,7 +1761,8 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(const FStreetMapRoad& Road
 			LinkId,
 			LinkDir,
 			TMC,
-			SpeedLimit
+			SpeedLimit,
+			SpeedRatio
 		);
 	}
 }
@@ -1744,7 +1784,9 @@ void startSmoothVertices(const FVector2D Start
 	, int64 LinkId
 	, FString LinkDir
 	, FName TMC
-	, int SpeedLimit)
+	, int SpeedLimit
+	, float SpeedRatio
+)
 {
 	const float QuarterThickness = HalfThickness * .5f;
 	const bool IsForward = LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
@@ -1852,7 +1894,9 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Prev
 	, int64 LinkId
 	, FString LinkDir
 	, FName TMC
-	, int SpeedLimit)
+	, int SpeedLimit
+	, float SpeedRatio
+)
 {
 	const float HalfThickness = Thickness * 0.5f;
 	const float Distance = (Mid - Start).Size();
@@ -1885,6 +1929,7 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Prev
 		, LinkDir
 		, TMC
 		, SpeedLimit
+		, SpeedRatio
 	);
 }
 
@@ -1903,7 +1948,9 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 	, int64 LinkId
 	, FString LinkDir
 	, FName TMC
-	, int SpeedLimit)
+	, int SpeedLimit
+	, float SpeedRatio
+)
 {
 	const float HalfThickness = Thickness * 0.5f;
 	const float Distance = (Mid - Start).Size();
@@ -1933,6 +1980,7 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 		, LinkDir
 		, TMC
 		, SpeedLimit
+		, SpeedRatio
 	);
 }
 
@@ -1954,7 +2002,9 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	, int64 LinkId
 	, FString LinkDir
 	, FName TMC
-	, int SpeedLimit)
+	, int SpeedLimit
+	, float SpeedRatio
+)
 {
 	const float HalfThickness = Thickness * 0.5f;
 	const float QuarterThickness = Thickness * 0.25f;
@@ -1985,13 +2035,13 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		if (IsForward)
 		{
 			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
-			MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
+			MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, -1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
 			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
-			MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
+			MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 1.f);
 			break;
 		}
 		else
@@ -2000,7 +2050,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		}
 	default:
 		MidLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
-		MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
+		MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0.f);
 		break;
 	}
 	MidLeftVertex.Position = FVector(Mid, Z);
@@ -2025,13 +2075,13 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		if (IsForward)
 		{
 			MidRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
-			MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
+			MidRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
 			MidRightVertex.TextureCoordinate = FVector2D(1.0f, -XRatio);
-			MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
+			MidRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, -1.f);
 			break;
 		}
 		else
@@ -2040,7 +2090,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		}
 	default:
 		MidRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
-		MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
+		MidRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0.f);
 		break;
 	}
 	MidRightVertex.Position = FVector(Mid, Z);
@@ -2085,7 +2135,9 @@ void endSmoothVertices(const FVector2D End
 	, int64 LinkId
 	, FString LinkDir
 	, FName TMC
-	, int SpeedLimit)
+	, int SpeedLimit
+	, float SpeedRatio
+)
 {
 	const float QuarterThickness = HalfThickness * .5f;
 	//const float Distance = (End - Start).Size();
@@ -2106,13 +2158,13 @@ void endSmoothVertices(const FVector2D End
 		if (IsForward)
 		{
 			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
-			TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
+			TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, -1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
 			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
-			TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
+			TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 1.f);
 			break;
 		}
 		else
@@ -2121,13 +2173,12 @@ void endSmoothVertices(const FVector2D End
 		}
 	default:
 		TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
-		TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
+		TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0.f);
 		break;
 	}
 	TopLeftVertex.Position = FVector(End, Z);
 	TopLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	TopLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
-
 	TopLeftVertex.TangentX = FVector(Tangent, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
@@ -2148,13 +2199,13 @@ void endSmoothVertices(const FVector2D End
 		if (IsForward)
 		{
 			TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
-			TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
+			TopRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
 			TopRightVertex.TextureCoordinate = FVector2D(1.0f, -XRatio);
-			TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
+			TopRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, -1.f);
 			break;
 		}
 		else
@@ -2163,7 +2214,7 @@ void endSmoothVertices(const FVector2D End
 		}
 	default:
 		TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
-		TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
+		TopRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0.f);
 		break;
 	}
 	TopRightVertex.Position = FVector(End, Z);
@@ -2202,7 +2253,9 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Mid
 	, int64 LinkId
 	, FString LinkDir
 	, FName TMC
-	, int SpeedLimit)
+	, int SpeedLimit
+	, float SpeedRatio
+)
 {
 	const float HalfThickness = Thickness * 0.5f;
 	const float Distance = (End - Mid).Size();
@@ -2230,6 +2283,7 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Mid
 		, LinkDir
 		, TMC
 		, SpeedLimit
+		, SpeedRatio
 	);
 }
 
@@ -2249,7 +2303,9 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Start
 	, int64 LinkId
 	, FString LinkDir
 	, FName TMC
-	, int SpeedLimit)
+	, int SpeedLimit
+	, float SpeedRatio
+)
 {
 	const float HalfThickness = Thickness * 0.5f;
 	const float Distance = (Mid - Start).Size();
@@ -2281,6 +2337,7 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Start
 		, LinkDir
 		, TMC
 		, SpeedLimit
+		, SpeedRatio
 	);
 }
 
@@ -2310,9 +2367,11 @@ FGuid UStreetMapComponent::AddTrace(FLinearColor Color, TArray<FStreetMapLink> L
 
 	mTraces.Add(NewGuid, Links);
 
-	this->ColorRoadMesh(Color, HighwayVertices, Links, true, 600.0f);
+	/*this->ColorRoadMesh(Color, HighwayVertices, Links, true, 600.0f);
 	this->ColorRoadMesh(Color, MajorRoadVertices, Links, true, 600.0f);
-	this->ColorRoadMesh(Color, StreetVertices, Links, true, 600.0f);
+	this->ColorRoadMesh(Color, StreetVertices, Links, true, 600.0f);*/
+
+
 
 	return NewGuid;
 }
@@ -2369,7 +2428,7 @@ bool UStreetMapComponent::DeleteTrace(FGuid GUID)
 
 	auto Trace = mTraces[GUID];
 
-	if (bColorByFlow) {
+	/*if (bColorByFlow) {
 		this->ColorRoadMeshFromFlowData(HighwayVertices, HighwayColor, Trace, true, HighwayOffsetZ);
 		this->ColorRoadMeshFromFlowData(MajorRoadVertices, MajorRoadColor, Trace, true, MajorRoadOffsetZ);
 		this->ColorRoadMeshFromFlowData(StreetVertices, StreetColor, Trace, true, StreetOffsetZ);
@@ -2378,7 +2437,7 @@ bool UStreetMapComponent::DeleteTrace(FGuid GUID)
 		this->ColorRoadMesh(HighwayColor, HighwayVertices, Trace, false, HighwayOffsetZ);
 		this->ColorRoadMesh(MajorRoadColor, MajorRoadVertices, Trace, false, MajorRoadOffsetZ);
 		this->ColorRoadMesh(StreetColor, StreetVertices, Trace, false, StreetOffsetZ);
-	}
+	}*/
 
 	mTraces.Remove(GUID);
 
