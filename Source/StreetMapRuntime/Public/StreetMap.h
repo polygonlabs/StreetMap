@@ -550,6 +550,11 @@ struct STREETMAPRUNTIME_API FStreetMapRoad
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		uint8 bIsOneWay : 1;
 
+	/** the texture V component at the start and end of the road */
+	UPROPERTY(Category = StreetMap, EditAnywhere)
+		FVector2D textureVStart = FVector2D(-1.f, -1.f);
+
+	bool lengthComputed = false;
 
 	/** Returns this node's index */
 	inline int32 GetRoadIndex(const class UStreetMap& StreetMap) const;
@@ -587,6 +592,12 @@ struct STREETMAPRUNTIME_API FStreetMapRoad
 	{
 		return bIsOneWay == 1 ? true : false;
 	}
+
+	/** compute UVs V component to fit with connecting roads */
+	void ComputeUVspan(float startV, float Thickness);
+
+	/** Like ComputeUVspan but in reverse */
+	void ComputeUVspanFromBack(float endV, float Thickness);
 };
 
 

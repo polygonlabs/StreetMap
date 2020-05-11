@@ -168,6 +168,7 @@ bool UStreetMapFactory::LoadFromOpenStreetMapXMLFile(UStreetMap* StreetMap, FStr
 		NewRoad.SpeedLimit = OSMWay.SpeedLimit;
 
 		NewRoad.bIsOneWay = OSMWay.bIsOneWay;
+		NewRoad.textureVStart = FVector2D(-1.f, -1.f);
 
 		StreetMapRef.BoundsMin.X = FMath::Min(StreetMapRef.BoundsMin.X, BoundsMin.X);
 		StreetMapRef.BoundsMin.Y = FMath::Min(StreetMapRef.BoundsMin.Y, BoundsMin.Y);

@@ -248,7 +248,7 @@ protected:
 	);
 
 	/** Generate a quad for a road segment */
-	void CheckRoadSmoothQuadList(const FStreetMapRoad& road
+	void CheckRoadSmoothQuadList(FStreetMapRoad& road
 		, const bool Start
 		, const float Z
 		, const float Thickness
@@ -366,6 +366,14 @@ protected:
 		, int SpeedLimit = 25
 		, float SpeedRatio = 1.0f
 	);
+
+private:
+	void findConnectedRoad(const FStreetMapRoad& Road
+		, int32 RoadCheckIndex
+		, const bool Start
+		, FString LinkDir
+		, int32& ChosenRoadIndex
+		, bool& fromBack);
 protected:
 
 	/** The street map we're representing. */

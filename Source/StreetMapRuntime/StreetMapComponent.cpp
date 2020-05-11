@@ -318,12 +318,13 @@ void UStreetMapComponent::GenerateMesh()
 		FBox MeshBoundingBox;
 		MeshBoundingBox.Init();
 
-		const auto& Roads = StreetMap->GetRoads();
+		auto& Roads = StreetMap->GetRoads();
 		const auto& Nodes = StreetMap->GetNodes();
 		const auto& Buildings = StreetMap->GetBuildings();
 
-		for (const auto& Road : Roads)
+		for (auto& Road : Roads)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("New Road"));
 			float RoadThickness;
 			FColor RoadColor;
 			EVertexType VertexType;
@@ -1543,8 +1544,110 @@ void UStreetMapComponent::AddTriangles(const TArray<FVector>& Points, const TArr
 	}
 };
 
-void UStreetMapComponent::CheckRoadSmoothQuadList(
+void UStreetMapComponent::findConnectedRoad(
 	const FStreetMapRoad& Road
+	, int32 RoadCheckIndex
+	, const bool Start
+	, FString LinkDir
+	, int32& ChosenRoadIndex
+	, bool& fromBack)
+{
+	const auto& Roads = StreetMap->GetRoads();
+	const auto& Nodes = StreetMap->GetNodes();
+
+	auto& Node = Nodes[Road.NodeIndices[RoadCheckIndex]];
+	auto RoadIndex = Road.GetRoadIndex(*StreetMap);
+	int RefCount = Node.RoadRefs.Num();
+
+	int actualRefCount = 0;
+	// check the number of roads we can connect to
+	for (auto& OtherRoadNode : Node.RoadRefs)
+	{
+		if (OtherRoadNode.RoadIndex != RoadIndex)
+		{
+			auto& OtherRoad = Roads[OtherRoadNode.RoadIndex];
+			if (OtherRoad.RoadType == Road.RoadType && OtherRoadNode.RoadIndex != RoadIndex)
+			{
+				++actualRefCount;
+			}
+		}
+	}
+
+	if (RefCount > 1)
+	{
+		auto RoadInNodeIndex = Node.RoadRefs.IndexOfByKey(RoadIndex);
+		float CosAlpha = MeshBuildSettings.fThresholdConnectStreets;
+
+		for (auto& OtherRoadNode : Node.RoadRefs)
+		{
+			if (OtherRoadNode.RoadIndex != RoadIndex)
+			{
+				bool forward = LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
+				bool backward = LinkDir.Compare(TEXT("F"), ESearchCase::IgnoreCase) == 0;
+
+				auto& OtherRoad = Roads[OtherRoadNode.RoadIndex];
+
+				bool forwardOther = OtherRoad.Link.LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
+				bool backwardOther = OtherRoad.Link.LinkDir.Compare(TEXT("F"), ESearchCase::IgnoreCase) == 0;
+
+				if (OtherRoad.RoadType != Road.RoadType
+					|| Road.NodeIndices[RoadCheckIndex] == INDEX_NONE
+					|| (forward != forwardOther || backward != backwardOther)
+					)
+				{
+					continue;
+				}
+
+				if (INDEX_NONE != OtherRoad.NodeIndices[0] && OtherRoad.NodeIndices[0] == Road.NodeIndices[RoadCheckIndex])
+				{
+					fromBack = false;
+				}
+				else if (INDEX_NONE != OtherRoad.NodeIndices.Last() && OtherRoad.NodeIndices.Last() == Road.NodeIndices[RoadCheckIndex])
+				{
+					fromBack = true;
+				}
+				else
+				{
+					continue;
+				}
+
+				{
+					// check angle between the 2 road segments
+					const FVector2D* Prev = nullptr, * Mid = nullptr, * Next = nullptr;
+					if (Start)
+					{
+						Prev = fromBack ? &OtherRoad.RoadPoints.Last(1) : &OtherRoad.RoadPoints[1];
+						Mid = &Road.RoadPoints[0];
+						Next = &Road.RoadPoints[1];
+					}
+					else
+					{
+						Prev = &Road.RoadPoints.Last(1);
+						Mid = &Road.RoadPoints.Last();
+						Next = fromBack ? &OtherRoad.RoadPoints.Last(1) : &OtherRoad.RoadPoints[1];
+					}
+
+					if (Prev && Mid && Next)
+					{
+						auto direction1 = (*Prev - *Mid).GetSafeNormal();
+						auto direction2 = (*Next - *Mid).GetSafeNormal();
+
+						auto cosAlpha = FVector2D::DotProduct(direction1, direction2);
+
+						if (cosAlpha < -CosAlpha || actualRefCount == 1)
+						{
+							CosAlpha = -cosAlpha;
+							ChosenRoadIndex = OtherRoad.GetRoadIndex(*StreetMap);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void UStreetMapComponent::CheckRoadSmoothQuadList(
+	FStreetMapRoad& Road
 	, const bool Start
 	, const float Z
 	, const float Thickness
@@ -1567,7 +1670,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 	{
 		return;
 	}
-	const auto& Roads = StreetMap->GetRoads();
+	auto& Roads = StreetMap->GetRoads();
 	const auto& Nodes = StreetMap->GetNodes();
 
 	int32 RoadCheckIndex = 0;
@@ -1576,155 +1679,98 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 		RoadCheckIndex = Road.NodeIndices.Num() - 1;
 	}
 
+
+	// PARAMS
+	int32 ChosenRoadIndex = -1;
+	bool fromBack = false;
+	// PARAMS end
+
+
+	// START
 	if (Road.NodeIndices[RoadCheckIndex] < Nodes.Num())
 	{
-		auto& Node = Nodes[Road.NodeIndices[RoadCheckIndex]];
-		auto RoadIndex = Road.GetRoadIndex(*StreetMap);
-		int RefCount = Node.RoadRefs.Num();
+		findConnectedRoad(Road
+			, RoadCheckIndex
+			, Start
+			, LinkDir
+			, ChosenRoadIndex
+			, fromBack
+		);
 
-		int actualRefCount = 0;
-		// check the number of roads we can connect to
-		for (auto& OtherRoadNode : Node.RoadRefs)
+
+	}
+	// END
+
+
+	if (ChosenRoadIndex >= 0)
+	{
+		auto& OtherRoad = Roads[ChosenRoadIndex];
+		if (Start)
 		{
-			if (OtherRoadNode.RoadIndex != RoadIndex)
-			{
-				auto& OtherRoad = Roads[OtherRoadNode.RoadIndex];
-				if (OtherRoad.RoadType == Road.RoadType && OtherRoadNode.RoadIndex != RoadIndex)
-				{
-					++actualRefCount;
-				}
-			}
-		}
+			//if (!Road.lengthComputed) // not yet computed
+			//{
+			//	Road.ComputeUVspan(0.f, Thickness);
+			//}
+			//if (!OtherRoad.lengthComputed)
+			//{
+			//	OtherRoad.ComputeUVspanFromBack(Road.textureVStart.X, Thickness);
+			//}
+			//VAccumulation = Road.textureVStart.X;
 
-		if (RefCount > 1)
+			StartSmoothQuadList(fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],
+				Road.RoadPoints[0],
+				Road.RoadPoints[1],
+				Z,
+				Thickness,
+				MaxThickness,
+				StartColor,
+				EndColor,
+				VAccumulation,
+				MeshBoundingBox,
+				Vertices,
+				Indices,
+				VertexType,
+				LinkId,
+				LinkDir,
+				TMC,
+				SpeedLimit,
+				SpeedRatio
+			);
+		}
+		else
 		{
-			auto RoadInNodeIndex = Node.RoadRefs.IndexOfByKey(RoadIndex);
-			int32 ChosenRoadIndex = -1;
-			bool fromBack = false;
-			float CosAlpha = MeshBuildSettings.fThresholdConnectStreets;
-
-			for (auto& OtherRoadNode : Node.RoadRefs)
-			{
-				if (OtherRoadNode.RoadIndex != RoadIndex)
-				{
-					bool forward = LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
-					bool backward = LinkDir.Compare(TEXT("F"), ESearchCase::IgnoreCase) == 0;
-
-					auto& OtherRoad = Roads[OtherRoadNode.RoadIndex];
-
-					bool forwardOther = OtherRoad.Link.LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
-					bool backwardOther = OtherRoad.Link.LinkDir.Compare(TEXT("F"), ESearchCase::IgnoreCase) == 0;
-
-					if (OtherRoad.RoadType != Road.RoadType
-						|| Road.NodeIndices[RoadCheckIndex] == INDEX_NONE
-						|| (forward != forwardOther || backward != backwardOther)
-						)
-					{
-						continue;
-					}
-
-					if (INDEX_NONE != OtherRoad.NodeIndices[0] && OtherRoad.NodeIndices[0] == Road.NodeIndices[RoadCheckIndex])
-					{
-						fromBack = false;
-					}
-					else if (INDEX_NONE != OtherRoad.NodeIndices.Last() && OtherRoad.NodeIndices.Last() == Road.NodeIndices[RoadCheckIndex])
-					{
-						fromBack = true;
-					}
-					else
-					{
-						continue;
-					}
-
-					{
-						// check angle between the 2 road segments
-						const FVector2D* Prev = nullptr, *Mid = nullptr, *Next = nullptr;
-						if (Start)
-						{
-							Prev = fromBack ? &OtherRoad.RoadPoints.Last(1) : &OtherRoad.RoadPoints[1];
-							Mid = &Road.RoadPoints[0];
-							Next = &Road.RoadPoints[1];
-						}
-						else
-						{
-							Prev = &Road.RoadPoints.Last(1);
-							Mid = &Road.RoadPoints.Last();
-							Next = fromBack ? &OtherRoad.RoadPoints.Last(1) : &OtherRoad.RoadPoints[1];
-						}
-
-						if (Prev && Mid && Next)
-						{
-							auto direction1 = (*Prev - *Mid).GetSafeNormal();
-							auto direction2 = (*Next - *Mid).GetSafeNormal();
-
-							auto cosAlpha = FVector2D::DotProduct(direction1, direction2);
-
-							if (cosAlpha < -CosAlpha || actualRefCount == 1)
-							{
-								CosAlpha = -cosAlpha;
-								ChosenRoadIndex = OtherRoad.GetRoadIndex(*StreetMap);
-							}
-						}
-					}
-				}
-			}
-
-			if (ChosenRoadIndex >= 0)
-			{
-				auto& OtherRoad = Roads[ChosenRoadIndex];
-				if (Start)
-				{
-					StartSmoothQuadList(fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],
-						Road.RoadPoints[0],
-						Road.RoadPoints[1],
-						Z,
-						Thickness,
-						MaxThickness,
-						StartColor,
-						EndColor,
-						VAccumulation,
-						MeshBoundingBox,
-						Vertices,
-						Indices,
-						VertexType,
-						LinkId,
-						LinkDir,
-						TMC,
-						SpeedLimit,
-						SpeedRatio
-					);
-				}
-				else
-				{
-					EndSmoothQuadList(Road.RoadPoints.Last(1),
-						Road.RoadPoints.Last(),
-						fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],
-						Z,
-						Thickness,
-						MaxThickness,
-						StartColor,
-						EndColor,
-						VAccumulation,
-						MeshBoundingBox,
-						Vertices,
-						Indices,
-						VertexType,
-						LinkId,
-						LinkDir,
-						TMC,
-						SpeedLimit,
-						SpeedRatio
-					);
-				}
-				return;
-			}
+			EndSmoothQuadList(Road.RoadPoints.Last(1),
+				Road.RoadPoints.Last(),
+				fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],
+				Z,
+				Thickness,
+				MaxThickness,
+				StartColor,
+				EndColor,
+				VAccumulation,
+				MeshBoundingBox,
+				Vertices,
+				Indices,
+				VertexType,
+				LinkId,
+				LinkDir,
+				TMC,
+				SpeedLimit,
+				SpeedRatio
+			);
 		}
-
+		return;
 	}
 
 	// fall through to default
 	if (Start)
 	{
+		//if (!Road.lengthComputed) // not yet computed
+		//{
+		//	Road.ComputeUVspan(0.f, Thickness);
+		//}
+		//VAccumulation = Road.textureVStart.X;
+
 		StartSmoothQuadList(Road.RoadPoints[0],
 			Road.RoadPoints[1],
 			Z,
@@ -1805,13 +1851,13 @@ void startSmoothVertices(const FVector2D Start
 	case EVertexType::VHighway:
 		if (IsForward)
 		{
-			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.f);
+			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
 			BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
-			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
 			BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
 			break;
 		}
@@ -1820,10 +1866,11 @@ void startSmoothVertices(const FVector2D Start
 			// fall through if neither
 		}
 	default:
-		BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, 0.f);
+		BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
 		BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0);
 		break;
 	}
+
 	BottomLeftVertex.Position = FVector(Start, Z);
 	BottomLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	BottomLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
@@ -1846,13 +1893,13 @@ void startSmoothVertices(const FVector2D Start
 	case EVertexType::VHighway:
 		if (IsForward)
 		{
-			BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.f);
+			BottomRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
 			BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
-			BottomRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+			BottomRightVertex.TextureCoordinate = FVector2D(1.0f, -XRatio);
 			BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
 			break;
 		}
@@ -1861,7 +1908,7 @@ void startSmoothVertices(const FVector2D Start
 			// fall through if neither
 		}
 	default:
-		BottomRightVertex.TextureCoordinate = FVector2D(1.0f, 0.f);
+		BottomRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
 		BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
 		break;
 	}
@@ -1901,7 +1948,7 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Prev
 	const float HalfThickness = Thickness * 0.5f;
 	const float Distance = (Mid - Start).Size();
 	const float XRatio = VAccumulation;
-	VAccumulation = XRatio;
+	// VAccumulation = XRatio;
 
 	const FVector2D LineDirection1 = (Start - Prev).GetSafeNormal();
 	const FVector2D LineDirection2 = (Mid - Start).GetSafeNormal();
@@ -1955,7 +2002,6 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 	const float HalfThickness = Thickness * 0.5f;
 	const float Distance = (Mid - Start).Size();
 	const float XRatio = VAccumulation;
-	VAccumulation = XRatio;
 
 	const FVector2D LineDirection1 = (Mid - Start).GetSafeNormal();
 
@@ -2009,8 +2055,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	const float HalfThickness = Thickness * 0.5f;
 	const float QuarterThickness = Thickness * 0.25f;
 	const float Distance = (Mid - Start).Size();
-	const float XRatio = (Distance / Thickness) + VAccumulation;
-	VAccumulation = XRatio;
+	const float XRatio = (Distance / Thickness);
 	const bool IsForward = LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
 	const bool IsBackward = LinkDir.Compare(TEXT("F"), ESearchCase::IgnoreCase) == 0;
 
@@ -2034,13 +2079,13 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	case EVertexType::VHighway:
 		if (IsForward)
 		{
-			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, VAccumulation + XRatio);
 			MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
-			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
+			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, -VAccumulation - XRatio);
 			MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
 			break;
 		}
@@ -2049,7 +2094,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 			// fall through if neither
 		}
 	default:
-		MidLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
+		MidLeftVertex.TextureCoordinate = FVector2D(0.0f, VAccumulation + XRatio);
 		MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
 		break;
 	}
@@ -2074,13 +2119,13 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	case EVertexType::VHighway:
 		if (IsForward)
 		{
-			MidRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+			MidRightVertex.TextureCoordinate = FVector2D(1.0f, VAccumulation + XRatio);
 			MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
-			MidRightVertex.TextureCoordinate = FVector2D(1.0f, -XRatio);
+			MidRightVertex.TextureCoordinate = FVector2D(1.0f, -VAccumulation - XRatio);
 			MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
 			break;
 		}
@@ -2089,7 +2134,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 			// fall through if neither
 		}
 	default:
-		MidRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
+		MidRightVertex.TextureCoordinate = FVector2D(1.0f, VAccumulation + XRatio);
 		MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
 		break;
 	}
@@ -2105,6 +2150,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	auto BottomRightVertexIndex = (*Indices)[numIdx - 1];
 	auto BottomLeftVertexIndex = (*Indices)[numIdx - 2];
 
+	VAccumulation += XRatio;
 	// Finish Last trinagle
 	Indices->Add(MidRightVertexIndex);
 
