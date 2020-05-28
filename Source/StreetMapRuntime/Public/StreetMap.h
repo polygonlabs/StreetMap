@@ -556,6 +556,13 @@ struct STREETMAPRUNTIME_API FStreetMapRoad
 
 	bool lengthComputed = false;
 
+	/** this value indicates if the road has already been visited during the current iteration of mergin streets */
+	int32 iteration = 0;
+	/** -1: start of a road chain
+	0: middle part
+	1: end */
+	char startEnd = 0;
+
 	/** Returns this node's index */
 	inline int32 GetRoadIndex(const class UStreetMap& StreetMap) const;
 

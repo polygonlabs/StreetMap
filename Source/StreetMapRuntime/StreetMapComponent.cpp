@@ -322,7 +322,31 @@ void UStreetMapComponent::GenerateMesh()
 		const auto& Nodes = StreetMap->GetNodes();
 		const auto& Buildings = StreetMap->GetBuildings();
 
-		for (auto& Road : Roads)
+		TArray<FStreetMapRoad*> merged;
+		if (bWantSmoothStreets && Roads.Num() > 1)
+		{
+			const int32 currentIteration = (*Roads.begin()).iteration + 1;
+			int32 roadIndex = -1;
+			for (auto& Road : Roads)
+			{
+				++roadIndex;
+				if (Road.iteration == currentIteration)
+				{
+					// Road was already checked
+					continue;
+				}
+				else
+				{
+					int32 chosenIdx = 0;
+					auto& RoadStart = findFirstRoadInChain(roadIndex, currentIteration, chosenIdx);
+					createConnectedRoad(RoadStart, merged, currentIteration);
+				}
+			}
+		}
+
+		TArray<FStreetMapRoad>* pRoadSet = &Roads;
+
+		auto generateRoad = [&](FStreetMapRoad& Road, float& VAccumulation)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("New Road"));
 			float RoadThickness;
@@ -398,7 +422,6 @@ void UStreetMapComponent::GenerateMesh()
 			if (Vertices && Indices)
 			{
 				auto newWay = bWantSmoothStreets && Road.RoadPoints.Num() >= 2;
-				float VAccumulation = 0.f;
 				if (newWay)
 				{
 					if (bWantConnectStreets)
@@ -537,7 +560,19 @@ void UStreetMapComponent::GenerateMesh()
 					}
 				}
 			}
+		};
+
+		float VAccumulation = 0.f;
+		//for (auto& Road : *pRoadSet)
+		for (auto Road : merged)
+		{
+			if (Road->startEnd < 0)
+			{
+				VAccumulation = 0.f;
+			}
+			generateRoad(*Road, VAccumulation);
 		}
+		
 
 		TArray< int32 > TempIndices;
 		TArray< int32 > TriangulatedVertexIndices;
@@ -1550,7 +1585,8 @@ void UStreetMapComponent::findConnectedRoad(
 	, const bool Start
 	, FString LinkDir
 	, int32& ChosenRoadIndex
-	, bool& fromBack)
+	, bool& fromBack
+	, bool forceForward)
 {
 	const auto& Roads = StreetMap->GetRoads();
 	const auto& Nodes = StreetMap->GetNodes();
@@ -1602,7 +1638,7 @@ void UStreetMapComponent::findConnectedRoad(
 				{
 					fromBack = false;
 				}
-				else if (INDEX_NONE != OtherRoad.NodeIndices.Last() && OtherRoad.NodeIndices.Last() == Road.NodeIndices[RoadCheckIndex])
+				else if (INDEX_NONE != OtherRoad.NodeIndices.Last() && !forceForward && OtherRoad.NodeIndices.Last() == Road.NodeIndices[RoadCheckIndex])
 				{
 					fromBack = true;
 				}
@@ -1644,6 +1680,84 @@ void UStreetMapComponent::findConnectedRoad(
 			}
 		}
 	}
+}
+
+FStreetMapRoad& UStreetMapComponent::findFirstRoadInChain(int32 RoadIndex
+	, int32 iteration
+	, int32& ChosenRoadIndex)
+{
+	int32 maxSearches = 100;
+	int32 index = RoadIndex;
+	int32 lastIndex = RoadIndex;
+	bool fromBack = true;
+	// as long as we connect to the end of another road, take that road and continue searching
+	while (fromBack && index >= 0 && maxSearches > 0)
+	{
+		--maxSearches;
+		fromBack = false;
+		auto& Road = StreetMap->GetRoads()[index];
+		index = -1;
+		findConnectedRoad(Road
+			, 0
+			, true
+			, Road.Link.LinkDir
+			, index
+			, fromBack
+		);
+		
+		if (index == RoadIndex) // full circle
+		{
+			break;
+		}
+		if (index >= 0)
+		{
+			lastIndex = index;
+		}
+	}
+	ChosenRoadIndex = index;
+	if (index >= 0)
+	{
+		return StreetMap->GetRoads()[index];
+	}
+	else
+	{
+		return StreetMap->GetRoads()[lastIndex];
+	}
+}
+
+void
+UStreetMapComponent::createConnectedRoad(FStreetMapRoad& Road
+	, TArray<FStreetMapRoad*>& MergedRoads
+	, int32 iteration
+)
+{
+	auto pRoad = &Road;
+	bool fromBack = false;
+	int32 index = 0;
+	MergedRoads.Add(pRoad);
+	while (index >= 0 && pRoad->iteration != iteration)
+	{
+		pRoad->startEnd = 0;
+		pRoad->iteration = iteration;
+		index = -1;
+		findConnectedRoad(*pRoad
+			, pRoad->NodeIndices.Num() - 1
+			, false
+			, pRoad->Link.LinkDir
+			, index
+			, fromBack
+			, true
+		);
+
+		if (index >= 0)
+		{
+			pRoad = &StreetMap->GetRoads()[index];
+			MergedRoads.Add(pRoad);
+		}
+	}
+
+	Road.startEnd = -1;
+	pRoad->startEnd = 1;
 }
 
 void UStreetMapComponent::CheckRoadSmoothQuadList(

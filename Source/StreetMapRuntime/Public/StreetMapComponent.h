@@ -373,7 +373,17 @@ private:
 		, const bool Start
 		, FString LinkDir
 		, int32& ChosenRoadIndex
-		, bool& fromBack);
+		, bool& fromBack
+		, bool forceForward = false);
+
+	FStreetMapRoad& findFirstRoadInChain(int32 RoadIndex
+		, int32 iteration
+		, int32& ChosenRoadIndex);
+
+	void createConnectedRoad(FStreetMapRoad& Road
+		, TArray<FStreetMapRoad*>& Roads
+		, int32 iteration
+	);
 protected:
 
 	/** The street map we're representing. */
