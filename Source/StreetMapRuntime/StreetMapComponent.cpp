@@ -447,7 +447,8 @@ void UStreetMapComponent::GenerateMesh()
 					}
 					else
 					{
-						StartSmoothQuadList(Road.RoadPoints[0],
+						StartSmoothQuadList(Road,
+							Road.RoadPoints[0],
 							Road.RoadPoints[1],
 							RoadZ,
 							RoadThickness,
@@ -515,7 +516,8 @@ void UStreetMapComponent::GenerateMesh()
 					}
 					else
 					{
-						EndSmoothQuadList(Road.RoadPoints[PointIndex],
+						EndSmoothQuadList(Road,
+							Road.RoadPoints[PointIndex],
 							Road.RoadPoints[PointIndex + 1],
 							RoadZ,
 							RoadThickness,
@@ -1831,29 +1833,85 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 			//}
 			//VAccumulation = Road.textureVStart.X;
 
-			StartSmoothQuadList(fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],
-				Road.RoadPoints[0],
-				Road.RoadPoints[1],
-				Z,
-				Thickness,
-				MaxThickness,
-				StartColor,
-				EndColor,
-				VAccumulation,
-				MeshBoundingBox,
-				Vertices,
-				Indices,
-				VertexType,
-				LinkId,
-				LinkDir,
-				TMC,
-				SpeedLimit,
-				SpeedRatio
-			);
+			if (fromBack)
+			{
+				if (OtherRoad.EndVertexIdx0 >= 0 && Vertices == OtherRoad.Vertices)
+				{
+					VAccumulation = (*Vertices)[OtherRoad.EndVertexIdx0].TextureCoordinate.Y;
+
+					Indices->Add(OtherRoad.EndVertexIdx1);
+					Indices->Add(OtherRoad.EndVertexIdx0);
+
+					Road.StartVertexIdx0 = OtherRoad.EndVertexIdx1;
+					Road.StartVertexIdx1 = OtherRoad.EndVertexIdx0;
+				}
+				else
+				{
+					//if (OtherRoad.EndVertexIdx0 >= 0)
+					//{
+					//	VAccumulation = (*OtherRoad.Vertices)[OtherRoad.EndVertexIdx0].TextureCoordinate.Y;
+					//}
+					StartSmoothQuadList(Road,
+						fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],
+						Road.RoadPoints[0],
+						Road.RoadPoints[1],
+						Z,
+						Thickness,
+						MaxThickness,
+						StartColor,
+						EndColor,
+						VAccumulation,
+						MeshBoundingBox,
+						Vertices,
+						Indices,
+						VertexType,
+						LinkId,
+						LinkDir,
+						TMC,
+						SpeedLimit,
+						SpeedRatio
+					);
+				}
+			}
+			else
+			{
+				//if (OtherRoad.EndVertexIdx0 >= 0 && Vertices == OtherRoad.Vertices)
+				//{
+				//	VAccumulation = std::abs((*Vertices)[OtherRoad.EndVertexIdx0].TextureCoordinate.Y);
+
+				//	Indices->Add(OtherRoad.EndVertexIdx1);
+				//	Indices->Add(OtherRoad.EndVertexIdx0);
+
+				//	Road.StartVertexIdx0 = OtherRoad.EndVertexIdx1;
+				//	Road.StartVertexIdx1 = OtherRoad.EndVertexIdx0;
+				//}
+
+				StartSmoothQuadList(Road,
+					fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],
+					Road.RoadPoints[0],
+					Road.RoadPoints[1],
+					Z,
+					Thickness,
+					MaxThickness,
+					StartColor,
+					EndColor,
+					VAccumulation,
+					MeshBoundingBox,
+					Vertices,
+					Indices,
+					VertexType,
+					LinkId,
+					LinkDir,
+					TMC,
+					SpeedLimit,
+					SpeedRatio
+				);
+			}
 		}
 		else
 		{
-			EndSmoothQuadList(Road.RoadPoints.Last(1),
+			EndSmoothQuadList(Road,
+				Road.RoadPoints.Last(1),
 				Road.RoadPoints.Last(),
 				fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],
 				Z,
@@ -1885,7 +1943,8 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 		//}
 		//VAccumulation = Road.textureVStart.X;
 
-		StartSmoothQuadList(Road.RoadPoints[0],
+		StartSmoothQuadList(Road,
+			Road.RoadPoints[0],
 			Road.RoadPoints[1],
 			Z,
 			Thickness,
@@ -1906,7 +1965,8 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 	}
 	else
 	{
-		EndSmoothQuadList(Road.RoadPoints.Last(1),
+		EndSmoothQuadList(Road,
+			Road.RoadPoints.Last(1),
 			Road.RoadPoints.Last(),
 			Z,
 			Thickness,
@@ -1927,7 +1987,8 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 	}
 }
 
-void startSmoothVertices(const FVector2D Start
+void startSmoothVertices(FStreetMapRoad& road
+	, const FVector2D Start
 	, const FVector2D RightVector
 	, const FVector2D Tangent
 	, const float Z
@@ -2037,9 +2098,15 @@ void startSmoothVertices(const FVector2D Start
 
 	Indices->Add(BottomLeftVertexIndex);
 	Indices->Add(BottomRightVertexIndex);
+
+	road.StartVertexIdx0 = BottomLeftVertexIndex;
+	road.StartVertexIdx1 = BottomRightVertexIndex;
+
+	road.Vertices = Vertices;
 }
 
-void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Prev
+void UStreetMapComponent::StartSmoothQuadList(FStreetMapRoad& road
+	, const FVector2D& Prev
 	, const FVector2D Start
 	, const FVector2D& Mid
 	, const float Z
@@ -2072,7 +2139,8 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Prev
 
 	const FVector2D RightVector(-alteredLineDirection.Y, alteredLineDirection.X);
 
-	startSmoothVertices(Start
+	startSmoothVertices(road
+		, Start
 		, RightVector
 		, alteredLineDirection
 		, Z
@@ -2094,7 +2162,8 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Prev
 	);
 }
 
-void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
+void UStreetMapComponent::StartSmoothQuadList(FStreetMapRoad& road
+	, const FVector2D& Start
 	, const FVector2D& Mid
 	, const float Z
 	, const float Thickness
@@ -2122,7 +2191,8 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 	const FVector2D RightVector(-LineDirection1.Y, LineDirection1.X);
 
 
-	startSmoothVertices(Start
+	startSmoothVertices(road
+		, Start
 		, RightVector
 		, LineDirection1
 		, Z
@@ -2278,7 +2348,8 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 
 }
 
-void endSmoothVertices(const FVector2D End
+void endSmoothVertices(FStreetMapRoad& road
+	, const FVector2D End
 	, const FVector2D RightVector
 	, const FVector2D Tangent
 	, const float Z
@@ -2396,9 +2467,15 @@ void endSmoothVertices(const FVector2D End
 	Indices->Add(MidLeftVertexIndex);
 	Indices->Add(TopRightVertexIndex);
 	Indices->Add(TopLeftVertexIndex);
+
+	road.EndVertexIdx0 = TopRightVertexIndex;
+	road.EndVertexIdx1 = TopLeftVertexIndex;
+
+	road.Vertices = Vertices;
 }
 
-void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Mid
+void UStreetMapComponent::EndSmoothQuadList(FStreetMapRoad& road
+	, const FVector2D& Mid
 	, const FVector2D& End
 	, const float Z
 	, const float Thickness
@@ -2425,7 +2502,8 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Mid
 	const FVector2D LineDirection1 = (End - Mid).GetSafeNormal();
 	const FVector2D RightVector(-LineDirection1.Y, LineDirection1.X);
 
-	endSmoothVertices(End
+	endSmoothVertices(road
+		, End
 		, RightVector
 		, LineDirection1
 		, Z
@@ -2447,7 +2525,8 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Mid
 	);
 }
 
-void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Start
+void UStreetMapComponent::EndSmoothQuadList(FStreetMapRoad& road
+	, const FVector2D& Start
 	, const FVector2D& Mid
 	, const FVector2D& End
 	, const float Z
@@ -2479,7 +2558,8 @@ void UStreetMapComponent::EndSmoothQuadList(const FVector2D& Start
 	alteredLineDirection.Normalize();
 	const FVector2D RightVector(-alteredLineDirection.Y, alteredLineDirection.X);
 
-	endSmoothVertices(Mid
+	endSmoothVertices(road
+		, Mid
 		, RightVector
 		, alteredLineDirection
 		, Z

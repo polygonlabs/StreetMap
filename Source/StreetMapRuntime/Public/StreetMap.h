@@ -563,6 +563,14 @@ struct STREETMAPRUNTIME_API FStreetMapRoad
 	1: end */
 	char startEnd = 0;
 
+	int32 StartVertexIdx0 = -1;
+	int32 StartVertexIdx1 = -1;
+
+	int32 EndVertexIdx0 = -1;
+	int32 EndVertexIdx1 = -1;
+
+	TArray<struct FStreetMapVertex>* Vertices = nullptr;
+
 	/** Returns this node's index */
 	inline int32 GetRoadIndex(const class UStreetMap& StreetMap) const;
 

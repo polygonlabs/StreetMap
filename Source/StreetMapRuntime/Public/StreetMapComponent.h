@@ -267,7 +267,8 @@ protected:
 		, float SpeedRatio = 1.0f
 	);
 
-	void StartSmoothQuadList(const FVector2D& Prev
+	void StartSmoothQuadList(FStreetMapRoad& road
+		, const FVector2D& Prev
 		, const FVector2D Start
 		, const FVector2D& Mid
 		, const float Z
@@ -287,7 +288,8 @@ protected:
 		, float SpeedRatio = 1.0f
 	);
 	
-	void StartSmoothQuadList(const FVector2D& Start
+	void StartSmoothQuadList(FStreetMapRoad& road
+		, const FVector2D& Start
 		, const FVector2D& Mid
 		, const float Z
 		, const float Thickness
@@ -328,7 +330,8 @@ protected:
 		, float SpeedRatio = 1.0f
 	);
 
-	void EndSmoothQuadList(const FVector2D& Mid
+	void EndSmoothQuadList(FStreetMapRoad& road
+		, const FVector2D& Mid
 		, const FVector2D& End
 		, const float Z
 		, const float Thickness
@@ -347,7 +350,8 @@ protected:
 		, float SpeedRatio = 1.0f
 	);
 
-	void EndSmoothQuadList(const FVector2D& Mid
+	void EndSmoothQuadList(FStreetMapRoad& road
+		, const FVector2D& Mid
 		, const FVector2D& End
 		, const FVector2D& Next
 		, const float Z
