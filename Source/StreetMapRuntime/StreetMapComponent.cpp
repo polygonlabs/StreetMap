@@ -1639,6 +1639,7 @@ void UStreetMapComponent::findConnectedRoad(
 				if (INDEX_NONE != OtherRoad.NodeIndices[0] && OtherRoad.NodeIndices[0] == Road.NodeIndices[RoadCheckIndex])
 				{
 					fromBack = false;
+					// continue;
 				}
 				else if (INDEX_NONE != OtherRoad.NodeIndices.Last() && !forceForward && OtherRoad.NodeIndices.Last() == Road.NodeIndices[RoadCheckIndex])
 				{
@@ -1837,7 +1838,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 			{
 				if (OtherRoad.EndVertexIdx0 >= 0 && Vertices == OtherRoad.Vertices)
 				{
-					VAccumulation = (*Vertices)[OtherRoad.EndVertexIdx0].TextureCoordinate.Y;
+					VAccumulation = std::abs( (*OtherRoad.Vertices)[OtherRoad.EndVertexIdx0].TextureCoordinate.Y );
 
 					Indices->Add(OtherRoad.EndVertexIdx1);
 					Indices->Add(OtherRoad.EndVertexIdx0);
