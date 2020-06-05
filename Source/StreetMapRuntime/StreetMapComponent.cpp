@@ -329,6 +329,13 @@ void UStreetMapComponent::GenerateMesh()
 			int32 roadIndex = -1;
 			for (auto& Road : Roads)
 			{
+				Road.StartVertexIdx0 = -1;
+				Road.StartVertexIdx1 = -1;
+				Road.EndVertexIdx0 = -1;
+				Road.EndVertexIdx1 = -1;
+			}
+			for (auto& Road : Roads)
+			{
 				++roadIndex;
 				if (Road.iteration == currentIteration)
 				{
@@ -1588,7 +1595,8 @@ void UStreetMapComponent::findConnectedRoad(
 	, FString LinkDir
 	, int32& ChosenRoadIndex
 	, bool& fromBack
-	, bool forceForward)
+	, bool forceForward
+	, bool checkIteration)
 {
 	const auto& Roads = StreetMap->GetRoads();
 	const auto& Nodes = StreetMap->GetNodes();
@@ -1631,6 +1639,8 @@ void UStreetMapComponent::findConnectedRoad(
 				if (OtherRoad.RoadType != Road.RoadType
 					|| Road.NodeIndices[RoadCheckIndex] == INDEX_NONE
 					|| (forward != forwardOther || backward != backwardOther)
+					|| (checkIteration && (Road.iteration == OtherRoad.iteration) )
+					|| (Road.TMC.GetComparisonIndex() != OtherRoad.TMC.GetComparisonIndex())
 					)
 				{
 					continue;
@@ -1638,12 +1648,25 @@ void UStreetMapComponent::findConnectedRoad(
 
 				if (INDEX_NONE != OtherRoad.NodeIndices[0] && OtherRoad.NodeIndices[0] == Road.NodeIndices[RoadCheckIndex])
 				{
-					fromBack = false;
-					// continue;
+					if (!Start)
+					{
+						fromBack = false;
+					}
+					else
+					{
+						continue;
+					}
 				}
 				else if (INDEX_NONE != OtherRoad.NodeIndices.Last() && !forceForward && OtherRoad.NodeIndices.Last() == Road.NodeIndices[RoadCheckIndex])
 				{
-					fromBack = true;
+					if (Start)
+					{
+						fromBack = true;
+					}
+					else
+					{
+						continue;
+					}
 				}
 				else
 				{
@@ -1706,6 +1729,8 @@ FStreetMapRoad& UStreetMapComponent::findFirstRoadInChain(int32 RoadIndex
 			, Road.Link.LinkDir
 			, index
 			, fromBack
+			, false
+			, false
 		);
 		
 		if (index == RoadIndex) // full circle
@@ -1717,13 +1742,14 @@ FStreetMapRoad& UStreetMapComponent::findFirstRoadInChain(int32 RoadIndex
 			lastIndex = index;
 		}
 	}
-	ChosenRoadIndex = index;
 	if (index >= 0)
 	{
+		ChosenRoadIndex = index;
 		return StreetMap->GetRoads()[index];
 	}
 	else
 	{
+		ChosenRoadIndex = lastIndex;
 		return StreetMap->GetRoads()[lastIndex];
 	}
 }
@@ -1750,6 +1776,7 @@ UStreetMapComponent::createConnectedRoad(FStreetMapRoad& Road
 			, index
 			, fromBack
 			, true
+			, true
 		);
 
 		if (index >= 0)
@@ -1759,8 +1786,8 @@ UStreetMapComponent::createConnectedRoad(FStreetMapRoad& Road
 		}
 	}
 
-	Road.startEnd = -1;
 	pRoad->startEnd = 1;
+	Road.startEnd = -1;
 }
 
 void UStreetMapComponent::CheckRoadSmoothQuadList(
@@ -1836,17 +1863,18 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 
 			if (fromBack)
 			{
+				// This part sadly causes problems
 				if (OtherRoad.EndVertexIdx0 >= 0 && Vertices == OtherRoad.Vertices)
 				{
 					VAccumulation = std::abs( (*OtherRoad.Vertices)[OtherRoad.EndVertexIdx0].TextureCoordinate.Y );
 
-					Indices->Add(OtherRoad.EndVertexIdx1);
-					Indices->Add(OtherRoad.EndVertexIdx0);
-
-					Road.StartVertexIdx0 = OtherRoad.EndVertexIdx1;
-					Road.StartVertexIdx1 = OtherRoad.EndVertexIdx0;
+					// Indices->Add(OtherRoad.EndVertexIdx1);
+					// Indices->Add(OtherRoad.EndVertexIdx0);
+					// 
+					// Road.StartVertexIdx0 = OtherRoad.EndVertexIdx1;
+					// Road.StartVertexIdx1 = OtherRoad.EndVertexIdx0;
 				}
-				else
+				// else
 				{
 					//if (OtherRoad.EndVertexIdx0 >= 0)
 					//{
@@ -1876,16 +1904,16 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 			}
 			else
 			{
-				//if (OtherRoad.EndVertexIdx0 >= 0 && Vertices == OtherRoad.Vertices)
-				//{
-				//	VAccumulation = std::abs((*Vertices)[OtherRoad.EndVertexIdx0].TextureCoordinate.Y);
+				if (OtherRoad.StartVertexIdx0 >= 0 && Vertices == OtherRoad.Vertices)
+				{
+					VAccumulation = std::abs((*Vertices)[OtherRoad.StartVertexIdx0].TextureCoordinate.Y);
 
 				//	Indices->Add(OtherRoad.EndVertexIdx1);
 				//	Indices->Add(OtherRoad.EndVertexIdx0);
 
 				//	Road.StartVertexIdx0 = OtherRoad.EndVertexIdx1;
 				//	Road.StartVertexIdx1 = OtherRoad.EndVertexIdx0;
-				//}
+				}
 
 				StartSmoothQuadList(Road,
 					fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],

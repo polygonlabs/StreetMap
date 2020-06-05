@@ -378,7 +378,9 @@ private:
 		, FString LinkDir
 		, int32& ChosenRoadIndex
 		, bool& fromBack
-		, bool forceForward = false);
+		, bool forceForward = false
+		, bool checkIteration = false
+	);
 
 	FStreetMapRoad& findFirstRoadInChain(int32 RoadIndex
 		, int32 iteration
