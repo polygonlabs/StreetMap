@@ -1863,23 +1863,18 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 
 			if (fromBack)
 			{
-				// This part sadly causes problems
-				if (OtherRoad.EndVertexIdx0 >= 0 && Vertices == OtherRoad.Vertices)
+				if (OtherRoad.EndVertexIdx0 >= 0 && Vertices == OtherRoad.Vertices && Road.SpeedLimit == OtherRoad.SpeedLimit)
 				{
 					VAccumulation = std::abs( (*OtherRoad.Vertices)[OtherRoad.EndVertexIdx0].TextureCoordinate.Y );
 
-					// Indices->Add(OtherRoad.EndVertexIdx1);
-					// Indices->Add(OtherRoad.EndVertexIdx0);
-					// 
-					// Road.StartVertexIdx0 = OtherRoad.EndVertexIdx1;
-					// Road.StartVertexIdx1 = OtherRoad.EndVertexIdx0;
+					Indices->Add(OtherRoad.EndVertexIdx1);
+					Indices->Add(OtherRoad.EndVertexIdx0);
+					
+					Road.StartVertexIdx0 = OtherRoad.EndVertexIdx1;
+					Road.StartVertexIdx1 = OtherRoad.EndVertexIdx0;
 				}
-				// else
+				else
 				{
-					//if (OtherRoad.EndVertexIdx0 >= 0)
-					//{
-					//	VAccumulation = (*OtherRoad.Vertices)[OtherRoad.EndVertexIdx0].TextureCoordinate.Y;
-					//}
 					StartSmoothQuadList(Road,
 						fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],
 						Road.RoadPoints[0],
