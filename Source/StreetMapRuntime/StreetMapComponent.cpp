@@ -2051,13 +2051,13 @@ void startSmoothVertices(FStreetMapRoad& road
 		if (IsForward)
 		{
 			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
-			BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
+			BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, -1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
 			BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
-			BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
+			BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 1.f);
 			break;
 		}
 		else
@@ -2066,7 +2066,7 @@ void startSmoothVertices(FStreetMapRoad& road
 		}
 	default:
 		BottomLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
-		BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0);
+		BottomLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0);
 		break;
 	}
 
@@ -2093,13 +2093,13 @@ void startSmoothVertices(FStreetMapRoad& road
 		if (IsForward)
 		{
 			BottomRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
-			BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
+			BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
 			BottomRightVertex.TextureCoordinate = FVector2D(1.0f, -XRatio);
-			BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
+			BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, -1.f);
 			break;
 		}
 		else
@@ -2108,7 +2108,7 @@ void startSmoothVertices(FStreetMapRoad& road
 		}
 	default:
 		BottomRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
-		BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
+		BottomRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0.f);
 		break;
 	}
 	BottomRightVertex.Position = FVector(Start, Z);
@@ -2288,13 +2288,13 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		if (IsForward)
 		{
 			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, VAccumulation + XRatio);
-			MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
+			MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, -1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
 			MidLeftVertex.TextureCoordinate = FVector2D(0.0f, -VAccumulation - XRatio);
-			MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
+			MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 1.f);
 			break;
 		}
 		else
@@ -2303,7 +2303,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		}
 	default:
 		MidLeftVertex.TextureCoordinate = FVector2D(0.0f, VAccumulation + XRatio);
-		MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
+		MidLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0.f);
 		break;
 	}
 	MidLeftVertex.Position = FVector(Mid, Z);
@@ -2328,13 +2328,13 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		if (IsForward)
 		{
 			MidRightVertex.TextureCoordinate = FVector2D(1.0f, VAccumulation + XRatio);
-			MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
+			MidRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
 			MidRightVertex.TextureCoordinate = FVector2D(1.0f, -VAccumulation - XRatio);
-			MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
+			MidRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, -1.f);
 			break;
 		}
 		else
@@ -2343,7 +2343,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 		}
 	default:
 		MidRightVertex.TextureCoordinate = FVector2D(1.0f, VAccumulation + XRatio);
-		MidRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
+		MidRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0.f);
 		break;
 	}
 	MidRightVertex.Position = FVector(Mid, Z);
@@ -2413,13 +2413,13 @@ void endSmoothVertices(FStreetMapRoad& road
 		if (IsForward)
 		{
 			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
-			TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
+			TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, -1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
 			TopLeftVertex.TextureCoordinate = FVector2D(0.0f, -XRatio);
-			TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
+			TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 1.f);
 			break;
 		}
 		else
@@ -2428,7 +2428,7 @@ void endSmoothVertices(FStreetMapRoad& road
 		}
 	default:
 		TopLeftVertex.TextureCoordinate = FVector2D(0.0f, XRatio);
-		TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
+		TopLeftVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0.f);
 		break;
 	}
 	TopLeftVertex.Position = FVector(End, Z);
@@ -2454,13 +2454,13 @@ void endSmoothVertices(FStreetMapRoad& road
 		if (IsForward)
 		{
 			TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
-			TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 1.f);
+			TopRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 1.f);
 			break;
 		}
 		else if (IsBackward)
 		{
 			TopRightVertex.TextureCoordinate = FVector2D(1.0f, -XRatio);
-			TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, -1.f);
+			TopRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, -1.f);
 			break;
 		}
 		else
@@ -2469,7 +2469,7 @@ void endSmoothVertices(FStreetMapRoad& road
 		}
 	default:
 		TopRightVertex.TextureCoordinate = FVector2D(1.0f, XRatio);
-		TopRightVertex.TextureCoordinate4 = FVector2D(SpeedLimit, 0.f);
+		TopRightVertex.TextureCoordinate4 = FVector2D(SpeedRatio, 0.f);
 		break;
 	}
 	TopRightVertex.Position = FVector(End, Z);
