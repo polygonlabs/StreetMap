@@ -27,6 +27,16 @@ enum EStreetMapMiscWayType
 	LandUse,
 };
 
+UENUM(BlueprintType)
+enum class EColorMode : uint8
+{
+	Default,
+	Flow,
+	Predictive0,
+	Predictive15,
+	Predictive30,
+	Predictive45
+};
 
 USTRUCT(BlueprintType)
 struct STREETMAPRUNTIME_API FStreetMapCollisionSettings
@@ -66,94 +76,94 @@ struct STREETMAPRUNTIME_API FStreetMapMeshBuildSettings
 public:
 
 	/** Roads base vertical offset */
-	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Street Vertical Offset")
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Street Vertical Offset")
 		float StreetOffsetZ;
-	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Major Road Vertical Offset")
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Major Road Vertical Offset")
 		float MajorRoadOffsetZ;
-	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Highway Vertical Offset")
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Highway Vertical Offset")
 		float HighwayOffsetZ;
 
 	/** if true streets will be a single mesh instead of a list of quads. */
-	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Smooth streets")
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, DisplayName = "Smooth streets")
 		uint32 bWantSmoothStreets : 1;
 
 	/** if true streets of the same type that share nodes will be merged. */
-	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Connect streets")
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, DisplayName = "Connect streets")
 		uint32 bWantConnectStreets : 1;
 
 	/** threshold for angle btween roads to merge */
-	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Connect streets threshold")
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0", UIMin = "0"), DisplayName = "Connect streets threshold")
 		float fThresholdConnectStreets = 0.96;
 
 	/** if true buildings mesh will be 3D instead of flat representation. */
-	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Create 3D Buildings")
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, DisplayName = "Create 3D Buildings")
 		uint32 bWant3DBuildings : 1;
 
 	/** building level floor conversion factor in centimeters
 		@todo: harmonize with OSMToCentimetersScaleFactor refactoring
 	*/
-	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Building Level Floor Factor")
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, DisplayName = "Building Level Floor Factor")
 		float BuildingLevelFloorFactor = 300.0f;
 
 	/** Default building height in centimeters - used if no height info is available */
-	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Building Level Floor Factor")
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, DisplayName = "Building Level Floor Factor")
 		float BuildDefaultZ = 300.0f;
 
 	/**
 	* If true, buildings mesh will receive light information.
 	* Lit buildings can't share vertices beyond quads (all quads have their own face normals), so this uses a lot more geometry.
 	*/
-	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Lit buildings")
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, DisplayName = "Lit buildings")
 		uint32 bWantLitBuildings : 1;
 
 	/** Streets thickness */
-	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"))
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0", UIMin = "0"))
 		float StreetThickness;
 
 	/** Street vertex color */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FLinearColor StreetColor;
 
 	/** Major road thickness */
-	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"))
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0", UIMin = "0"))
 		float MajorRoadThickness;
 
 	/** Major road vertex color */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FLinearColor MajorRoadColor;
 
 	/** Highway thickness */
-	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"))
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0", UIMin = "0"))
 		float HighwayThickness;
 
 	/** Highway vertex color */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FLinearColor HighwayColor;
 
 	/** Streets Thickness */
-	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"))
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0", UIMin = "0"))
 		float BuildingBorderThickness;
 
 	/** Building border vertex color */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FLinearColor BuildingBorderLinearColor;
 
 	/** Buildings border vertical offset */
-	UPROPERTY(Category = StreetMap, EditAnywhere, meta = (ClampMin = "0", UIMin = "0"))
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0", UIMin = "0"))
 		float BuildingBorderZ;
 
 	/** Flow vertex colors */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FLinearColor LowFlowColor;
 
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FLinearColor MedFlowColor;
 
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FLinearColor HighFlowColor;
 
-	UPROPERTY(Category = StreetMap, EditAnywhere, DisplayName = "Color By Flow")
-		uint32 bColorByFlow : 1;
+	UPROPERTY(Category = Status, EditAnywhere, BlueprintReadWrite)
+		TEnumAsByte<EColorMode> ColorMode;
 
 	FStreetMapMeshBuildSettings() :
 		StreetOffsetZ(100.0f),
@@ -176,10 +186,10 @@ public:
 		LowFlowColor(FLinearColor(1.0f, 0.0f, 0.0f)),
 		MedFlowColor(FLinearColor(1.0f, 1.05f, 0.0f)),
 		HighFlowColor(FLinearColor(0.2f, 0.8f, 0.0f)),
-		bColorByFlow(false)
+		ColorMode(EColorMode::Default)
 	{
-	}
 
+	}
 };
 
 /** Identifies a specific type of way */
@@ -470,7 +480,7 @@ struct STREETMAPRUNTIME_API FStreetMapLink : public FTableRowBase
 {
 	GENERATED_USTRUCT_BODY()
 
-	FStreetMapLink(int64 linkId = 0, FString linkDir = "T")
+		FStreetMapLink(int64 linkId = 0, FString linkDir = "T")
 	{
 		LinkId = linkId;
 		LinkDir = linkDir;
@@ -508,8 +518,8 @@ struct STREETMAPRUNTIME_API FStreetMapRoad
 {
 	GENERATED_USTRUCT_BODY()
 
-	/** Name of the road */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+		/** Name of the road */
+		UPROPERTY(Category = StreetMap, EditAnywhere)
 		FString RoadName;
 
 	UPROPERTY(Category = StreetMap, EditAnywhere)
@@ -608,9 +618,9 @@ struct STREETMAPRUNTIME_API FStreetMapRoadRef
 {
 	GENERATED_USTRUCT_BODY()
 
-	/** Index of road in the list of all roads in this street map */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
-	int32 RoadIndex;
+		/** Index of road in the list of all roads in this street map */
+		UPROPERTY(Category = StreetMap, EditAnywhere)
+		int32 RoadIndex;
 
 	/** Index of the point along road where this node exists */
 	UPROPERTY(Category = StreetMap, EditAnywhere)
@@ -661,10 +671,10 @@ struct STREETMAPRUNTIME_API FStreetMapNode
 {
 	GENERATED_USTRUCT_BODY()
 
-	/** All of the roads that intersect this node.  We have references to each of these roads, as well as the point along each
-		road where this node exists */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
-	TArray<FStreetMapRoadRef> RoadRefs;
+		/** All of the roads that intersect this node.  We have references to each of these roads, as well as the point along each
+			road where this node exists */
+		UPROPERTY(Category = StreetMap, EditAnywhere)
+		TArray<FStreetMapRoadRef> RoadRefs;
 
 	/** All of the Railways that intersect this node.  We have references to each of these railways, as well as the point along each
 		railway where this node exists */

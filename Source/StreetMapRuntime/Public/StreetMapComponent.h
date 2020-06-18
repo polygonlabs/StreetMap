@@ -5,9 +5,8 @@
 #include "Components/MeshComponent.h"
 #include "Interfaces/Interface_CollisionDataProvider.h"
 #include "../StreetMapSceneProxy.h"
+#include "./PredictiveData.h"
 #include "StreetMapComponent.generated.h"
-
-
 
 class UBodySetup;
 
@@ -21,6 +20,7 @@ class STREETMAPRUNTIME_API UStreetMapComponent : public UMeshComponent, public I
 
 private: 
 	TMap<FName, float> mFlowData;
+	TMap<FName, FPredictiveData> mPredictiveData;
 	TMap<FGuid, TArray<FStreetMapLink>> mTraces;
 	TMap<FName, int> mTMC2RoadIndex;
 	TMap<FStreetMapLink, int> mLink2RoadIndex;
@@ -155,13 +155,36 @@ public:
 	/** Rebuilds the graphics and physics mesh representation if we don't have one right now.  Designed to be called on demand. */
 	void BuildMesh();
 
+	/** Rebuilds road mesh only */
 	void BuildRoadMesh(EStreetMapRoadType Type);
 
-	void ColorRoadMeshFromFlowData(TArray<FStreetMapVertex>& Vertices, FLinearColor DefaultColor, bool OverwriteTrace = false, float ZOffset = 0.0f);
-	void ColorRoadMeshFromFlowData(TArray<FStreetMapVertex>& Vertices, FLinearColor DefaultColor, TArray<FStreetMapLink> Links, bool OverwriteTrace, float ZOffset = 0.0f);
+	/** Get speed & color from flow/predictive data, returns false if no data is found */
+	bool GetSpeedAndColorFromData(FStreetMapRoad* Road, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio, FColor& OutColor, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
+	bool GetSpeedAndColorFromData(FStreetMapRoad* Road, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio, FColor& OutColor);
+	bool GetSpeedAndColorFromData(FName TMC, float SpeedLimit, float& OutSpeed, float& OutSpeedRatio, FColor& OutColor, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
+	bool GetSpeedAndColorFromData(FName TMC, float SpeedLimit, float& OutSpeed, float& OutSpeedRatio, FColor& OutColor);
+
+	/** Convert RoadType to Float for use as TextureCoordinate value */
+	float ConvertToFloat(EStreetMapRoadType Type);
+
+	/** Color road meshes using flow data */
+	void ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, FColor DefaultColor, FColor LowFlowColor, FColor MedFlowColor, FColor HighFlowColor, bool OverwriteTrace, float ZOffset);
+	void ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, FLinearColor DefaultColor, bool OverwriteTrace = false, float ZOffset = 0.0f);
+	void ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, FLinearColor DefaultColor, FLinearColor LowFlowColor, FLinearColor MedFlowColor, FLinearColor HighFlowColor, bool OverwriteTrace = false, float ZOffset = 0.0f);
+	
+	/** Same as above but target specific links */
+	void ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, FColor DefaultColor, FColor LowFlowColor, FColor MedFlowColor, FColor HighFlowColor, bool OverwriteTrace, float ZOffset);
+	void ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, FLinearColor DefaultColor, bool OverwriteTrace, float ZOffset = 0.0f);
+	void ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, FLinearColor DefaultColor, FLinearColor LowFlowColor, FLinearColor MedFlowColor, FLinearColor HighFlowColor, bool OverwriteTrace, float ZOffset = 0.0f);
+
+	/** Color road meshes in vertex array */
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, bool IsTrace = false, float ZOffset = 0.0f);
+
+	/** Color road meshes by Link ID */
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FStreetMapLink Link, bool IsTrace = false, float ZOffset = 0.0f);
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, bool IsTrace = false, float ZOffset = 0.0f);
+
+	/** Color road meshes by TMC */
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FName TMC, bool IsTrace = false, float ZOffset = 0.0f);
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FName> TMCs, bool IsTrace = false, float ZOffset = 0.0f);
 
@@ -169,7 +192,11 @@ public:
 		void ChangeStreetThickness(float val, EStreetMapRoadType type);
 	
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void RefreshStreetColor();
+		void RefreshStreetColors();
+
+	/** Override default flow colors */
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void OverrideFlowColors(FLinearColor LowFlowColor, FLinearColor MedFlowColor, FLinearColor HighFlowColor);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetColor(FLinearColor val, EStreetMapRoadType type);
@@ -191,6 +218,18 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void DeleteFlowData(FName TMC);
+	
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void ClearFlowData();
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void AddOrUpdatePredictiveData(FName TMC, float S0, float S15, float S30, float S45);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void DeletePredictiveData(FName TMC);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void ClearPredictiveData();
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		FGuid AddTrace(FLinearColor Color, TArray<FStreetMapLink> Links);
@@ -203,6 +242,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		bool GetSpeed(FStreetMapLink Link, int& OutSpeed, int& OutSpeedLimit, float& OutSpeedRatio);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		EColorMode GetColorMode();
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void SetColorMode(EColorMode ColorMode);
 
 protected:
 

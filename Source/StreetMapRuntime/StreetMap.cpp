@@ -16,7 +16,6 @@ UStreetMap::UStreetMap()
 #endif
 }
 
-
 void UStreetMap::GetAssetRegistryTags( TArray<FAssetRegistryTag>& OutTags ) const
 {
 #if WITH_EDITORONLY_DATA
