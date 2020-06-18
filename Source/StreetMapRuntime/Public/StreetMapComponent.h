@@ -232,7 +232,8 @@ protected:
 		FString LinkDir = "", 
 		FName TMC = "", 
 		int SpeedLimit = 25, 
-		float SpeedRatio = 1.0f
+		float SpeedRatio = 1.0f,
+		float RoadTypeFloat = 0.0f
 	);
 
 	/** Adds 3D triangles to the raw mesh */
@@ -265,6 +266,7 @@ protected:
 		, FName TMC = ""
 		, int SpeedLimit = 25
 		, float SpeedRatio = 1.0f
+		, float RoadTypeFloat = 0.0f
 	);
 
 	void StartSmoothQuadList(const FVector2D& Prev
@@ -285,6 +287,7 @@ protected:
 		, FName TMC = ""
 		, int SpeedLimit = 25
 		, float SpeedRatio = 1.0f
+		, float RoadTypeFloat = 0.0f
 	);
 	
 	void StartSmoothQuadList(const FVector2D& Start
@@ -304,6 +307,7 @@ protected:
 		, FName TMC = ""
 		, int SpeedLimit = 25
 		, float SpeedRatio = 1.0f
+		, float RoadTypeFloat = 0.0f
 	);
 
 
@@ -326,6 +330,7 @@ protected:
 		, FName TMC = ""
 		, int SpeedLimit = 25
 		, float SpeedRatio = 1.0f
+		, float RoadTypeFloat = 0.0f
 	);
 
 	void EndSmoothQuadList(const FVector2D& Mid
@@ -345,6 +350,7 @@ protected:
 		, FName TMC = ""
 		, int SpeedLimit = 25
 		, float SpeedRatio = 1.0f
+		, float RoadTypeFloat = 0.0f
 	);
 
 	void EndSmoothQuadList(const FVector2D& Mid
@@ -365,6 +371,7 @@ protected:
 		, FName TMC = ""
 		, int SpeedLimit = 25
 		, float SpeedRatio = 1.0f
+		, float RoadTypeFloat = 0.0f
 	);
 
 private:

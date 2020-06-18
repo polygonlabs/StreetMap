@@ -34,6 +34,10 @@ struct FStreetMapVertex
 	UPROPERTY()
 		FVector2D TextureCoordinate4;
 
+	/** Texture coordinate */
+	UPROPERTY()
+		FVector2D TextureCoordinate5;
+
 	/** Tangent vector X */
 	UPROPERTY()
 		FVector TangentX;
@@ -78,6 +82,7 @@ struct FStreetMapVertex
 		TextureCoordinate2(FVector2D::ZeroVector),
 		TextureCoordinate3(FVector2D::ZeroVector),
 		TextureCoordinate4(FVector2D::ZeroVector),
+		TextureCoordinate5(FVector2D::ZeroVector),
 		TangentX(InitTangentX),
 		TangentZ(InitTangentZ),
 		Color(InitColor),
