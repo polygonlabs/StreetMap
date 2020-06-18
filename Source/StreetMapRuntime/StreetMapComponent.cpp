@@ -5,6 +5,7 @@
 #include "StreetMapSceneProxy.h"
 #include "Runtime/Engine/Classes/Engine/StaticMesh.h"
 #include "Runtime/Engine/Public/StaticMeshResources.h"
+#include "GenericPlatform/GenericPlatformMath.h"
 #include "PolygonTools.h"
 
 #include <algorithm>
@@ -1007,7 +1008,7 @@ bool UStreetMapComponent::GetSpeedAndColorFromData(FStreetMapRoad* Road, float& 
 		break;
 	}
 
-	SpeedRatio = Speed / Road->SpeedLimit;
+	SpeedRatio = FGenericPlatformMath::Min(Speed / Road->SpeedLimit, 1.0f);
 
 	if (SpeedRatio > 0.8f) {
 		Color = HighFlowColor;
