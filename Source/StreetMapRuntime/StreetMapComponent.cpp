@@ -339,7 +339,6 @@ void UStreetMapComponent::GenerateMesh()
 
 			TArray<FStreetMapVertex>* Vertices = nullptr;
 			TArray<uint32>* Indices = nullptr;
-			float RoadTypeFloat = ConvertToFloat(Road.RoadType);
 
 			const FName TMC = Road.TMC;
 			const FStreetMapLink Link = Road.Link;
@@ -415,7 +414,7 @@ void UStreetMapComponent::GenerateMesh()
 							Road.TMC,
 							Road.SpeedLimit,
 							SpeedRatio,
-							RoadTypeFloat
+							static_cast<float>(Road.RoadType)
 						);
 					}
 					else
@@ -437,7 +436,7 @@ void UStreetMapComponent::GenerateMesh()
 							Road.TMC,
 							Road.SpeedLimit,
 							SpeedRatio,
-							RoadTypeFloat
+							static_cast<float>(Road.RoadType)
 						);
 					}
 					int32 PointIndex = 0;
@@ -464,7 +463,7 @@ void UStreetMapComponent::GenerateMesh()
 							Road.TMC,
 							Road.SpeedLimit,
 							SpeedRatio,
-							RoadTypeFloat
+							static_cast<float>(Road.RoadType)
 						);
 					}
 					if (bWantConnectStreets)
@@ -486,7 +485,7 @@ void UStreetMapComponent::GenerateMesh()
 							Road.TMC,
 							Road.SpeedLimit,
 							SpeedRatio,
-							RoadTypeFloat
+							static_cast<float>(Road.RoadType)
 						);
 					}
 					else
@@ -508,7 +507,7 @@ void UStreetMapComponent::GenerateMesh()
 							Road.TMC,
 							Road.SpeedLimit,
 							SpeedRatio,
-							RoadTypeFloat
+							static_cast<float>(Road.RoadType)
 						);
 					}
 				}
@@ -533,7 +532,7 @@ void UStreetMapComponent::GenerateMesh()
 							Road.TMC,
 							Road.SpeedLimit,
 							SpeedRatio,
-							RoadTypeFloat
+							static_cast<float>(Road.RoadType)
 						);
 					}
 				}
@@ -1536,21 +1535,6 @@ void UStreetMapComponent::AssignDefaultMaterialIfNeeded()
 
 		this->SetMaterial(0, GetDefaultMaterial());
 	}
-
-	UMaterialInstanceDynamic* dynamicInstance = Cast<UMaterialInstanceDynamic>(this->GetMaterial(0));
-	if (dynamicInstance)
-	{
-		dynamicInstance->SetScalarParameterValue(TEXT("street_hide_threshold"), MeshBuildSettings.StreetThickness);
-		dynamicInstance->SetScalarParameterValue(TEXT("majorroad_hide_threshold"), MeshBuildSettings.MajorRoadThickness);
-	}
-	else
-	{
-		UMaterialInstanceDynamic* MI = UMaterialInstanceDynamic::Create(this->GetMaterial(0), this);
-		this->SetMaterial(0, MI);
-		MI->SetScalarParameterValue(TEXT("street_hide_threshold"), MeshBuildSettings.StreetThickness);
-		MI->SetScalarParameterValue(TEXT("majorroad_hide_threshold"), MeshBuildSettings.MajorRoadThickness);
-	}
-
 }
 
 
@@ -1592,23 +1576,6 @@ FBoxSphereBounds UStreetMapComponent::CalcBounds(const FTransform& LocalToWorld)
 	else
 	{
 		return FBoxSphereBounds(LocalToWorld.GetLocation(), FVector::ZeroVector, 0.0f);
-	}
-}
-
-float UStreetMapComponent::ConvertToFloat(EStreetMapRoadType type) {
-	switch (type)
-	{
-	case EStreetMapRoadType::Highway:
-		return 0.0;
-	case EStreetMapRoadType::MajorRoad:
-		return 1.0;
-	case EStreetMapRoadType::Street:
-		return 2.0;
-	case EStreetMapRoadType::Bridge:
-		return 3.0;
-	case EStreetMapRoadType::Other:
-	default:
-		return 4.0;
 	}
 }
 
@@ -2156,6 +2123,7 @@ void startSmoothVertices(const FVector2D Start
 	BottomLeftVertex.Position = FVector(Start, Z);
 	BottomLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	BottomLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	BottomLeftVertex.TextureCoordinate5 = FVector2D(RoadTypeFloat, 0.f);
 	BottomLeftVertex.TangentX = FVector(Tangent, 0.0f);
 	BottomLeftVertex.TangentZ = FVector::UpVector;
 	BottomLeftVertex.Color = StartColor;
@@ -2197,6 +2165,7 @@ void startSmoothVertices(const FVector2D Start
 	BottomRightVertex.Position = FVector(Start, Z);
 	BottomRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	BottomRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	BottomRightVertex.TextureCoordinate5 = FVector2D(RoadTypeFloat, 0.f);
 	BottomRightVertex.TangentX = FVector(Tangent, 0.0f);
 	BottomRightVertex.TangentZ = FVector::UpVector;
 	BottomRightVertex.Color = StartColor;
@@ -2388,6 +2357,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	MidLeftVertex.Position = FVector(Mid, Z);
 	MidLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	MidLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	MidLeftVertex.TextureCoordinate5 = FVector2D(RoadTypeFloat, 0.f);
 	MidLeftVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	MidLeftVertex.TangentZ = FVector::UpVector;
 	MidLeftVertex.Color = StartColor;
@@ -2428,6 +2398,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	MidRightVertex.Position = FVector(Mid, Z);
 	MidRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	MidRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	MidRightVertex.TextureCoordinate5 = FVector2D(RoadTypeFloat, 0.f);
 	MidRightVertex.TangentX = FVector(alteredLineDirection, 0.0f);
 	MidRightVertex.TangentZ = FVector::UpVector;
 	MidRightVertex.Color = StartColor;
@@ -2513,6 +2484,7 @@ void endSmoothVertices(const FVector2D End
 	TopLeftVertex.Position = FVector(End, Z);
 	TopLeftVertex.TextureCoordinate2 = FVector2D(-RightVector.X, -RightVector.Y);
 	TopLeftVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	TopLeftVertex.TextureCoordinate5 = FVector2D(RoadTypeFloat, 0.f);
 	TopLeftVertex.TangentX = FVector(Tangent, 0.0f);
 	TopLeftVertex.TangentZ = FVector::UpVector;
 	TopLeftVertex.Color = EndColor;
@@ -2554,6 +2526,7 @@ void endSmoothVertices(const FVector2D End
 	TopRightVertex.Position = FVector(End, Z);
 	TopRightVertex.TextureCoordinate2 = FVector2D(RightVector.X, RightVector.Y);
 	TopRightVertex.TextureCoordinate3 = FVector2D(HalfThickness, MaxThickness);
+	TopRightVertex.TextureCoordinate5 = FVector2D(RoadTypeFloat, 0.f);
 	TopRightVertex.TangentX = FVector(Tangent, 0.0f);
 	TopRightVertex.TangentZ = FVector::UpVector;
 	TopRightVertex.Color = EndColor;

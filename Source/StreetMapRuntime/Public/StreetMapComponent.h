@@ -164,9 +164,6 @@ public:
 	bool GetSpeedAndColorFromData(FName TMC, float SpeedLimit, float& OutSpeed, float& OutSpeedRatio, FColor& OutColor, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
 	bool GetSpeedAndColorFromData(FName TMC, float SpeedLimit, float& OutSpeed, float& OutSpeedRatio, FColor& OutColor);
 
-	/** Convert RoadType to Float for use as TextureCoordinate value */
-	float ConvertToFloat(EStreetMapRoadType Type);
-
 	/** Color road meshes using flow data */
 	void ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, FColor DefaultColor, FColor LowFlowColor, FColor MedFlowColor, FColor HighFlowColor, bool OverwriteTrace, float ZOffset);
 	void ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, FLinearColor DefaultColor, bool OverwriteTrace = false, float ZOffset = 0.0f);
