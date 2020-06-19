@@ -407,7 +407,7 @@ static int32 GetNumVerticesForRadius(const FStreetMapLandscapeBuildSettings& Bui
 
 static const float DefaultLandscapeScaleXY = LANDSCAPE_INV_XYOFFSET_SCALE * 0.5f;
 static const float DefaultLandscapeScaleZ = LANDSCAPE_INV_ZSCALE * 2.0f;
-static const float OSMToCentimetersScaleFactor = 100.0f;
+static const float OSMToCentimetersScaleFactor = 0.1f;
 
 /** Loads and transforms elevation data for desired region. */
 class FElevationModel
