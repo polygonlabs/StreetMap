@@ -159,8 +159,8 @@ public:
 	void BuildRoadMesh(EStreetMapRoadType Type);
 
 	/** Get speed & color from flow/predictive data, returns false if no data is found */
-	bool GetSpeedAndColorFromData(FStreetMapRoad* Road, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio, FColor& OutColor, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
-	bool GetSpeedAndColorFromData(FStreetMapRoad* Road, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio, FColor& OutColor);
+	bool GetSpeedAndColorFromData(const FStreetMapRoad* Road, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio, FColor& OutColor, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
+	bool GetSpeedAndColorFromData(const FStreetMapRoad* Road, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio, FColor& OutColor);
 	bool GetSpeedAndColorFromData(FName TMC, float SpeedLimit, float& OutSpeed, float& OutSpeedRatio, FColor& OutColor, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
 	bool GetSpeedAndColorFromData(FName TMC, float SpeedLimit, float& OutSpeed, float& OutSpeedRatio, FColor& OutColor);
 
@@ -241,7 +241,7 @@ public:
 		bool DeleteTrace(FGuid GUID);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		bool GetSpeed(FStreetMapLink Link, int& OutSpeed, int& OutSpeedLimit, float& OutSpeedRatio);
+		bool GetSpeed(FStreetMapLink Link, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		EColorMode GetColorMode();
