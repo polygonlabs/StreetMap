@@ -1187,7 +1187,7 @@ void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapVertex> & Verti
 
 			FColor RoadColor;
 			float Speed, SpeedRatio;
-			bool bUseDefaultColor = !GetSpeedAndColorFromData(TMC, Vertex->SpeedLimit, Speed, SpeedRatio, RoadColor);
+			bool bUseDefaultColor = !GetSpeedAndColorFromData(TMC, Vertex->SpeedLimit, Speed, SpeedRatio, RoadColor, HighFlowColor, MedFlowColor, LowFlowColor);
 			if (bUseDefaultColor) {
 				RoadColor = DefaultColor;
 			}
