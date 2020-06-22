@@ -827,7 +827,8 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType)
 								Road.Link.LinkDir,
 								Road.TMC,
 								Road.SpeedLimit,
-								SpeedRatio
+								SpeedRatio,
+								static_cast<float>(Road.RoadType)
 							);
 						}
 						else
@@ -848,7 +849,8 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType)
 								Road.Link.LinkDir,
 								Road.TMC,
 								Road.SpeedLimit,
-								SpeedRatio
+								SpeedRatio,
+								static_cast<float>(Road.RoadType)
 							);
 						}
 						int32 PointIndex = 0;
@@ -874,7 +876,8 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType)
 								Road.Link.LinkDir,
 								Road.TMC,
 								Road.SpeedLimit,
-								SpeedRatio
+								SpeedRatio,
+								static_cast<float>(Road.RoadType)
 							);
 						}
 						if (bWantConnectStreets)
@@ -895,7 +898,8 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType)
 								Road.Link.LinkDir,
 								Road.TMC,
 								Road.SpeedLimit,
-								SpeedRatio
+								SpeedRatio,
+								static_cast<float>(Road.RoadType)
 							);
 						}
 						else
@@ -916,7 +920,8 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType)
 								Road.Link.LinkDir,
 								Road.TMC,
 								Road.SpeedLimit,
-								SpeedRatio
+								SpeedRatio,
+								static_cast<float>(Road.RoadType)
 							);
 						}
 					}
@@ -940,7 +945,8 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType)
 								Road.Link.LinkDir,
 								Road.TMC,
 								Road.SpeedLimit,
-								SpeedRatio
+								SpeedRatio,
+								static_cast<float>(Road.RoadType)
 							);
 						}
 					}
