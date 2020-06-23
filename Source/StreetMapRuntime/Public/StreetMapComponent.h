@@ -25,6 +25,8 @@ private:
 	TMap<FName, int> mTMC2RoadIndex;
 	TMap<FStreetMapLink, int> mLink2RoadIndex;
 
+	const float HighSpeedRatio = 0.8f;
+	const float MedSpeedRatio = 0.5f;
 public:
 
 	/** UStreetMapComponent constructor */
