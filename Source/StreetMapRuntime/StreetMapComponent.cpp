@@ -1022,10 +1022,10 @@ bool UStreetMapComponent::GetSpeedAndColorFromData(const FStreetMapRoad* Road, f
 
 	SpeedRatio = FGenericPlatformMath::Min(Speed / Road->SpeedLimit, 1.0f);
 
-	if (SpeedRatio > 0.8f) {
+	if (SpeedRatio > HighSpeedRatio) {
 		Color = HighFlowColor;
 	}
-	else if (SpeedRatio > 0.5f) {
+	else if (SpeedRatio > MedSpeedRatio) {
 		Color = MedFlowColor;
 	}
 	else {
@@ -1197,6 +1197,16 @@ void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapVertex> & Verti
 			Vertex->TextureCoordinate4 = FVector2D(SpeedRatio * 100, 0.0f);
 			if (ZOffset != 0.0f) {
 				Vertex->Position.Z = ZOffset;
+			}
+
+			if (SpeedRatio > HighSpeedRatio) {
+				Vertex->Position.Z += 0.0;
+			}
+			else if (SpeedRatio > MedSpeedRatio) {
+				Vertex->Position.Z += 1.0;
+			}
+			else {
+				Vertex->Position.Z += 2.0;
 			}
 		}
 	}
