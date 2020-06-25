@@ -15,7 +15,7 @@
 #include "Modules/ModuleManager.h"
 #include "PropertyEditorModule.h"
 #include "LandscapeLayerInfoObject.h"
-#include "Public\StreetMapComponent.h"
+#include "Public/StreetMapComponent.h"
 #endif //WITH_EDITOR
 
 // #define BAKE_THICKNESS

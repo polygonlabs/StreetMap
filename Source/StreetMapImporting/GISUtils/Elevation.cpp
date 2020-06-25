@@ -110,10 +110,10 @@ private:
 				return false;
 			}
 
-			const TArray<uint8>* RawPNG = nullptr;
+			TArray64<uint8> RawPNG;
 			if (PngImageWrapper->GetRaw(Format, BitDepth, RawPNG))
 			{
-				const uint8* Data = RawPNG->GetData();
+				const uint8* Data = RawPNG.GetData();
 				Elevation.SetNumUninitialized(Width * Height);
 				float* ElevationData = Elevation.GetData();
 				const float* ElevationDataEnd = ElevationData + (Width * Height);
@@ -166,6 +166,8 @@ private:
 
 	void DownloadFile()
 	{
+        #ifdef __linux__
+        #else
 		FString URL = FString::Printf(*TiledMap.URLTemplate, Z, X, Y);
 		GWarn->Logf(ELogVerbosity::Error, TEXT("URL: %s"), *URL);
 
@@ -178,6 +180,7 @@ private:
 			NumPendingDownloads++;
 		}
 		else
+        #endif
 		{
 			Failed = true;
 		}
