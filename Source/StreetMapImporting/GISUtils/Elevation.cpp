@@ -110,10 +110,10 @@ private:
 				return false;
 			}
 
-			TArray64<uint8> RawPNG;
+			const TArray<uint8>* RawPNG = nullptr;
 			if (PngImageWrapper->GetRaw(Format, BitDepth, RawPNG))
 			{
-				const uint8* Data = RawPNG.GetData();
+				const uint8* Data = RawPNG->GetData();
 				Elevation.SetNumUninitialized(Width * Height);
 				float* ElevationData = Elevation.GetData();
 				const float* ElevationDataEnd = ElevationData + (Width * Height);
