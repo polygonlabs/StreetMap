@@ -164,6 +164,7 @@ FPrimitiveViewRelevance FStreetMapSceneProxy::GetViewRelevance( const FSceneView
 	FPrimitiveViewRelevance Result;
 	Result.bDrawRelevance = IsShown(View);
 	Result.bShadowRelevance = IsShadowCast(View);
+	Result.bRenderCustomDepth = ShouldRenderCustomDepth();
 	
 	const bool bAlwaysHasDynamicData = false;
 
