@@ -1194,7 +1194,13 @@ void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapVertex> & Verti
 
 			Vertex->IsTrace = false;
 			Vertex->Color = RoadColor;
+<<<<<<< Updated upstream
 			Vertex->TextureCoordinate4 = FVector2D(SpeedRatio * 100, 0.0f);
+=======
+			auto Direction = Vertex->TextureCoordinate4.Y;
+			Vertex->TextureCoordinate4 = FVector2D(SpeedRatio * 100, Direction);
+			
+>>>>>>> Stashed changes
 			if (ZOffset != 0.0f) {
 				Vertex->Position.Z = ZOffset;
 			}
@@ -1203,10 +1209,17 @@ void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapVertex> & Verti
 				Vertex->Position.Z += 0.0;
 			}
 			else if (SpeedRatio > MedSpeedRatio) {
+<<<<<<< Updated upstream
 				Vertex->Position.Z += 1.0;
 			}
 			else {
 				Vertex->Position.Z += 2.0;
+=======
+				Vertex->Position.Z += 0.001;
+			}
+			else {
+				Vertex->Position.Z += 0.002;
+>>>>>>> Stashed changes
 			}
 		}
 	}
