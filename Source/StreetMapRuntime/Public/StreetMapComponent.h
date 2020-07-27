@@ -158,7 +158,8 @@ public:
 	void BuildMesh();
 
 	/** Rebuilds road mesh only */
-	void BuildRoadMesh(EStreetMapRoadType Type);
+	void BuildRoadMesh(FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
+	void BuildRoadMesh(EStreetMapRoadType Type, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
 
 	/** Get speed & color from flow/predictive data, returns false if no data is found */
 	bool GetSpeedAndColorFromData(const FStreetMapRoad* Road, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio, FColor& OutColor, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
