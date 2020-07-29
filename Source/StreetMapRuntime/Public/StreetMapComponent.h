@@ -21,7 +21,7 @@ class STREETMAPRUNTIME_API UStreetMapComponent : public UMeshComponent, public I
 private: 
 	TMap<FName, float> mFlowData;
 	TMap<FName, FPredictiveData> mPredictiveData;
-	TMap<FGuid, TArray<FStreetMapLink>> mTraces;
+	TMap<FGuid, FStreetMapTrace> mTraces;
 	TMap<FName, int> mTMC2RoadIndex;
 	TMap<FStreetMapLink, int> mLink2RoadIndex;
 
@@ -232,13 +232,19 @@ public:
 		void ClearPredictiveData();
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		FGuid AddTrace(FLinearColor Color, TArray<FStreetMapLink> Links);
+		FGuid AddTrace(FStreetMapTrace Trace);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		bool ShowTrace(FGuid GUID);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		bool HideTrace(FGuid GUID, FColor LowFlowColor, FColor MedFlowColor, FColor HighFlowColor);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		bool DeleteTrace(FGuid GUID, FColor LowFlowColor, FColor MedFlowColor, FColor HighFlowColor);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		bool GetTraceDetails(FGuid GUID, float& OutAvgSpeed, float& OutDistance, float& OutTravelTime, float& OutIdealTravelTime);
-
-	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		bool DeleteTrace(FGuid GUID);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		bool GetSpeed(FStreetMapLink Link, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio);

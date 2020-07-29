@@ -76,8 +76,6 @@ bool FPolygonTools::TriangulatePolygon( const TArray<FVector2D>& Polygon, TArray
 	return true;
 }
 
-
-
 #include "Landscape.h"
 #include "LandscapeHeightfieldCollisionComponent.h"
 

@@ -7,6 +7,7 @@
 #include "Runtime/Engine/Public/StaticMeshResources.h"
 #include "GenericPlatform/GenericPlatformMath.h"
 #include "PolygonTools.h"
+#include "Async.h"
 
 #include <algorithm>
 
@@ -1657,7 +1658,7 @@ void UStreetMapComponent::RefreshStreetColors()
 	const FColor LowFlowColor = MeshBuildSettings.LowFlowColor.ToFColor(false);
 	const FColor MedFlowColor = MeshBuildSettings.MedFlowColor.ToFColor(false);
 	const FColor HighFlowColor = MeshBuildSettings.HighFlowColor.ToFColor(false);
-	
+
 	BuildRoadMesh(HighFlowColor, MedFlowColor, LowFlowColor);
 }
 
@@ -3059,17 +3060,78 @@ void UStreetMapComponent::ClearPredictiveData()
 }
 
 
-FGuid UStreetMapComponent::AddTrace(FLinearColor Color, TArray<FStreetMapLink> Links)
+FGuid UStreetMapComponent::AddTrace(FStreetMapTrace Trace)
 {
 	FGuid NewGuid = FGuid::NewGuid();
+	
+	Trace.GUID = NewGuid;
+	mTraces.Add(NewGuid, Trace);
 
-	mTraces.Add(NewGuid, Links);
-
-	this->ColorRoadMesh(Color, HighwayVertices, Links, true, 1.0f);
-	this->ColorRoadMesh(Color, MajorRoadVertices, Links, true, 1.0f);
-	this->ColorRoadMesh(Color, StreetVertices, Links, true, 1.0f);
+	this->ColorRoadMesh(Trace.Color, HighwayVertices, Trace.Links, true, 1.0f);
+	this->ColorRoadMesh(Trace.Color, MajorRoadVertices, Trace.Links, true, 1.0f);
+	this->ColorRoadMesh(Trace.Color, StreetVertices, Trace.Links, true, 1.0f);
 
 	return NewGuid;
+}
+
+bool UStreetMapComponent::ShowTrace(FGuid GUID)
+{
+	if (mTraces.Contains(GUID)) {
+		auto Trace = mTraces[GUID];
+
+		this->ColorRoadMesh(Trace.Color, HighwayVertices, Trace.Links, true, 1.0f);
+		this->ColorRoadMesh(Trace.Color, MajorRoadVertices, Trace.Links, true, 1.0f);
+		this->ColorRoadMesh(Trace.Color, StreetVertices, Trace.Links, true, 1.0f);
+
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+bool UStreetMapComponent::HideTrace(FGuid GUID, FColor LowFlowColor = FColor::Transparent, FColor MedFlowColor = FColor::Transparent, FColor HighFlowColor = FColor::Transparent)
+{
+	const FColor StreetColor = MeshBuildSettings.StreetColor.ToFColor(false);
+	const FColor MajorRoadColor = MeshBuildSettings.MajorRoadColor.ToFColor(false);
+	const FColor HighwayColor = MeshBuildSettings.HighwayColor.ToFColor(false);
+	const float StreetOffsetZ = MeshBuildSettings.StreetOffsetZ;
+	const float MajorRoadOffsetZ = MeshBuildSettings.MajorRoadOffsetZ;
+	const float HighwayOffsetZ = MeshBuildSettings.HighwayOffsetZ;
+	const EColorMode ColorMode = MeshBuildSettings.ColorMode;
+
+	if (LowFlowColor == FColor::Transparent) {
+		LowFlowColor = MeshBuildSettings.LowFlowColor.ToFColor(false);
+	}
+	if (MedFlowColor == FColor::Transparent) {
+		MedFlowColor = MeshBuildSettings.MedFlowColor.ToFColor(false);
+	}
+	if (HighFlowColor == FColor::Transparent) {
+		HighFlowColor = MeshBuildSettings.HighFlowColor.ToFColor(false);
+	}
+
+	if (!mTraces.Contains(GUID)) return false;
+
+	auto Trace = mTraces[GUID];
+
+	switch (ColorMode) {
+	case EColorMode::Flow:
+	case EColorMode::Predictive0:
+	case EColorMode::Predictive15:
+	case EColorMode::Predictive30:
+	case EColorMode::Predictive45:
+		this->ColorRoadMeshFromData(HighwayVertices, Trace.Links, HighwayColor, LowFlowColor, MedFlowColor, HighFlowColor, true, HighwayOffsetZ);
+		this->ColorRoadMeshFromData(MajorRoadVertices, Trace.Links, MajorRoadColor, LowFlowColor, MedFlowColor, HighFlowColor, true, MajorRoadOffsetZ);
+		this->ColorRoadMeshFromData(StreetVertices, Trace.Links, StreetColor, LowFlowColor, MedFlowColor, HighFlowColor, true, StreetOffsetZ);
+		break;
+	default:
+		this->ColorRoadMesh(HighwayColor, HighwayVertices, Trace.Links, false, HighwayOffsetZ);
+		this->ColorRoadMesh(MajorRoadColor, MajorRoadVertices, Trace.Links, false, MajorRoadOffsetZ);
+		this->ColorRoadMesh(StreetColor, StreetVertices, Trace.Links, false, StreetOffsetZ);
+		break;
+	}
+
+	return true;
 }
 
 bool UStreetMapComponent::GetTraceDetails(FGuid GUID, float& OutAvgSpeed, float& OutDistance, float& OutTravelTime, float& OutIdealTravelTime)
@@ -3078,11 +3140,11 @@ bool UStreetMapComponent::GetTraceDetails(FGuid GUID, float& OutAvgSpeed, float&
 	if (!mTraces.Contains(GUID)) return false;
 
 	const auto& Roads = StreetMap->GetRoads();
-	const auto TraceLinks = mTraces[GUID];
+	const auto Trace = mTraces[GUID];
 	float IdealTotalTimeMin = 0;
 	float TotalTimeMin = 0;
 
-	for (const auto& TraceLink : TraceLinks)
+	for (const auto& TraceLink : Trace.Links)
 	{
 		if (mLink2RoadIndex.Contains(TraceLink))
 		{
@@ -3110,7 +3172,7 @@ bool UStreetMapComponent::GetTraceDetails(FGuid GUID, float& OutAvgSpeed, float&
 	return true;
 }
 
-bool UStreetMapComponent::DeleteTrace(FGuid GUID)
+bool UStreetMapComponent::DeleteTrace(FGuid GUID, FColor LowFlowColor = FColor::Transparent, FColor MedFlowColor = FColor::Transparent, FColor HighFlowColor = FColor::Transparent)
 {
 	const FColor StreetColor = MeshBuildSettings.StreetColor.ToFColor(false);
 	const FColor MajorRoadColor = MeshBuildSettings.MajorRoadColor.ToFColor(false);
@@ -3119,6 +3181,16 @@ bool UStreetMapComponent::DeleteTrace(FGuid GUID)
 	const float MajorRoadOffsetZ = MeshBuildSettings.MajorRoadOffsetZ;
 	const float HighwayOffsetZ = MeshBuildSettings.HighwayOffsetZ;
 	const EColorMode ColorMode = MeshBuildSettings.ColorMode;
+
+	if (LowFlowColor == FColor::Transparent) {
+		LowFlowColor = MeshBuildSettings.LowFlowColor.ToFColor(false);
+	}
+	if (MedFlowColor == FColor::Transparent) {
+		MedFlowColor = MeshBuildSettings.MedFlowColor.ToFColor(false);
+	}
+	if (HighFlowColor == FColor::Transparent) {
+		HighFlowColor = MeshBuildSettings.HighFlowColor.ToFColor(false);
+	}
 
 	if (!mTraces.Contains(GUID)) return false;
 
@@ -3130,14 +3202,14 @@ bool UStreetMapComponent::DeleteTrace(FGuid GUID)
 	case EColorMode::Predictive15:
 	case EColorMode::Predictive30:
 	case EColorMode::Predictive45:
-		this->ColorRoadMeshFromData(HighwayVertices, Trace, HighwayColor, true, HighwayOffsetZ);
-		this->ColorRoadMeshFromData(MajorRoadVertices, Trace, MajorRoadColor, true, MajorRoadOffsetZ);
-		this->ColorRoadMeshFromData(StreetVertices, Trace, StreetColor, true, StreetOffsetZ);
+		this->ColorRoadMeshFromData(HighwayVertices, Trace.Links, HighwayColor, LowFlowColor, MedFlowColor, HighFlowColor, true, HighwayOffsetZ);
+		this->ColorRoadMeshFromData(MajorRoadVertices, Trace.Links, MajorRoadColor, LowFlowColor, MedFlowColor, HighFlowColor, true, MajorRoadOffsetZ);
+		this->ColorRoadMeshFromData(StreetVertices, Trace.Links, StreetColor, LowFlowColor, MedFlowColor, HighFlowColor, true, StreetOffsetZ);
 		break;
 	default:
-		this->ColorRoadMesh(HighwayColor, HighwayVertices, Trace, false, HighwayOffsetZ);
-		this->ColorRoadMesh(MajorRoadColor, MajorRoadVertices, Trace, false, MajorRoadOffsetZ);
-		this->ColorRoadMesh(StreetColor, StreetVertices, Trace, false, StreetOffsetZ);
+		this->ColorRoadMesh(HighwayColor, HighwayVertices, Trace.Links, false, HighwayOffsetZ);
+		this->ColorRoadMesh(MajorRoadColor, MajorRoadVertices, Trace.Links, false, MajorRoadOffsetZ);
+		this->ColorRoadMesh(StreetColor, StreetVertices, Trace.Links, false, StreetOffsetZ);
 		break;
 	}
 

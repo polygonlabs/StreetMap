@@ -480,17 +480,34 @@ struct STREETMAPRUNTIME_API FStreetMapLink : public FTableRowBase
 {
 	GENERATED_USTRUCT_BODY()
 
-		FStreetMapLink(int64 linkId = 0, FString linkDir = "T")
-	{
-		LinkId = linkId;
-		LinkDir = linkDir;
-	}
-
-	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
+		UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		int64 LinkId;
 
 	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FString LinkDir;
+
+	FStreetMapLink(int64 linkId = 0, FString linkDir = "T")
+	{
+		LinkId = linkId;
+		LinkDir = linkDir;
+	}
+};
+
+
+/** T3 Trace */
+USTRUCT(BlueprintType)
+struct STREETMAPRUNTIME_API FStreetMapTrace
+{
+	GENERATED_USTRUCT_BODY()
+
+		UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
+		FGuid GUID;
+
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
+		TArray<FStreetMapLink> Links;
+
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
+		FLinearColor Color;
 };
 
 inline uint32 GetTypeHash(const FStreetMapLink& Value)
