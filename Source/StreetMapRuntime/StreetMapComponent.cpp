@@ -7,7 +7,6 @@
 #include "Runtime/Engine/Public/StaticMeshResources.h"
 #include "GenericPlatform/GenericPlatformMath.h"
 #include "PolygonTools.h"
-#include "Async.h"
 
 #include <algorithm>
 
@@ -1692,6 +1691,165 @@ void UStreetMapComponent::OverrideFlowColors(FLinearColor LowFlowColor, FLinearC
 
 	BuildRoadMesh(HighFlowColor.ToFColor(false), MedFlowColor.ToFColor(false), LowFlowColor.ToFColor(false));
 }
+
+
+TArray<int> UStreetMapComponent::CalculatePath(int start, int target)
+{
+	return ComputeRoute(start, target);
+}
+
+TArray<int> UStreetMapComponent::ComputeRoute(int start, int target)
+{
+	TArray<int> openList;
+	TArray<int> closedList;
+
+	int startNode = start;
+	int targetNode = target;
+
+	TMap<int, float> g;
+	TMap<int, float> f;
+
+	TMap<int, int> pred;
+
+	auto Roads = StreetMap->GetRoads();
+	auto Nodes = StreetMap->GetNodes();
+
+	auto getNeighbours = [&](int index) -> TArray<int>
+	{
+		TArray<int> neighbours;
+		if (index < 0 || index >= Roads.Num())
+			return neighbours;
+
+		// possible optimization
+		// only use start/end indices as neighbours (but have to check if target node lies within this road)
+		for (const auto& ref : Nodes[index].RoadRefs)
+		{
+			for (auto& idx : Roads[ref.RoadIndex].NodeIndices)
+			{
+				neighbours.Push(idx);
+			}
+		}
+
+		return neighbours;
+	};
+
+	auto distance = [&](int node1, int node2) -> float
+	{
+		auto dist = Nodes[node1].Location - Nodes[node2].Location;
+		return dist.Size();
+	};
+
+	auto heuristic = [&](int node) -> float
+	{
+		if (node == targetNode)
+		{
+			return 0.0f;
+		}
+
+		return distance(node, targetNode);
+	};
+
+	auto expandNode = [&](int node)
+	{
+		TArray<int> neighbours = getNeighbours(node);
+		for (auto successor : neighbours)
+		{
+			if (successor < 0)
+			{
+				continue;
+			}
+			if (closedList.Contains(successor))
+			{
+				continue;
+			}
+
+			float fDistance = distance(node, successor);
+			if (successor == targetNode)
+			{
+				fDistance = 0.0f;
+			}
+
+			float tentative_g = g[node] + fDistance;
+
+			if (!openList.Contains(successor))
+			{
+				openList.Push(successor);
+				g.Emplace(successor, FLT_MAX);
+				f.Emplace(successor, 0.0f);
+			}
+
+			if (tentative_g >= g[successor])
+			{
+				continue;
+			}
+
+			pred.Emplace(successor, node);
+			g.Emplace(successor, tentative_g);
+			f.Emplace(successor, tentative_g + heuristic(successor));
+		}
+	};
+
+	auto removeMinOpen = [&]() -> int
+	{
+		int min = openList[0];
+		float f_ = f[min];
+		for (auto n : openList)
+		{
+			if (f[n] < f_)
+			{
+				f_ = f[n];
+				min = n;
+			}
+		}
+		openList.Remove(min);
+		return min;
+	};
+
+	auto reconstructPath = [&]() -> TArray<int>
+	{
+		TArray<int> path;
+		int current = targetNode;
+		while (current != startNode)
+		{
+			path.Add(current);
+			current = pred[current];
+		}
+
+		return path;
+	};
+
+	bool found = false;
+	int nodesVisisted = 0;
+	g.Emplace(startNode, 0);
+	f.Emplace(startNode, heuristic(startNode));
+	openList.Add(startNode);
+	while (openList.Num() > 0)
+	{
+		int currentNode = removeMinOpen();
+
+		if (currentNode == targetNode)
+		{
+			found = true;
+			break;
+		}
+
+		expandNode(currentNode);
+		++nodesVisisted;
+
+		closedList.Push(currentNode);
+	}
+
+	if (found)
+	{
+		// reconstruct path
+		return reconstructPath();
+	}
+	else
+	{
+		return TArray<int>();
+	}
+}
+
 
 void UStreetMapComponent::ChangeStreetThickness(float val, EStreetMapRoadType type)
 {

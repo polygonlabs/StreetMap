@@ -189,6 +189,11 @@ public:
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FName> TMCs, bool IsTrace = false, float ZOffset = 0.0f);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		TArray<int> CalculatePath(int start, int target);
+
+	TArray<int> ComputeRoute(int start, int target);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetThickness(float val, EStreetMapRoadType type);
 	
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
