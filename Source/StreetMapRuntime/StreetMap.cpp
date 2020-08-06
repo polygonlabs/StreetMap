@@ -6,6 +6,8 @@
 #include "StreetMapRuntime.h"
 #include "EditorFramework/AssetImportData.h"
 
+DEFINE_LOG_CATEGORY(LogStreetMap)
+
 UStreetMap::UStreetMap()
 {
 #if WITH_EDITORONLY_DATA

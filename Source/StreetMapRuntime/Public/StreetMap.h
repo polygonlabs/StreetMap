@@ -8,6 +8,8 @@
 #include "Misc/Crc.h"
 #include "StreetMap.generated.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogStreetMap, All, All);
+
 class FOSMNodeInfo;
 
 /** Types of miscellaneous ways */

@@ -6,6 +6,8 @@
 
 #include "ScopedTransaction.h"
 
+#include "Spatial/PointHashGrid2.h"
+
 #define LOCTEXT_NAMESPACE "StreetMapImporting"
 
 static void BuildStreetMapRoads(class UStreetMapComponent* StreetMapComponent,
@@ -28,6 +30,7 @@ static void BuildStreetMapRoads(class UStreetMapComponent* StreetMapComponent,
 		for (int32 PointIndex = 0; PointIndex < NumPoints; PointIndex++)
 		{
 			const FVector2D& PointLocation = Road.RoadPoints[PointIndex];
+
 			const int32 NodeIndex = Road.NodeIndices[PointIndex];
 
 			// Width of the Road depends on type - TODO: look up German rules of standard road geometries

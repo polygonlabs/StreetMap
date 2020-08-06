@@ -8,16 +8,23 @@ namespace UnrealBuildTool.Rules
         {
             PrivatePCHHeaderFile = "StreetMapRuntime.h";
             PrivateDependencyModuleNames.AddRange(
-				new string[] {
+                new string[] {
                     "Core",
-					"CoreUObject",
-					"Engine",
-					"RHI",
-					"RenderCore",
+                    "CoreUObject",
+                    "Engine",
+                    "RHI",
+                    "RenderCore",
                     "Renderer",
                     "Landscape"
                 }
-			);
+            );
+
+            PublicDependencyModuleNames.AddRange(
+                new string[]
+                {
+                    "GeometricObjects"
+                }
+            );
 
             if (Target.bBuildEditor == true)
             {
