@@ -1693,30 +1693,30 @@ void UStreetMapComponent::OverrideFlowColors(FLinearColor LowFlowColor, FLinearC
 }
 
 
-TArray<int> UStreetMapComponent::CalculatePath(int start, int target)
+TArray<int64> UStreetMapComponent::CalculatePath(int64 start, int64 target)
 {
 	return ComputeRoute(start, target);
 }
 
-TArray<int> UStreetMapComponent::ComputeRoute(int start, int target)
+TArray<int64> UStreetMapComponent::ComputeRoute(int64 start, int64 target)
 {
-	TArray<int> openList;
-	TArray<int> closedList;
+	TArray<int64> openList;
+	TArray<int64> closedList;
 
-	int startNode = start;
-	int targetNode = target;
+	int64 startNode = start;
+	int64 targetNode = target;
 
-	TMap<int, float> g;
-	TMap<int, float> f;
+	TMap<int64, float> g;
+	TMap<int64, float> f;
 
-	TMap<int, int> pred;
+	TMap<int64, int64> pred;
 
 	auto Roads = StreetMap->GetRoads();
 	auto Nodes = StreetMap->GetNodes();
 
-	auto getNeighbours = [&](int index) -> TArray<int>
+	auto getNeighbours = [&](int64 index) -> TArray<int64>
 	{
-		TArray<int> neighbours;
+		TArray<int64> neighbours;
 		if (index < 0 || index >= Roads.Num())
 			return neighbours;
 
@@ -1733,13 +1733,13 @@ TArray<int> UStreetMapComponent::ComputeRoute(int start, int target)
 		return neighbours;
 	};
 
-	auto distance = [&](int node1, int node2) -> float
+	auto distance = [&](int64 node1, int64 node2) -> float
 	{
 		auto dist = Nodes[node1].Location - Nodes[node2].Location;
 		return dist.Size();
 	};
 
-	auto heuristic = [&](int node) -> float
+	auto heuristic = [&](int64 node) -> float
 	{
 		if (node == targetNode)
 		{
@@ -1749,9 +1749,9 @@ TArray<int> UStreetMapComponent::ComputeRoute(int start, int target)
 		return distance(node, targetNode);
 	};
 
-	auto expandNode = [&](int node)
+	auto expandNode = [&](int64 node)
 	{
-		TArray<int> neighbours = getNeighbours(node);
+		TArray<int64> neighbours = getNeighbours(node);
 		for (auto successor : neighbours)
 		{
 			if (successor < 0)
@@ -1791,7 +1791,7 @@ TArray<int> UStreetMapComponent::ComputeRoute(int start, int target)
 
 	auto removeMinOpen = [&]() -> int
 	{
-		int min = openList[0];
+		int64 min = openList[0];
 		float f_ = f[min];
 		for (auto n : openList)
 		{
@@ -1805,10 +1805,10 @@ TArray<int> UStreetMapComponent::ComputeRoute(int start, int target)
 		return min;
 	};
 
-	auto reconstructPath = [&]() -> TArray<int>
+	auto reconstructPath = [&]() -> TArray<int64>
 	{
-		TArray<int> path;
-		int current = targetNode;
+		TArray<int64> path;
+		int64 current = targetNode;
 		while (current != startNode)
 		{
 			path.Add(current);
@@ -1819,13 +1819,13 @@ TArray<int> UStreetMapComponent::ComputeRoute(int start, int target)
 	};
 
 	bool found = false;
-	int nodesVisisted = 0;
+	int64 nodesVisisted = 0;
 	g.Emplace(startNode, 0);
 	f.Emplace(startNode, heuristic(startNode));
 	openList.Add(startNode);
 	while (openList.Num() > 0)
 	{
-		int currentNode = removeMinOpen();
+		int64 currentNode = removeMinOpen();
 
 		if (currentNode == targetNode)
 		{
@@ -1846,7 +1846,7 @@ TArray<int> UStreetMapComponent::ComputeRoute(int start, int target)
 	}
 	else
 	{
-		return TArray<int>();
+		return TArray<int64>();
 	}
 }
 
