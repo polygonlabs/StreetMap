@@ -1693,12 +1693,12 @@ void UStreetMapComponent::OverrideFlowColors(FLinearColor LowFlowColor, FLinearC
 }
 
 
-TArray<int64> UStreetMapComponent::CalculatePath(int64 start, int64 target)
+TArray<int64> UStreetMapComponent::CalculateRouteNodes(int64 start, int64 target)
 {
-	return ComputeRoute(start, target);
+	return ComputeRouteNodes(start, target);
 }
 
-TArray<int64> UStreetMapComponent::ComputeRoute(int64 start, int64 target)
+TArray<int64> UStreetMapComponent::ComputeRouteNodes(int64 start, int64 target)
 {
 	TArray<int64> openList;
 	TArray<int64> closedList;
@@ -1717,7 +1717,7 @@ TArray<int64> UStreetMapComponent::ComputeRoute(int64 start, int64 target)
 	auto getNeighbours = [&](int64 index) -> TArray<int64>
 	{
 		TArray<int64> neighbours;
-		if (index < 0 || index >= Roads.Num())
+		if (index < 0 || index >= Nodes.Num())
 			return neighbours;
 
 		// possible optimization
@@ -1850,6 +1850,199 @@ TArray<int64> UStreetMapComponent::ComputeRoute(int64 start, int64 target)
 	}
 }
 
+TArray<FStreetMapLink>
+UStreetMapComponent::CalculateRoute(int64 start, int64 target, bool keepRoadType)
+{
+	return ComputeRoute(start, target, keepRoadType);
+}
+
+TArray<FStreetMapLink>
+UStreetMapComponent::ComputeRoute(int64 start, int64 target, bool keepRoadType)
+{
+	auto Roads = StreetMap->GetRoads();
+	auto Nodes = StreetMap->GetNodes();
+
+	TArray<int32> openList;
+	TArray<int32> closedList;
+
+	auto startRoad = Roads.IndexOfByPredicate([&](const FStreetMapRoad& r)
+	{
+		return r.Link.LinkId == start;
+	});
+
+	auto targetRoad = Roads.IndexOfByPredicate([&](const FStreetMapRoad& r)
+	{
+		return r.Link.LinkId == target;
+	});
+
+
+	TMap<int32, float> g;
+	TMap<int32, float> f;
+
+	TMap<int32, int32> pred;
+
+	auto targetMidIdx = Roads[targetRoad].RoadPoints.Num() >> 1;
+	FVector2D targetMid = Roads[targetRoad].RoadPoints[targetMidIdx];
+
+	auto getNeighbours = [&](int32 index) -> TArray<int32>
+	{
+		TArray<int32> neighbours;
+		if (index < 0 || index >= Roads.Num())
+			return neighbours;
+
+		auto roadStart = Roads[index].NodeIndices[0];
+		auto roadEnd = Roads[index].NodeIndices.Last();
+
+		for (auto& road : Nodes[roadStart].RoadRefs)
+		{
+			if (road.RoadIndex != index
+				&& (!keepRoadType || (Roads[road.RoadIndex].RoadType == Roads[index].RoadType) ))
+			{
+				neighbours.Push(road.RoadIndex);
+			}
+		}
+
+		for (auto& road : Nodes[roadEnd].RoadRefs)
+		{
+			if (road.RoadIndex != index
+				&& (!keepRoadType || (Roads[road.RoadIndex].RoadType == Roads[index].RoadType)))
+			{
+				neighbours.Push(road.RoadIndex);
+			}
+		}
+
+		return neighbours;
+	};
+
+	auto distance = [&](int32 road1, int32 road2) -> float
+	{
+		auto mid1 = Roads[road1].RoadPoints.Num() >> 1;
+		auto mid2 = Roads[road2].RoadPoints.Num() >> 1;
+
+		auto dist = Roads[road2].RoadPoints[mid2] - Roads[road1].RoadPoints[mid1];
+
+		return dist.Size();
+	};
+
+	auto heuristic = [&](int32 road) -> float
+	{
+		if (road == targetRoad)
+		{
+			return 0.0f;
+		}
+
+		// Possible improvements
+		// - Take the direction of the road (LastPoint - First Point) and the sine
+		//   between it and the vector (target - mid) to scale the heuristic
+		//   -> Does the street point in the cirection of the target
+		// - Flat scale for slower roads
+
+		auto mid = Roads[road].RoadPoints.Num() >> 1;
+		auto dist = targetMid - Roads[road].RoadPoints[mid];
+
+		return dist.Size();
+	};
+
+	auto expandNode = [&](int32 road)
+	{
+		TArray<int32> neighbours = getNeighbours(road);
+		for (auto successor : neighbours)
+		{
+			if (successor < 0)
+			{
+				continue;
+			}
+			if (closedList.Contains(successor))
+			{
+				continue;
+			}
+
+			float fDistance = distance(road, successor);
+			if (successor == targetRoad)
+			{
+				fDistance = 0.0f;
+			}
+
+			float tentative_g = g[road] + fDistance;
+
+			if (!openList.Contains(successor))
+			{
+				openList.Push(successor);
+				g.Emplace(successor, FLT_MAX);
+				f.Emplace(successor, 0.0f);
+			}
+
+			if (tentative_g >= g[successor])
+			{
+				continue;
+			}
+
+			pred.Emplace(successor, road);
+			g.Emplace(successor, tentative_g);
+			f.Emplace(successor, tentative_g + heuristic(successor));
+		}
+	};
+
+	auto removeMinOpen = [&]() -> int
+	{
+		int32 min = openList[0];
+		float f_ = f[min];
+		for (auto n : openList)
+		{
+			if (f[n] < f_)
+			{
+				f_ = f[n];
+				min = n;
+			}
+		}
+		openList.Remove(min);
+		return min;
+	};
+
+	auto reconstructPath = [&]() -> TArray<FStreetMapLink>
+	{
+		TArray<FStreetMapLink> path;
+		int32 current = targetRoad;
+		while (current != startRoad)
+		{
+			path.Add({ Roads[current].Link.LinkId, Roads[current].Link.LinkDir });
+			current = pred[current];
+		}
+
+		return path;
+	};
+
+	bool found = false;
+	int32 nodesVisisted = 0;
+	g.Emplace(startRoad, 0);
+	f.Emplace(startRoad, heuristic(startRoad));
+	openList.Add(startRoad);
+	while (openList.Num() > 0)
+	{
+		int32 currentNode = removeMinOpen();
+
+		if (currentNode == targetRoad)
+		{
+			found = true;
+			break;
+		}
+
+		expandNode(currentNode);
+		++nodesVisisted;
+
+		closedList.Push(currentNode);
+	}
+
+	if (found)
+	{
+		// reconstruct path
+		return reconstructPath();
+	}
+	else
+	{
+		return TArray<FStreetMapLink>();
+	}
+}
 
 void UStreetMapComponent::ChangeStreetThickness(float val, EStreetMapRoadType type)
 {
