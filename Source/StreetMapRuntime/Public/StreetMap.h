@@ -537,46 +537,46 @@ struct STREETMAPRUNTIME_API FStreetMapRoad
 {
 	GENERATED_USTRUCT_BODY()
 
-		/** Name of the road */
-		UPROPERTY(Category = StreetMap, EditAnywhere)
+	/** Name of the road */
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FString RoadName;
 
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FStreetMapLink Link;
 
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FName TMC;
 
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		int SpeedLimit;
 
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		float Distance;
 
 	/** Type of road */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		TEnumAsByte<EStreetMapRoadType> RoadType;
 
 	/** Nodes along this road, one at each point in the RoadPoints list */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		TArray<int32> NodeIndices;
 
 	/** List of all of the points on this road, one for each node in the NodeIndices list */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		TArray<FVector2D> RoadPoints;
 
 	// @todo: Performance: Bounding information could be computed at load time if we want to avoid the memory cost of storing it
 
 	/** 2D bounds (min) of this road's points */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FVector2D BoundsMin;
 
 	/** 2D bounds (max) of this road's points */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		FVector2D BoundsMax;
 
 	/** True if this node is a one way.  One way nodes are only traversable in the order the nodes are listed in the above array. */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
+	UPROPERTY(Category = StreetMap, EditAnywhere, BlueprintReadWrite)
 		uint8 bIsOneWay : 1;
 
 	/** the texture V component at the start and end of the road */
