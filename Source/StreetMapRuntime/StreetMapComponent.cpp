@@ -5,8 +5,13 @@
 #include "StreetMapSceneProxy.h"
 #include "Runtime/Engine/Classes/Engine/StaticMesh.h"
 #include "Runtime/Engine/Public/StaticMeshResources.h"
+#include "Engine/Polys.h"
 #include "GenericPlatform/GenericPlatformMath.h"
 #include "PolygonTools.h"
+#include "Async.h"
+#include "Spatial/GeometrySet3.h"
+#include "RayTypes.h"
+
 
 #include <algorithm>
 
@@ -81,6 +86,163 @@ UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitial
 #endif
 }
 
+void UStreetMapComponent::IndexStreetMap()
+{
+	if (StreetMap != nullptr) {
+		auto Roads = StreetMap->GetRoads();
+		int RoadIndex = 0;
+		int PointIndex = 0;
+
+		mHighwayGeometrySet3.Reset();
+		mHighwayRoadIndex2PointIndices.Reset();
+		mHighwayPointIndex2RoadIndex.Reset();
+
+		mMajorGeometrySet3.Reset();
+		mMajorRoadIndex2PointIndices.Reset();
+		mMajorPointIndex2RoadIndex.Reset();
+
+		mStreetGeometrySet3.Reset();
+		mStreetRoadIndex2PointIndices.Reset();
+		mStreetPointIndex2RoadIndex.Reset();
+
+		mTMC2RoadIndex.Reset();
+		mLink2RoadIndex.Reset();
+
+		for (auto& Road : Roads)
+		{
+			TArray<int> PointIndices;
+			double PositionZ = 0;
+
+			int LocalPointIndex = 0;
+			FPoly Poly = FPoly();
+
+			FGeometrySet3* GeometrySet3;
+			TMap<int, TArray<int>>* RoadIndex2PointIndices;
+			TMap<int, int>* PointIndex2RoadIndex;
+
+			switch (Road.RoadType) {
+			case EStreetMapRoadType::Highway:
+				PositionZ = MeshBuildSettings.HighwayOffsetZ;
+				GeometrySet3 = &mHighwayGeometrySet3;
+				RoadIndex2PointIndices = &mHighwayRoadIndex2PointIndices;
+				PointIndex2RoadIndex = &mHighwayPointIndex2RoadIndex;
+
+				break;
+			case EStreetMapRoadType::MajorRoad:
+				PositionZ = MeshBuildSettings.MajorRoadOffsetZ;
+				GeometrySet3 = &mMajorGeometrySet3;
+				RoadIndex2PointIndices = &mMajorRoadIndex2PointIndices;
+				PointIndex2RoadIndex = &mMajorPointIndex2RoadIndex;
+
+				break;
+			default:
+				PositionZ = MeshBuildSettings.StreetOffsetZ;
+				GeometrySet3 = &mStreetGeometrySet3;
+				RoadIndex2PointIndices = &mStreetRoadIndex2PointIndices;
+				PointIndex2RoadIndex = &mStreetPointIndex2RoadIndex;
+
+				break;
+			}
+
+
+			// add road points to geometry set
+			for (auto& Point : Road.RoadPoints) {
+				FVector Vector = FVector(Point.X, Point.Y, PositionZ);
+
+				// build poly
+				Poly.InsertVertex(LocalPointIndex, Vector);
+
+				// add point to geometry set
+				GeometrySet3->AddPoint(PointIndex, Vector);
+
+				// map point index to road index
+				PointIndices.Add(PointIndex);
+				PointIndex2RoadIndex->Add(PointIndex, RoadIndex);
+
+				LocalPointIndex++;
+				PointIndex++;
+			}
+
+			// add midpoint
+			FVector MidPoint = Poly.GetMidPoint();
+			GeometrySet3->AddPoint(PointIndex, MidPoint);
+			PointIndices.Add(PointIndex);
+			PointIndex2RoadIndex->Add(PointIndex, RoadIndex);
+			PointIndex++;
+
+			//// add 1/4 and 3/4 points
+			if (Poly.Vertices.Num() >= 2) {
+				FPoly PolyA = FPoly();
+				PolyA.InsertVertex(0, Poly.Vertices[0]);
+				PolyA.InsertVertex(1, MidPoint);
+				GeometrySet3->AddPoint(PointIndex, PolyA.GetMidPoint());
+				PointIndices.Add(PointIndex);
+				PointIndex2RoadIndex->Add(PointIndex, RoadIndex);
+				PointIndex++;
+
+				FPoly PolyB = FPoly();
+				PolyB.InsertVertex(0, MidPoint);
+				PolyB.InsertVertex(1, Poly.Vertices[Poly.Vertices.Num() - 1]);
+				GeometrySet3->AddPoint(PointIndex, PolyB.GetMidPoint());
+				PointIndices.Add(PointIndex);
+				PointIndex2RoadIndex->Add(PointIndex, RoadIndex);
+				PointIndex++;
+			}
+
+			// map road index to point indices
+			RoadIndex2PointIndices->Add(RoadIndex, PointIndices);
+
+			// map TMC and link to road index
+			mTMC2RoadIndex.Add(Road.TMC, RoadIndex);
+			mLink2RoadIndex.Add(Road.Link, RoadIndex);
+
+			RoadIndex++;
+		}
+
+		IndexVertices(mHighwayLink2Vertices, mHighwayTmcs2Vertices, HighwayVertices, mHighwayGeometryVertSet);
+		IndexVertices(mMajorLink2Vertices, mMajorTmcs2Vertices, MajorRoadVertices, mMajorGeometryVertSet);
+		IndexVertices(mStreetLink2Vertices, mStreetTmcs2Vertices, StreetVertices, mStreetGeometryVertSet);
+	}
+}
+
+void UStreetMapComponent::IndexVertices(
+	TMap<FStreetMapLink, 
+	TArray<int>>& LinkMap, 
+	TMap<FName, TArray<int>>& TmcMap, 
+	TArray<FStreetMapVertex>& Vertices, 
+	FGeometrySet3& GeometrySet
+) {
+	GeometrySet.Reset();
+	LinkMap.Reset();
+	TmcMap.Reset();
+
+	int NumVertices = Vertices.Num();
+
+	for (int i = 0; i < NumVertices; i++) {
+		auto* Vertex = &Vertices[i];
+
+		auto Link = FStreetMapLink(Vertex->LinkId, Vertex->LinkDir);
+		if (LinkMap.Contains(Link)) {
+			LinkMap[Link].Add(i);
+		}
+		else {
+			auto VertexIndices = TArray<int>({ i });
+			LinkMap.Add(Link, VertexIndices);
+		}
+
+		if (Vertex->TMC != "None") {
+			if (TmcMap.Contains(Vertex->TMC)) {
+				TmcMap[Vertex->TMC].Add(i);
+			}
+			else {
+				auto VertexIndices = TArray<int>({ i });
+				TmcMap.Add(Vertex->TMC, VertexIndices);
+			}
+		}
+
+		GeometrySet.AddPoint(i, Vertex->Position);
+	}
+}
 
 FPrimitiveSceneProxy* UStreetMapComponent::CreateSceneProxy()
 {
@@ -94,17 +256,7 @@ FPrimitiveSceneProxy* UStreetMapComponent::CreateSceneProxy()
 		StreetMapSceneProxy->Init(this, EVertexType::VMajorRoad, MajorRoadVertices, MajorRoadIndices);
 		StreetMapSceneProxy->Init(this, EVertexType::VHighway, HighwayVertices, HighwayIndices);
 
-		if (StreetMap != nullptr) {
-			const auto Roads = StreetMap->GetRoads();
-			int RoadIndex = 0;
-			for (const auto& Road : Roads)
-			{
-				mTMC2RoadIndex.Add(Road.TMC, RoadIndex);
-				mLink2RoadIndex.Add(Road.Link, RoadIndex);
-
-				RoadIndex++;
-			}
-		}
+		IndexStreetMap();
 	}
 
 	return StreetMapSceneProxy;
@@ -131,20 +283,6 @@ void UStreetMapComponent::SetStreetMap(class UStreetMap* NewStreetMap, bool bCle
 
 		if (bRebuildMesh)
 			BuildMesh();
-
-		mTMC2RoadIndex.Empty();
-		mLink2RoadIndex.Empty();
-
-		// initialize maps
-		const auto Roads = StreetMap->GetRoads();
-		int RoadIndex = 0;
-		for (const auto& Road : Roads)
-		{
-			mTMC2RoadIndex.Add(Road.TMC, RoadIndex);
-			mLink2RoadIndex.Add(Road.Link, RoadIndex);
-
-			RoadIndex++;
-		}
 	}
 }
 
@@ -1265,6 +1403,161 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType, FColor High
 	}
 }
 
+TArray<FVector> UStreetMapComponent::GetRoadVertices(const FStreetMapRoad& Road) {
+	TArray<FVector> Vertices;
+	TArray<FStreetMapVertex>* StreetMapVertices;
+	TMap<FStreetMapLink, TArray<int>>* LinkMap;
+
+	switch (Road.RoadType) {
+	case EStreetMapRoadType::MajorRoad:
+		StreetMapVertices = &MajorRoadVertices;
+		LinkMap = &mMajorLink2Vertices;
+		break;
+	case EStreetMapRoadType::Highway:
+		StreetMapVertices = &HighwayVertices;
+		LinkMap = &mHighwayLink2Vertices;
+		break;
+	default:
+		StreetMapVertices = &StreetVertices;
+		LinkMap = &mStreetLink2Vertices;
+		break;
+	}
+
+	if ((*LinkMap).Contains(Road.Link)) {
+		TArray<int> VertexIndices = (*LinkMap)[Road.Link];
+
+		for (int VertexIndex : VertexIndices) {
+			Vertices.Add((*StreetMapVertices)[VertexIndex].Position);
+		}
+	}
+
+	return Vertices;
+}
+
+FStreetMapRoad UStreetMapComponent::GetClosestRoad(FVector Origin, FVector Direction, FStreetMapRoad& NearestHighway, FStreetMapRoad& NearestMajorRoad, FStreetMapRoad& NearestStreet) {
+	auto Roads = StreetMap->GetRoads();
+	FStreetMapRoad NearestRoad;
+	double ClosestDistance = DBL_MAX;
+	FRay3d Ray3d;
+	Ray3d.Origin = Origin;
+	Ray3d.Direction = Direction;
+
+	FGeometrySet3::FNearest Nearest;
+	TFunction <bool(const FVector3d&, const FVector3d&)> PointWithinToleranceTest = [&](const FVector3d& RayPoint, const FVector3d& Point) {
+		return RayPoint.DistanceSquared(Point) < 250.0;
+	};
+
+	//if (mHighwayGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
+	//{
+	//	int PointIndex = Nearest.ID;
+	//	if (mHighwayPointIndex2RoadIndex.Contains(PointIndex)) {
+	//		int RoadIndex = mHighwayPointIndex2RoadIndex[PointIndex];
+	//		if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
+	//			NearestHighway = Roads[RoadIndex];
+	//			ClosestDistance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+	//			NearestRoad = NearestHighway;
+	//		}
+	//	}
+	//}
+
+	//if (mMajorGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
+	//{
+	//	int PointIndex = Nearest.ID;
+	//	if (mMajorPointIndex2RoadIndex.Contains(PointIndex)) {
+	//		int RoadIndex = mMajorPointIndex2RoadIndex[PointIndex];
+	//		if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
+	//			NearestMajorRoad = Roads[RoadIndex];
+	//			double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+	//			Distance *= 1.5; // make larger roads easier to pick by multiplying distance
+	//			if (Distance < ClosestDistance) {
+	//				ClosestDistance = Distance;
+	//				NearestRoad = NearestMajorRoad;
+	//			}
+	//		}
+	//	}
+	//}
+
+	//if (mStreetGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
+	//{
+	//	int PointIndex = Nearest.ID;
+	//	if (mStreetPointIndex2RoadIndex.Contains(PointIndex)) {
+	//		int RoadIndex = mStreetPointIndex2RoadIndex[PointIndex];
+	//		if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
+	//			NearestStreet = Roads[RoadIndex];
+	//			double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+	//			Distance *= 2.0; // make larger roads easier to pick by multiplying distance
+	//			if (Distance < ClosestDistance) {
+	//				ClosestDistance = Distance;
+	//				NearestRoad = NearestStreet;
+	//			}
+	//		}
+	//	}
+	//}
+
+	if (mHighwayGeometryVertSet.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest)) 
+	{
+		int VertIndex = Nearest.ID;
+		auto Vertex = HighwayVertices[VertIndex];
+		auto Link = FStreetMapLink(Vertex.LinkId, Vertex.LinkDir);
+		
+		if (mLink2RoadIndex.Contains(Link))
+		{
+			int RoadIndex = mLink2RoadIndex[Link];
+			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
+				NearestHighway = Roads[RoadIndex];
+				ClosestDistance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+				NearestRoad = NearestHighway;
+			}
+		}
+	}
+
+	if (mMajorGeometryVertSet.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
+	{
+		int VertIndex = Nearest.ID;
+		auto Vertex = MajorRoadVertices[VertIndex];
+		auto Link = FStreetMapLink(Vertex.LinkId, Vertex.LinkDir);
+
+		if (mLink2RoadIndex.Contains(Link))
+		{
+			int RoadIndex = mLink2RoadIndex[Link];
+			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
+				NearestMajorRoad = Roads[RoadIndex];
+				double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+				Distance *= 1.25; // make larger roads easier to pick by multiplying distance
+				if (Distance < ClosestDistance) {
+					ClosestDistance = Distance;
+					NearestRoad = NearestMajorRoad;
+				}
+			}
+		}
+	}
+
+	if (mStreetGeometryVertSet.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
+	{
+		int VertIndex = Nearest.ID;
+		auto Vertex = StreetVertices[VertIndex];
+		auto Link = FStreetMapLink(Vertex.LinkId, Vertex.LinkDir);
+
+		if (mLink2RoadIndex.Contains(Link))
+		{
+			int RoadIndex = mLink2RoadIndex[Link];
+			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
+				NearestStreet = Roads[RoadIndex];
+				double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+				Distance *= 1.5; // make larger roads easier to pick by multiplying distance
+				if (Distance < ClosestDistance) {
+					ClosestDistance = Distance;
+					NearestRoad = NearestStreet;
+				}
+			}
+		}
+	}
+
+	UE_LOG(LogStreetMap, Log, TEXT("Clicked Road: %s"), *NearestRoad.RoadName);
+
+	return NearestRoad;
+}
+
 bool UStreetMapComponent::GetSpeedAndColorFromData(const FStreetMapRoad* Road, float& Speed, float& SpeedLimit, float& SpeedRatio, FColor& Color, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor) {
 	Speed = Road->SpeedLimit;
 	SpeedLimit = Road->SpeedLimit;
@@ -1366,48 +1659,79 @@ void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVerte
 	Modify();
 }
 
-void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FStreetMapLink Link, bool IsTrace, float ZOffset)
+void UStreetMapComponent::ColorRoadMesh(FLinearColor val, FStreetMapLink Link, bool IsTrace, float ZOffset)
 {
-	/*auto FilteredVertices = Vertices.FilterByPredicate([LinkId, LinkDir](const FStreetMapVertex& Vertex) {
-		return Vertex.LinkId == LinkId && Vertex.LinkDir.Equals(LinkDir, ESearchCase::IgnoreCase);
-		});*/
+	auto& Roads = StreetMap->GetRoads();
 
-	int NumVertices = Vertices.Num();
+	if(!mLink2RoadIndex.Contains(Link)) return;
 
-	for (int i = 0; i < NumVertices; i++) {
+	int RoadIndex = mLink2RoadIndex[Link];
+	auto Road = Roads[RoadIndex];
+	TMap<FStreetMapLink, TArray<int>>* LinkMap;
+	TArray<FStreetMapVertex>* Vertices;
 
-		if (Vertices[i].LinkId == Link.LinkId && Vertices[i].LinkDir.Equals(Link.LinkDir, ESearchCase::IgnoreCase)) {
-			Vertices[i].Color = val.ToFColor(false);
-			Vertices[i].IsTrace = IsTrace;
-			if (ZOffset != 0.0f) {
-				Vertices[i].Position.Z = ZOffset;
-			}
-		}
+	switch (Road.RoadType) {
+	case EStreetMapRoadType::Highway:
+		LinkMap = &mHighwayLink2Vertices;
+		Vertices = &HighwayVertices;
+		break;
+	case EStreetMapRoadType::MajorRoad:
+		LinkMap = &mMajorLink2Vertices;
+		Vertices = &MajorRoadVertices;
+		break;
+	default:
+		LinkMap = &mStreetLink2Vertices;
+		Vertices = &StreetVertices;
+		break;
 	}
 
+	for (int VertexIndex : (*LinkMap)[Link]) {
+		(*Vertices)[VertexIndex].Color = val.ToFColor(false);
+		(*Vertices)[VertexIndex].IsTrace = IsTrace;
+		if (ZOffset != 0.0f) {
+			(*Vertices)[VertexIndex].Position.Z = ZOffset;
+		}
+	}
+	
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
-	Modify();
+	//Modify();
 }
 
-void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, bool IsTrace, float ZOffset)
+void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapLink> Links, bool IsTrace, float ZOffset)
 {
-	int NumVertices = Vertices.Num();
+	auto& Roads = StreetMap->GetRoads();
 
-	for (int i = 0; i < NumVertices; i++) {
-		auto LinkId = Vertices[i].LinkId;
-		auto LinkDir = Vertices[i].LinkDir;
-		auto LinkPtr = Links.FindByPredicate([LinkId, LinkDir](const FStreetMapLink& Link)
-		{
-			return Link.LinkId == LinkId && Link.LinkDir == LinkDir;
-		});
+	for (auto& Link : Links) {
+		if (mLink2RoadIndex.Contains(Link)) {
+			int RoadIndex = mLink2RoadIndex[Link];
+			auto Road = Roads[RoadIndex];
+			TMap<FStreetMapLink, TArray<int>>* LinkMap;
+			TArray<FStreetMapVertex>* Vertices;
 
-		if (LinkPtr != nullptr) {
-			Vertices[i].Color = val.ToFColor(false);
-			Vertices[i].IsTrace = IsTrace;
-			if (ZOffset != 0.0f) {
-				Vertices[i].Position.Z = ZOffset;
+			switch (Road.RoadType) {
+			case EStreetMapRoadType::Highway:
+				LinkMap = &mHighwayLink2Vertices;
+				Vertices = &HighwayVertices;
+				break;
+			case EStreetMapRoadType::MajorRoad:
+				LinkMap = &mMajorLink2Vertices;
+				Vertices = &MajorRoadVertices;
+				break;
+			default:
+				LinkMap = &mStreetLink2Vertices;
+				Vertices = &StreetVertices;
+				break;
+			}
+
+			auto LinkVerts = (*LinkMap)[Link];
+			for (int VertexIndex : LinkVerts) {
+				(*Vertices)[VertexIndex].Color = val.ToFColor(false);
+				(*Vertices)[VertexIndex].IsTrace = IsTrace;
+				if (ZOffset != 0.0f) {
+					(*Vertices)[VertexIndex].Position.Z = ZOffset;
+				}
 			}
 		}
 	}
@@ -1415,55 +1739,89 @@ void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVerte
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
-	Modify();
+	//Modify();
 }
 
-void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FName TMC, bool IsTrace, float ZOffset)
+void UStreetMapComponent::ColorRoadMesh(FLinearColor val, FName TMC, bool IsTrace, float ZOffset)
 {
-	/*auto FilteredVertices = Vertices.FilterByPredicate([TMC](const FStreetMapVertex& Vertex) {
-		return Vertex.TMC == TMC;
-		});*/
+	auto& Roads = StreetMap->GetRoads();
 
-	int NumVertices = Vertices.Num();
+	if (!mTMC2RoadIndex.Contains(TMC)) return;
 
-	for (int i = 0; i < NumVertices; i++) {
-		if (TMC.Compare(Vertices[i].TMC) == 0) {
-			Vertices[i].Color = val.ToFColor(false);
-			Vertices[i].IsTrace = IsTrace;
-			if (ZOffset != 0.0f) {
-				Vertices[i].Position.Z = ZOffset;
-			}
-		}
+	int RoadIndex = mTMC2RoadIndex[TMC];
+	auto Road = Roads[RoadIndex];
+	TMap<FName, TArray<int>>* TmcMap;
+	TArray<FStreetMapVertex>* Vertices;
+
+	switch (Road.RoadType) {
+	case EStreetMapRoadType::Highway:
+		TmcMap = &mHighwayTmcs2Vertices;
+		Vertices = &HighwayVertices;
+		break;
+	case EStreetMapRoadType::MajorRoad:
+		TmcMap = &mMajorTmcs2Vertices;
+		Vertices = &MajorRoadVertices;
+		break;
+	default:
+		TmcMap = &mStreetTmcs2Vertices;
+		Vertices = &StreetVertices;
+		break;
 	}
 
+	for (int VertexIndex : (*TmcMap)[TMC]) {
+		(*Vertices)[VertexIndex].Color = val.ToFColor(false);
+		(*Vertices)[VertexIndex].IsTrace = IsTrace;
+		if (ZOffset != 0.0f) {
+			(*Vertices)[VertexIndex].Position.Z = ZOffset;
+		}
+	}
+	
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
-	Modify();
+	//Modify();
 }
 
-void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FName> TMCs, bool IsTrace, float ZOffset)
+void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FName> TMCs, bool IsTrace, float ZOffset)
 {
-	/*auto FilteredVertices = Vertices.FilterByPredicate([TMCs](const FStreetMapVertex& Vertex) {
-		return TMCs.Find(Vertex.TMC) != INDEX_NONE;
-		});*/
+	auto& Roads = StreetMap->GetRoads();
 
-	int NumVertices = Vertices.Num();
+	for (auto& TMC : TMCs) {
+		if (mTMC2RoadIndex.Contains(TMC)) {
+			int RoadIndex = mTMC2RoadIndex[TMC];
+			auto Road = Roads[RoadIndex];
+			TMap<FName, TArray<int>>* TmcMap;
+			TArray<FStreetMapVertex>* Vertices;
 
-	for (int i = 0; i < NumVertices; i++) {
-		if (TMCs.Find(Vertices[i].TMC) != INDEX_NONE) {
-			Vertices[i].Color = val.ToFColor(false);
-			Vertices[i].IsTrace = IsTrace;
-			if (ZOffset != 0.0f) {
-				Vertices[i].Position.Z = ZOffset;
+			switch (Road.RoadType) {
+			case EStreetMapRoadType::Highway:
+				TmcMap = &mHighwayTmcs2Vertices;
+				Vertices = &HighwayVertices;
+				break;
+			case EStreetMapRoadType::MajorRoad:
+				TmcMap = &mMajorTmcs2Vertices;
+				Vertices = &MajorRoadVertices;
+				break;
+			default:
+				TmcMap = &mStreetTmcs2Vertices;
+				Vertices = &StreetVertices;
+				break;
+			}
+
+			for (int VertexIndex : (*TmcMap)[TMC]) {
+				(*Vertices)[VertexIndex].Color = val.ToFColor(false);
+				(*Vertices)[VertexIndex].IsTrace = IsTrace;
+				if (ZOffset != 0.0f) {
+					(*Vertices)[VertexIndex].Position.Z = ZOffset;
+				}
 			}
 		}
 	}
-
+	
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
-	Modify();
+	//Modify();
 }
 
 void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapVertex> & Vertices, FColor DefaultColor, FColor LowFlowColor, FColor MedFlowColor, FColor HighFlowColor, bool OverwriteTrace, float ZOffset) {
@@ -1530,64 +1888,75 @@ void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertic
 	);
 }
 
-void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, FColor DefaultColor, FColor LowFlowColor, FColor MedFlowColor, FColor HighFlowColor, bool OverwriteTrace, float ZOffset) {
-	int NumVertices = Vertices.Num();
-	for (int i = 0; i < NumVertices; i++) {
-		auto* Vertex = &Vertices[i];
-		if (!Vertex->IsTrace || OverwriteTrace) {
-			auto LinkId = Vertices[i].LinkId;
-			auto LinkDir = Vertices[i].LinkDir;
-			auto LinkPtr = Links.FindByPredicate([LinkId, LinkDir](const FStreetMapLink& Link)
-			{
-				return Link.LinkId == LinkId && Link.LinkDir == LinkDir;
-			});
+void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapLink> Links, FColor DefaultColor, FColor LowFlowColor, FColor MedFlowColor, FColor HighFlowColor, bool OverwriteTrace, float ZOffset) {
+	auto& Roads = StreetMap->GetRoads();
 
-			if (LinkPtr != nullptr) {
-				const FName TMC = Vertex->TMC;
+	for (auto& Link : Links) {
+		if (!mLink2RoadIndex.Contains(Link)) return;
 
-				FColor RoadColor;
-				float Speed, SpeedRatio;
-				bool bUseDefaultColor = !GetSpeedAndColorFromData(TMC, Vertex->SpeedLimit, Speed, SpeedRatio, RoadColor);
-				if (bUseDefaultColor) {
-					RoadColor = DefaultColor;
-				}
+		int RoadIndex = mLink2RoadIndex[Link];
+		auto Road = Roads[RoadIndex];
+		TMap<FStreetMapLink, TArray<int>>* LinkMap;
+		TArray<FStreetMapVertex>* Vertices;
 
-				Vertex->Color = RoadColor;
+		switch (Road.RoadType) {
+		case EStreetMapRoadType::Highway:
+			LinkMap = &mHighwayLink2Vertices;
+			Vertices = &HighwayVertices;
+			break;
+		case EStreetMapRoadType::MajorRoad:
+			LinkMap = &mMajorLink2Vertices;
+			Vertices = &MajorRoadVertices;
+			break;
+		default:
+			LinkMap = &mStreetLink2Vertices;
+			Vertices = &StreetVertices;
+			break;
+		}
 
-				auto Direction = Vertex->TextureCoordinate4.Y;
-				Vertex->TextureCoordinate4 = FVector2D(SpeedRatio * 100, Direction);
+		for (int VertexIndex : (*LinkMap)[Link]) {
+			const FName TMC = (*Vertices)[VertexIndex].TMC;
+			FColor RoadColor;
+			float Speed, SpeedRatio;
+			bool bUseDefaultColor = !GetSpeedAndColorFromData(TMC, (*Vertices)[VertexIndex].SpeedLimit, Speed, SpeedRatio, RoadColor);
+			if (bUseDefaultColor) {
+				RoadColor = DefaultColor;
+			}
 
-				Vertex->TextureCoordinate4 = FVector2D(SpeedRatio * 100, 0.0f);
-				if (ZOffset != 0.0f) {
-					Vertex->Position.Z = ZOffset;
-				}
+			(*Vertices)[VertexIndex].Color = RoadColor;
 
-				if (SpeedRatio > HighSpeedRatio) {
-					Vertex->Position.Z += 0.0;
-				}
-				else if (SpeedRatio > MedSpeedRatio) {
-					Vertex->Position.Z += 0.001;
-				}
-				else {
-					Vertex->Position.Z += 0.002;
-				}
+			auto Direction = (*Vertices)[VertexIndex].TextureCoordinate4.Y;
+			(*Vertices)[VertexIndex].TextureCoordinate4 = FVector2D(SpeedRatio * 100, Direction);
+
+			(*Vertices)[VertexIndex].TextureCoordinate4 = FVector2D(SpeedRatio * 100, 0.0f);
+			if (ZOffset != 0.0f) {
+				(*Vertices)[VertexIndex].Position.Z = ZOffset;
+			}
+
+			if (SpeedRatio > HighSpeedRatio) {
+				(*Vertices)[VertexIndex].Position.Z += 0.0;
+			}
+			else if (SpeedRatio > MedSpeedRatio) {
+				(*Vertices)[VertexIndex].Position.Z += 0.001;
+			}
+			else {
+				(*Vertices)[VertexIndex].Position.Z += 0.002;
 			}
 		}
 	}
-
+	
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
-	Modify();
+	//Modify();
 }
 
-void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, FLinearColor DefaultColor, bool OverwriteTrace, float ZOffset) {
+void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapLink> Links, FLinearColor DefaultColor, bool OverwriteTrace, float ZOffset) {
 	const FColor LowFlowColor = MeshBuildSettings.LowFlowColor.ToFColor(false);
 	const FColor MedFlowColor = MeshBuildSettings.MedFlowColor.ToFColor(false);
 	const FColor HighFlowColor = MeshBuildSettings.HighFlowColor.ToFColor(false);
 
 	ColorRoadMeshFromData(
-		Vertices,
 		Links,
 		DefaultColor.ToFColor(false),
 		LowFlowColor,
@@ -1598,9 +1967,8 @@ void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertic
 	);
 }
 
-void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, FLinearColor DefaultColor, FLinearColor LowFlowColor, FLinearColor MedFlowColor, FLinearColor HighFlowColor, bool OverwriteTrace, float ZOffset) {
+void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapLink> Links, FLinearColor DefaultColor, FLinearColor LowFlowColor, FLinearColor MedFlowColor, FLinearColor HighFlowColor, bool OverwriteTrace, float ZOffset) {
 	ColorRoadMeshFromData(
-		Vertices,
 		Links,
 		DefaultColor.ToFColor(false),
 		LowFlowColor.ToFColor(false),
@@ -2089,42 +2457,14 @@ void UStreetMapComponent::ChangeStreetColor(FLinearColor val, EStreetMapRoadType
 	}
 }
 
-void UStreetMapComponent::ChangeStreetColorByLink(FLinearColor val, EStreetMapRoadType type, FStreetMapLink Link)
+void UStreetMapComponent::ChangeStreetColorByLink(FLinearColor val, FStreetMapLink Link)
 {
-	switch (type)
-	{
-	case EStreetMapRoadType::Highway:
-		ColorRoadMesh(val, HighwayVertices, Link);
-		break;
-	case EStreetMapRoadType::MajorRoad:
-		ColorRoadMesh(val, MajorRoadVertices, Link);
-		break;
-	case EStreetMapRoadType::Street:
-		ColorRoadMesh(val, StreetVertices, Link);
-		break;
-
-	default:
-		break;
-	}
+	ColorRoadMesh(val, Link);
 }
 
-void UStreetMapComponent::ChangeStreetColorByLinks(FLinearColor val, EStreetMapRoadType type, TArray<FStreetMapLink> Links)
+void UStreetMapComponent::ChangeStreetColorByLinks(FLinearColor val, TArray<FStreetMapLink> Links)
 {
-	switch (type)
-	{
-	case EStreetMapRoadType::Highway:
-		ColorRoadMesh(val, HighwayVertices, Links);
-		break;
-	case EStreetMapRoadType::MajorRoad:
-		ColorRoadMesh(val, MajorRoadVertices, Links);
-		break;
-	case EStreetMapRoadType::Street:
-		ColorRoadMesh(val, StreetVertices, Links);
-		break;
-
-	default:
-		break;
-	}
+	ColorRoadMesh(val, Links);
 }
 
 void UStreetMapComponent::ChangeStreetColorByTMC(FLinearColor val, EStreetMapRoadType type, FName TMC)
@@ -2132,13 +2472,13 @@ void UStreetMapComponent::ChangeStreetColorByTMC(FLinearColor val, EStreetMapRoa
 	switch (type)
 	{
 	case EStreetMapRoadType::Highway:
-		ColorRoadMesh(val, HighwayVertices, TMC);
+		ColorRoadMesh(val, TMC);
 		break;
 	case EStreetMapRoadType::MajorRoad:
-		ColorRoadMesh(val, MajorRoadVertices, TMC);
+		ColorRoadMesh(val, TMC);
 		break;
 	case EStreetMapRoadType::Street:
-		ColorRoadMesh(val, StreetVertices, TMC);
+		ColorRoadMesh(val, TMC);
 		break;
 
 	default:
@@ -2148,21 +2488,7 @@ void UStreetMapComponent::ChangeStreetColorByTMC(FLinearColor val, EStreetMapRoa
 
 void UStreetMapComponent::ChangeStreetColorByTMCs(FLinearColor val, EStreetMapRoadType type, TArray<FName> TMCs)
 {
-	switch (type)
-	{
-	case EStreetMapRoadType::Highway:
-		ColorRoadMesh(val, HighwayVertices, TMCs);
-		break;
-	case EStreetMapRoadType::MajorRoad:
-		ColorRoadMesh(val, MajorRoadVertices, TMCs);
-		break;
-	case EStreetMapRoadType::Street:
-		ColorRoadMesh(val, StreetVertices, TMCs);
-		break;
-
-	default:
-		break;
-	}
+	ColorRoadMesh(val, TMCs);
 }
 
 
@@ -2965,9 +3291,7 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 	const float XRatio = VAccumulation;
 
 	const FVector2D LineDirection1 = (Mid - Start).GetSafeNormal();
-
 	const FVector2D RightVector(-LineDirection1.Y, LineDirection1.X);
-
 
 	startSmoothVertices(Start
 		, RightVector
@@ -3410,17 +3734,14 @@ void UStreetMapComponent::ClearPredictiveData()
 	mPredictiveData.Empty();
 }
 
-
 FGuid UStreetMapComponent::AddTrace(FStreetMapTrace Trace)
 {
 	FGuid NewGuid = FGuid::NewGuid();
-	
+
 	Trace.GUID = NewGuid;
 	mTraces.Add(NewGuid, Trace);
 
-	this->ColorRoadMesh(Trace.Color, HighwayVertices, Trace.Links, true, 1.0f);
-	this->ColorRoadMesh(Trace.Color, MajorRoadVertices, Trace.Links, true, 1.0f);
-	this->ColorRoadMesh(Trace.Color, StreetVertices, Trace.Links, true, 1.0f);
+	this->ColorRoadMesh(Trace.Color, Trace.Links, true, 1.0f);
 
 	return NewGuid;
 }
@@ -3430,9 +3751,7 @@ bool UStreetMapComponent::ShowTrace(FGuid GUID)
 	if (mTraces.Contains(GUID)) {
 		auto Trace = mTraces[GUID];
 
-		this->ColorRoadMesh(Trace.Color, HighwayVertices, Trace.Links, true, 1.0f);
-		this->ColorRoadMesh(Trace.Color, MajorRoadVertices, Trace.Links, true, 1.0f);
-		this->ColorRoadMesh(Trace.Color, StreetVertices, Trace.Links, true, 1.0f);
+		this->ColorRoadMesh(Trace.Color, Trace.Links, true, 1.0f);
 
 		return true;
 	}
@@ -3471,14 +3790,10 @@ bool UStreetMapComponent::HideTrace(FGuid GUID, FColor LowFlowColor = FColor::Tr
 	case EColorMode::Predictive15:
 	case EColorMode::Predictive30:
 	case EColorMode::Predictive45:
-		this->ColorRoadMeshFromData(HighwayVertices, Trace.Links, HighwayColor, LowFlowColor, MedFlowColor, HighFlowColor, true, HighwayOffsetZ);
-		this->ColorRoadMeshFromData(MajorRoadVertices, Trace.Links, MajorRoadColor, LowFlowColor, MedFlowColor, HighFlowColor, true, MajorRoadOffsetZ);
-		this->ColorRoadMeshFromData(StreetVertices, Trace.Links, StreetColor, LowFlowColor, MedFlowColor, HighFlowColor, true, StreetOffsetZ);
+		this->ColorRoadMeshFromData(Trace.Links, HighwayColor, LowFlowColor, MedFlowColor, HighFlowColor, true);
 		break;
 	default:
-		this->ColorRoadMesh(HighwayColor, HighwayVertices, Trace.Links, false, HighwayOffsetZ);
-		this->ColorRoadMesh(MajorRoadColor, MajorRoadVertices, Trace.Links, false, MajorRoadOffsetZ);
-		this->ColorRoadMesh(StreetColor, StreetVertices, Trace.Links, false, StreetOffsetZ);
+		this->ColorRoadMesh(HighwayColor, Trace.Links);
 		break;
 	}
 
@@ -3553,14 +3868,10 @@ bool UStreetMapComponent::DeleteTrace(FGuid GUID, FColor LowFlowColor = FColor::
 	case EColorMode::Predictive15:
 	case EColorMode::Predictive30:
 	case EColorMode::Predictive45:
-		this->ColorRoadMeshFromData(HighwayVertices, Trace.Links, HighwayColor, LowFlowColor, MedFlowColor, HighFlowColor, true, HighwayOffsetZ);
-		this->ColorRoadMeshFromData(MajorRoadVertices, Trace.Links, MajorRoadColor, LowFlowColor, MedFlowColor, HighFlowColor, true, MajorRoadOffsetZ);
-		this->ColorRoadMeshFromData(StreetVertices, Trace.Links, StreetColor, LowFlowColor, MedFlowColor, HighFlowColor, true, StreetOffsetZ);
+		this->ColorRoadMeshFromData(Trace.Links, HighwayColor, LowFlowColor, MedFlowColor, HighFlowColor, true);
 		break;
 	default:
-		this->ColorRoadMesh(HighwayColor, HighwayVertices, Trace.Links, false, HighwayOffsetZ);
-		this->ColorRoadMesh(MajorRoadColor, MajorRoadVertices, Trace.Links, false, MajorRoadOffsetZ);
-		this->ColorRoadMesh(StreetColor, StreetVertices, Trace.Links, false, StreetOffsetZ);
+		this->ColorRoadMesh(HighwayColor, Trace.Links);
 		break;
 	}
 

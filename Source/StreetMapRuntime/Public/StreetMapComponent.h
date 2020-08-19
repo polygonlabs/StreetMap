@@ -6,6 +6,7 @@
 #include "Interfaces/Interface_CollisionDataProvider.h"
 #include "../StreetMapSceneProxy.h"
 #include "./PredictiveData.h"
+#include "Spatial/GeometrySet3.h"
 #include "StreetMapComponent.generated.h"
 
 class UBodySetup;
@@ -22,8 +23,37 @@ private:
 	TMap<FName, float> mFlowData;
 	TMap<FName, FPredictiveData> mPredictiveData;
 	TMap<FGuid, FStreetMapTrace> mTraces;
+	
+	// TMC to Road Index map
 	TMap<FName, int> mTMC2RoadIndex;
+
+	// Link to Road Index map
 	TMap<FStreetMapLink, int> mLink2RoadIndex;
+
+	// Link to Vertices maps
+	TMap<FStreetMapLink, TArray<int>> mHighwayLink2Vertices;
+	TMap<FStreetMapLink, TArray<int>> mMajorLink2Vertices;
+	TMap<FStreetMapLink, TArray<int>> mStreetLink2Vertices;
+	TMap<FName, TArray<int>> mHighwayTmcs2Vertices;
+	TMap<FName, TArray<int>> mMajorTmcs2Vertices;
+	TMap<FName, TArray<int>> mStreetTmcs2Vertices;
+
+	// Geometry Sets to query closest road
+	FGeometrySet3 mHighwayGeometrySet3;
+	TMap<int, TArray<int>> mHighwayRoadIndex2PointIndices;
+	TMap<int, int> mHighwayPointIndex2RoadIndex;
+
+	FGeometrySet3 mMajorGeometrySet3;
+	TMap<int, TArray<int>> mMajorRoadIndex2PointIndices;
+	TMap<int, int> mMajorPointIndex2RoadIndex;
+
+	FGeometrySet3 mStreetGeometrySet3;
+	TMap<int, TArray<int>> mStreetRoadIndex2PointIndices;
+	TMap<int, int> mStreetPointIndex2RoadIndex;
+
+	FGeometrySet3 mHighwayGeometryVertSet;
+	FGeometrySet3 mMajorGeometryVertSet;
+	FGeometrySet3 mStreetGeometryVertSet;
 
 	const float HighSpeedRatio = 0.8f;
 	const float MedSpeedRatio = 0.5f;
@@ -161,6 +191,10 @@ public:
 	void BuildRoadMesh(FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
 	void BuildRoadMesh(EStreetMapRoadType Type, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
 
+	/** Rebuilds indices for street map */
+	void IndexStreetMap();
+	void IndexVertices(TMap<FStreetMapLink, TArray<int>>& LinkMap, TMap<FName, TArray<int>>& TmcMap, TArray<FStreetMapVertex>& Vertices, FGeometrySet3& GeometrySet);
+
 	/** Get speed & color from flow/predictive data, returns false if no data is found */
 	bool GetSpeedAndColorFromData(const FStreetMapRoad* Road, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio, FColor& OutColor, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
 	bool GetSpeedAndColorFromData(const FStreetMapRoad* Road, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio, FColor& OutColor);
@@ -173,20 +207,28 @@ public:
 	void ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, FLinearColor DefaultColor, FLinearColor LowFlowColor, FLinearColor MedFlowColor, FLinearColor HighFlowColor, bool OverwriteTrace = false, float ZOffset = 0.0f);
 	
 	/** Same as above but target specific links */
-	void ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, FColor DefaultColor, FColor LowFlowColor, FColor MedFlowColor, FColor HighFlowColor, bool OverwriteTrace, float ZOffset);
-	void ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, FLinearColor DefaultColor, bool OverwriteTrace, float ZOffset = 0.0f);
-	void ColorRoadMeshFromData(TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, FLinearColor DefaultColor, FLinearColor LowFlowColor, FLinearColor MedFlowColor, FLinearColor HighFlowColor, bool OverwriteTrace, float ZOffset = 0.0f);
+	void ColorRoadMeshFromData(TArray<FStreetMapLink> Links, FColor DefaultColor, FColor LowFlowColor, FColor MedFlowColor, FColor HighFlowColor, bool OverwriteTrace, float ZOffset);
+	void ColorRoadMeshFromData(TArray<FStreetMapLink> Links, FLinearColor DefaultColor, bool OverwriteTrace, float ZOffset = 0.0f);
+	void ColorRoadMeshFromData(TArray<FStreetMapLink> Links, FLinearColor DefaultColor, FLinearColor LowFlowColor, FLinearColor MedFlowColor, FLinearColor HighFlowColor, bool OverwriteTrace, float ZOffset = 0.0f);
 
 	/** Color road meshes in vertex array */
 	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, bool IsTrace = false, float ZOffset = 0.0f);
 
 	/** Color road meshes by Link ID */
-	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FStreetMapLink Link, bool IsTrace = false, float ZOffset = 0.0f);
-	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FStreetMapLink> Links, bool IsTrace = false, float ZOffset = 0.0f);
+	void ColorRoadMesh(FLinearColor val, FStreetMapLink Link, bool IsTrace = false, float ZOffset = 0.0f);
+	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapLink> Links, bool IsTrace = false, float ZOffset = 0.0f);
 
 	/** Color road meshes by TMC */
-	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, FName TMC, bool IsTrace = false, float ZOffset = 0.0f);
-	void ColorRoadMesh(FLinearColor val, TArray<FStreetMapVertex>& Vertices, TArray<FName> TMCs, bool IsTrace = false, float ZOffset = 0.0f);
+	void ColorRoadMesh(FLinearColor val, FName TMC, bool IsTrace = false, float ZOffset = 0.0f);
+	void ColorRoadMesh(FLinearColor val, TArray<FName> TMCs, bool IsTrace = false, float ZOffset = 0.0f);
+	
+	
+	/** Spatial functions */
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		FStreetMapRoad GetClosestRoad(FVector Origin, FVector Direction, FStreetMapRoad& NearestHighway, FStreetMapRoad& NearestMajorRoad, FStreetMapRoad& NearestStreet);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		TArray<FVector> GetRoadVertices(const FStreetMapRoad& Road);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		TArray<int64> CalculateRouteNodes(int64 start, int64 target);
@@ -212,10 +254,10 @@ public:
 		void ChangeStreetColor(FLinearColor val, EStreetMapRoadType type);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void ChangeStreetColorByLink(FLinearColor val, EStreetMapRoadType type, FStreetMapLink Link);
+		void ChangeStreetColorByLink(FLinearColor val, FStreetMapLink Link);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void ChangeStreetColorByLinks(FLinearColor val, EStreetMapRoadType type, TArray<FStreetMapLink> Links);
+		void ChangeStreetColorByLinks(FLinearColor val, TArray<FStreetMapLink> Links);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetColorByTMC(FLinearColor val, EStreetMapRoadType type, FName TMC);
