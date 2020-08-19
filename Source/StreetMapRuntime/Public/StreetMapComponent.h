@@ -37,7 +37,7 @@ private:
 	TMap<FName, TArray<int>> mHighwayTmcs2Vertices;
 	TMap<FName, TArray<int>> mMajorTmcs2Vertices;
 	TMap<FName, TArray<int>> mStreetTmcs2Vertices;
-		
+
 	// Geometry Sets to query closest road
 	FGeometrySet3 mHighwayGeometrySet3;
 	TMap<int, TArray<int>> mHighwayRoadIndex2PointIndices;
@@ -50,6 +50,10 @@ private:
 	FGeometrySet3 mStreetGeometrySet3;
 	TMap<int, TArray<int>> mStreetRoadIndex2PointIndices;
 	TMap<int, int> mStreetPointIndex2RoadIndex;
+
+	FGeometrySet3 mHighwayGeometryVertSet;
+	FGeometrySet3 mMajorGeometryVertSet;
+	FGeometrySet3 mStreetGeometryVertSet;
 
 	const float HighSpeedRatio = 0.8f;
 	const float MedSpeedRatio = 0.5f;
@@ -189,7 +193,7 @@ public:
 
 	/** Rebuilds indices for street map */
 	void IndexStreetMap();
-	void IndexVertices(TMap<FStreetMapLink, TArray<int>>& LinkMap, TMap<FName, TArray<int>>& TmcMap, TArray<FStreetMapVertex>& Vertices);
+	void IndexVertices(TMap<FStreetMapLink, TArray<int>>& LinkMap, TMap<FName, TArray<int>>& TmcMap, TArray<FStreetMapVertex>& Vertices, FGeometrySet3& GeometrySet);
 
 	/** Get speed & color from flow/predictive data, returns false if no data is found */
 	bool GetSpeedAndColorFromData(const FStreetMapRoad* Road, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio, FColor& OutColor, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
@@ -217,10 +221,14 @@ public:
 	/** Color road meshes by TMC */
 	void ColorRoadMesh(FLinearColor val, FName TMC, bool IsTrace = false, float ZOffset = 0.0f);
 	void ColorRoadMesh(FLinearColor val, TArray<FName> TMCs, bool IsTrace = false, float ZOffset = 0.0f);
-
+	
+	
 	/** Spatial functions */
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		FStreetMapRoad GetClosestRoad(FVector Origin, FVector Direction, FStreetMapRoad& NearestHighway, FStreetMapRoad& NearestMajorRoad, FStreetMapRoad& NearestStreet);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		TArray<FVector> GetRoadVertices(const FStreetMapRoad& Road);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetThickness(float val, EStreetMapRoadType type);

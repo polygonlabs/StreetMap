@@ -199,13 +199,20 @@ void UStreetMapComponent::IndexStreetMap()
 			RoadIndex++;
 		}
 
-		IndexVertices(mHighwayLink2Vertices, mHighwayTmcs2Vertices, HighwayVertices);
-		IndexVertices(mMajorLink2Vertices, mMajorTmcs2Vertices, MajorRoadVertices);
-		IndexVertices(mStreetLink2Vertices, mStreetTmcs2Vertices, StreetVertices);
+		IndexVertices(mHighwayLink2Vertices, mHighwayTmcs2Vertices, HighwayVertices, mHighwayGeometryVertSet);
+		IndexVertices(mMajorLink2Vertices, mMajorTmcs2Vertices, MajorRoadVertices, mMajorGeometryVertSet);
+		IndexVertices(mStreetLink2Vertices, mStreetTmcs2Vertices, StreetVertices, mStreetGeometryVertSet);
 	}
 }
 
-void UStreetMapComponent::IndexVertices(TMap<FStreetMapLink, TArray<int>>& LinkMap, TMap<FName, TArray<int>>& TmcMap, TArray<FStreetMapVertex>& Vertices) {
+void UStreetMapComponent::IndexVertices(
+	TMap<FStreetMapLink, 
+	TArray<int>>& LinkMap, 
+	TMap<FName, TArray<int>>& TmcMap, 
+	TArray<FStreetMapVertex>& Vertices, 
+	FGeometrySet3& GeometrySet
+) {
+	GeometrySet.Reset();
 	LinkMap.Reset();
 	TmcMap.Reset();
 
@@ -232,6 +239,8 @@ void UStreetMapComponent::IndexVertices(TMap<FStreetMapLink, TArray<int>>& LinkM
 				TmcMap.Add(Vertex->TMC, VertexIndices);
 			}
 		}
+
+		GeometrySet.AddPoint(i, Vertex->Position);
 	}
 }
 
@@ -1394,7 +1403,36 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType, FColor High
 	}
 }
 
+TArray<FVector> UStreetMapComponent::GetRoadVertices(const FStreetMapRoad& Road) {
+	TArray<FVector> Vertices;
+	TArray<FStreetMapVertex>* StreetMapVertices;
+	TMap<FStreetMapLink, TArray<int>>* LinkMap;
 
+	switch (Road.RoadType) {
+	case EStreetMapRoadType::MajorRoad:
+		StreetMapVertices = &MajorRoadVertices;
+		LinkMap = &mMajorLink2Vertices;
+		break;
+	case EStreetMapRoadType::Highway:
+		StreetMapVertices = &HighwayVertices;
+		LinkMap = &mHighwayLink2Vertices;
+		break;
+	default:
+		StreetMapVertices = &StreetVertices;
+		LinkMap = &mStreetLink2Vertices;
+		break;
+	}
+
+	if ((*LinkMap).Contains(Road.Link)) {
+		TArray<int> VertexIndices = (*LinkMap)[Road.Link];
+
+		for (int VertexIndex : VertexIndices) {
+			Vertices.Add((*StreetMapVertices)[VertexIndex].Position);
+		}
+	}
+
+	return Vertices;
+}
 
 FStreetMapRoad UStreetMapComponent::GetClosestRoad(FVector Origin, FVector Direction, FStreetMapRoad& NearestHighway, FStreetMapRoad& NearestMajorRoad, FStreetMapRoad& NearestStreet) {
 	auto Roads = StreetMap->GetRoads();
@@ -1406,14 +1444,65 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(FVector Origin, FVector Direc
 
 	FGeometrySet3::FNearest Nearest;
 	TFunction <bool(const FVector3d&, const FVector3d&)> PointWithinToleranceTest = [&](const FVector3d& RayPoint, const FVector3d& Point) {
-		return RayPoint.DistanceSquared(Point) < 100.0;
+		return RayPoint.DistanceSquared(Point) < 250.0;
 	};
 
-	if (mHighwayGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
+	//if (mHighwayGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
+	//{
+	//	int PointIndex = Nearest.ID;
+	//	if (mHighwayPointIndex2RoadIndex.Contains(PointIndex)) {
+	//		int RoadIndex = mHighwayPointIndex2RoadIndex[PointIndex];
+	//		if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
+	//			NearestHighway = Roads[RoadIndex];
+	//			ClosestDistance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+	//			NearestRoad = NearestHighway;
+	//		}
+	//	}
+	//}
+
+	//if (mMajorGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
+	//{
+	//	int PointIndex = Nearest.ID;
+	//	if (mMajorPointIndex2RoadIndex.Contains(PointIndex)) {
+	//		int RoadIndex = mMajorPointIndex2RoadIndex[PointIndex];
+	//		if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
+	//			NearestMajorRoad = Roads[RoadIndex];
+	//			double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+	//			Distance *= 1.5; // make larger roads easier to pick by multiplying distance
+	//			if (Distance < ClosestDistance) {
+	//				ClosestDistance = Distance;
+	//				NearestRoad = NearestMajorRoad;
+	//			}
+	//		}
+	//	}
+	//}
+
+	//if (mStreetGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
+	//{
+	//	int PointIndex = Nearest.ID;
+	//	if (mStreetPointIndex2RoadIndex.Contains(PointIndex)) {
+	//		int RoadIndex = mStreetPointIndex2RoadIndex[PointIndex];
+	//		if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
+	//			NearestStreet = Roads[RoadIndex];
+	//			double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+	//			Distance *= 2.0; // make larger roads easier to pick by multiplying distance
+	//			if (Distance < ClosestDistance) {
+	//				ClosestDistance = Distance;
+	//				NearestRoad = NearestStreet;
+	//			}
+	//		}
+	//	}
+	//}
+
+	if (mHighwayGeometryVertSet.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest)) 
 	{
-		int PointIndex = Nearest.ID;
-		if (mHighwayPointIndex2RoadIndex.Contains(PointIndex)) {
-			int RoadIndex = mHighwayPointIndex2RoadIndex[PointIndex];
+		int VertIndex = Nearest.ID;
+		auto Vertex = HighwayVertices[VertIndex];
+		auto Link = FStreetMapLink(Vertex.LinkId, Vertex.LinkDir);
+		
+		if (mLink2RoadIndex.Contains(Link))
+		{
+			int RoadIndex = mLink2RoadIndex[Link];
 			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
 				NearestHighway = Roads[RoadIndex];
 				ClosestDistance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
@@ -1422,15 +1511,19 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(FVector Origin, FVector Direc
 		}
 	}
 
-	if (mMajorGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
+	if (mMajorGeometryVertSet.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
 	{
-		int PointIndex = Nearest.ID;
-		if (mMajorPointIndex2RoadIndex.Contains(PointIndex)) {
-			int RoadIndex = mMajorPointIndex2RoadIndex[PointIndex];
+		int VertIndex = Nearest.ID;
+		auto Vertex = MajorRoadVertices[VertIndex];
+		auto Link = FStreetMapLink(Vertex.LinkId, Vertex.LinkDir);
+
+		if (mLink2RoadIndex.Contains(Link))
+		{
+			int RoadIndex = mLink2RoadIndex[Link];
 			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
 				NearestMajorRoad = Roads[RoadIndex];
 				double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
-				Distance *= 1.5; // make larger roads easier to pick by multiplying distance
+				Distance *= 1.25; // make larger roads easier to pick by multiplying distance
 				if (Distance < ClosestDistance) {
 					ClosestDistance = Distance;
 					NearestRoad = NearestMajorRoad;
@@ -1439,15 +1532,19 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(FVector Origin, FVector Direc
 		}
 	}
 
-	if (mStreetGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
+	if (mStreetGeometryVertSet.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
 	{
-		int PointIndex = Nearest.ID;
-		if (mStreetPointIndex2RoadIndex.Contains(PointIndex)) {
-			int RoadIndex = mStreetPointIndex2RoadIndex[PointIndex];
+		int VertIndex = Nearest.ID;
+		auto Vertex = StreetVertices[VertIndex];
+		auto Link = FStreetMapLink(Vertex.LinkId, Vertex.LinkDir);
+
+		if (mLink2RoadIndex.Contains(Link))
+		{
+			int RoadIndex = mLink2RoadIndex[Link];
 			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
 				NearestStreet = Roads[RoadIndex];
 				double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
-				Distance *= 2.0; // make larger roads easier to pick by multiplying distance
+				Distance *= 1.5; // make larger roads easier to pick by multiplying distance
 				if (Distance < ClosestDistance) {
 					ClosestDistance = Distance;
 					NearestRoad = NearestStreet;
@@ -2842,9 +2939,7 @@ void UStreetMapComponent::StartSmoothQuadList(const FVector2D& Start
 	const float XRatio = VAccumulation;
 
 	const FVector2D LineDirection1 = (Mid - Start).GetSafeNormal();
-
 	const FVector2D RightVector(-LineDirection1.Y, LineDirection1.X);
-
 
 	startSmoothVertices(Start
 		, RightVector
