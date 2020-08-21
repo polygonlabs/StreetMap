@@ -231,6 +231,16 @@ public:
 		TArray<FVector> GetRoadVertices(const FStreetMapRoad& Road);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		TArray<int64> CalculateRouteNodes(int64 start, int64 target);
+
+	TArray<int64> ComputeRouteNodes(int64 start, int64 target);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		TArray<FStreetMapLink> CalculateRoute(int64 start, int64 target, bool keepRoadType = true);
+
+	TArray<FStreetMapLink> ComputeRoute(int64 start, int64 target, bool keepRoadType = true);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetThickness(float val, EStreetMapRoadType type);
 	
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
