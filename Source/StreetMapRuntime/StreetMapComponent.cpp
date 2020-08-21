@@ -1434,7 +1434,16 @@ TArray<FVector> UStreetMapComponent::GetRoadVertices(const FStreetMapRoad& Road)
 	return Vertices;
 }
 
-FStreetMapRoad UStreetMapComponent::GetClosestRoad(FVector Origin, FVector Direction, FStreetMapRoad& NearestHighway, FStreetMapRoad& NearestMajorRoad, FStreetMapRoad& NearestStreet) {
+FStreetMapRoad UStreetMapComponent::GetClosestRoad(
+	FVector Origin, 
+	FVector Direction, 
+	FStreetMapRoad& NearestHighway,
+	float& NearestHighwayDistance,
+	FStreetMapRoad& NearestMajorRoad,
+	float& NearestMajorRoadDistance,
+	FStreetMapRoad& NearestStreet,
+	float& NearestStreetDistance
+) {
 	auto Roads = StreetMap->GetRoads();
 	FStreetMapRoad NearestRoad;
 	double ClosestDistance = DBL_MAX;
@@ -1505,7 +1514,8 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(FVector Origin, FVector Direc
 			int RoadIndex = mLink2RoadIndex[Link];
 			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
 				NearestHighway = Roads[RoadIndex];
-				ClosestDistance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+				NearestHighwayDistance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+				ClosestDistance = NearestHighwayDistance;
 				NearestRoad = NearestHighway;
 			}
 		}
@@ -1522,10 +1532,9 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(FVector Origin, FVector Direc
 			int RoadIndex = mLink2RoadIndex[Link];
 			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
 				NearestMajorRoad = Roads[RoadIndex];
-				double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
-				Distance *= 1.25; // make larger roads easier to pick by multiplying distance
-				if (Distance < ClosestDistance) {
-					ClosestDistance = Distance;
+				NearestMajorRoadDistance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+				if (NearestMajorRoadDistance < ClosestDistance) {
+					ClosestDistance = NearestMajorRoadDistance;
 					NearestRoad = NearestMajorRoad;
 				}
 			}
@@ -1543,10 +1552,9 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(FVector Origin, FVector Direc
 			int RoadIndex = mLink2RoadIndex[Link];
 			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
 				NearestStreet = Roads[RoadIndex];
-				double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
-				Distance *= 1.5; // make larger roads easier to pick by multiplying distance
-				if (Distance < ClosestDistance) {
-					ClosestDistance = Distance;
+				NearestStreetDistance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
+				if (NearestStreetDistance < ClosestDistance) {
+					ClosestDistance = NearestStreetDistance;
 					NearestRoad = NearestStreet;
 				}
 			}
@@ -3800,17 +3808,17 @@ bool UStreetMapComponent::HideTrace(FGuid GUID, FColor LowFlowColor = FColor::Tr
 	return true;
 }
 
-bool UStreetMapComponent::GetTraceDetails(FGuid GUID, float& OutAvgSpeed, float& OutDistance, float& OutTravelTime, float& OutIdealTravelTime)
+bool UStreetMapComponent::GetTraceDetails(TArray<FStreetMapLink> Links, float& OutAvgSpeed, float& OutDistance, float& OutTravelTime, float& OutIdealTravelTime)
 {
 	if (!StreetMap) return false;
-	if (!mTraces.Contains(GUID)) return false;
+	//if (!mTraces.Contains(GUID)) return false;
 
 	const auto& Roads = StreetMap->GetRoads();
-	const auto Trace = mTraces[GUID];
+	//const auto Trace = mTraces[GUID];
 	float IdealTotalTimeMin = 0;
 	float TotalTimeMin = 0;
 
-	for (const auto& TraceLink : Trace.Links)
+	for (const auto& TraceLink : Links)
 	{
 		if (mLink2RoadIndex.Contains(TraceLink))
 		{
@@ -3932,4 +3940,20 @@ EColorMode UStreetMapComponent::GetColorMode() {
 
 void UStreetMapComponent::SetColorMode(EColorMode colorMode) {
 	MeshBuildSettings.ColorMode = colorMode;
+}
+
+TArray<FStreetMapRoad> UStreetMapComponent::GetRoads(const TArray<FStreetMapLink>& Links)
+{
+	TArray<FStreetMapRoad> LinkRoads;
+
+	const auto& Roads = StreetMap->GetRoads();
+
+	for (auto& Link : Links) {
+		if (mLink2RoadIndex.Contains(Link)) {
+			int RoadIndex = mLink2RoadIndex[Link];
+			LinkRoads.Add(Roads[RoadIndex]);
+		}
+	}
+
+	return LinkRoads;
 }

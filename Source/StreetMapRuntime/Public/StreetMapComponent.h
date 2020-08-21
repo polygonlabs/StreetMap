@@ -225,7 +225,16 @@ public:
 	
 	/** Spatial functions */
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		FStreetMapRoad GetClosestRoad(FVector Origin, FVector Direction, FStreetMapRoad& NearestHighway, FStreetMapRoad& NearestMajorRoad, FStreetMapRoad& NearestStreet);
+		FStreetMapRoad GetClosestRoad(
+			FVector Origin, 
+			FVector Direction, 
+			FStreetMapRoad& NearestHighway, 
+			float& NearestHighwayDistance, 
+			FStreetMapRoad& NearestMajorRoad, 
+			float& NearestMajorRoadDistance, 
+			FStreetMapRoad& NearestStreet, 
+			float& NearestStreetDistance
+		);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		TArray<FVector> GetRoadVertices(const FStreetMapRoad& Road);
@@ -296,7 +305,7 @@ public:
 		bool DeleteTrace(FGuid GUID, FColor LowFlowColor, FColor MedFlowColor, FColor HighFlowColor);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		bool GetTraceDetails(FGuid GUID, float& OutAvgSpeed, float& OutDistance, float& OutTravelTime, float& OutIdealTravelTime);
+		bool GetTraceDetails(TArray<FStreetMapLink> Links, float& OutAvgSpeed, float& OutDistance, float& OutTravelTime, float& OutIdealTravelTime);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		bool GetSpeed(FStreetMapLink Link, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio);
@@ -306,6 +315,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void SetColorMode(EColorMode ColorMode);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		TArray<FStreetMapRoad> GetRoads(const TArray<FStreetMapLink>& Links);
 
 protected:
 
