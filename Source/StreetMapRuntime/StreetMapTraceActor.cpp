@@ -21,6 +21,14 @@ AStreetMapTraceActor::AStreetMapTraceActor(const FObjectInitializer& ObjectIniti
 	HighlightMeshComponent->bUseAsyncCooking = true;
 	HighlightMeshComponent->SetMaterial(0, HighlightMaterial);
 
+	for (int i = 0; i < 1000; i++)
+	{
+		UProceduralMeshComponent* MeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(*(FString("StreetMapTrace") + FString::FromInt(i)));
+		MeshComponent->bUseAsyncCooking = true;
+		MeshComponent->SetMaterial(0, TraceMaterial);
+		MeshComponents.Add(MeshComponent);
+	}
+
 	RootComponent = HighlightMeshComponent;
 }
 
@@ -36,24 +44,90 @@ void AStreetMapTraceActor::PostLoad()
 	Super::PostLoad();
 }
 
-void AStreetMapTraceActor::AddTrace()
+FGuid AStreetMapTraceActor::AddTrace(
+	const TArray<FStreetMapRoad>& Roads, 
+	const float Z,
+	const float Thickness,
+	const FLinearColor Color,
+	const float SpeedRatio,
+	const bool Smooth
+)
 {
+	FGuid TraceGuid = FGuid::NewGuid();
+	TArray<int> MeshIndices;
 
+	for (auto& Road : Roads)
+	{
+		int MeshIndex = DrawRoad(
+			Road.RoadPoints,
+			Road.Link.LinkDir,
+			static_cast<float>(Road.RoadType),
+			Z,
+			Thickness,
+			Color,
+			SpeedRatio,
+			Smooth
+		);
+		MeshIndices.Add(MeshIndex);
+
+		mMeshIndex++;
+	}
+
+	mTraces.Add(TraceGuid, MeshIndices);
+
+	return TraceGuid;
 }
 
-void AStreetMapTraceActor::ShowTrace()
+void AStreetMapTraceActor::ShowTrace(FGuid Guid)
 {
+	if (mTraces.Contains(Guid))
+	{
+		auto MeshIndices = mTraces[Guid];
+		for (auto& MeshIndex : MeshIndices)
+		{
+			if (MeshIndex < MeshComponents.Num())
+			{
+				auto MeshComponent = MeshComponents[MeshIndex];
+				MeshComponent->SetVisibility(true);
+			}
+		}
+	}
 }
 
-void AStreetMapTraceActor::HideTrace()
+void AStreetMapTraceActor::HideTrace(FGuid Guid)
 {
+	if (mTraces.Contains(Guid))
+	{
+		auto MeshIndices = mTraces[Guid];
+		for (auto& MeshIndex : MeshIndices)
+		{
+			if (MeshIndex < MeshComponents.Num())
+			{
+				auto MeshComponent = MeshComponents[MeshIndex];
+				MeshComponent->SetVisibility(false);
+			}
+		}
+	}
 }
 
-void AStreetMapTraceActor::DeleteTrace()
+void AStreetMapTraceActor::DeleteTrace(FGuid Guid)
 {
+	if (mTraces.Contains(Guid))
+	{
+		auto MeshIndices = mTraces[Guid];
+		for (auto& MeshIndex : MeshIndices)
+		{
+			if (MeshIndex < MeshComponents.Num())
+			{
+				auto MeshComponent = MeshComponents[MeshIndex];
+				MeshComponent->ClearAllMeshSections();
+			}
+		}
+		mTraces.Remove(Guid);
+	}
 }
 
-void AStreetMapTraceActor::HighlightRoad(
+int AStreetMapTraceActor::DrawRoad(
 	const TArray<FVector2D>& RoadPoints, 
 	const FString Direction, 
 	const float RoadTypeFloat, 
@@ -61,10 +135,10 @@ void AStreetMapTraceActor::HighlightRoad(
 	const float Thickness, 
 	const FLinearColor Color, 
 	const float SpeedRatio, 
-	const bool Smooth = false
+	const bool Smooth = true
 )
 {
-	if (RoadPoints.Num() < 2) return;
+	if (RoadPoints.Num() < 2) return -1;
 
 	TArray<FVector> Vertices;
 	TArray<int32> Indices;
@@ -170,8 +244,9 @@ void AStreetMapTraceActor::HighlightRoad(
 		VertexColors.Add(Color);
 	}
 
-	HighlightMeshComponent->SetMaterial(0, HighlightMaterial);
- 	HighlightMeshComponent->CreateMeshSection_LinearColor(0, Vertices, Indices, Normals, UV0, UV1, UV2, UV3, VertexColors, Tangents, true);
+	MeshComponents[mMeshIndex % 1000]->CreateMeshSection_LinearColor(0, Vertices, Indices, Normals, UV0, UV1, UV2, UV3, VertexColors, Tangents, true);
+
+	return mMeshIndex;
 }
 
 void AStreetMapTraceActor::AddThick2DLine(
@@ -327,7 +402,7 @@ void AStreetMapTraceActor::StartSmoothQuadList(
 	}
 	FVector2D BottomLeftVertexTexCoord2 = FVector2D(-RightVector.X, -RightVector.Y); // direction
 	FVector2D BottomLeftVertexTexCoord3 = FVector2D(RoadTypeFloat, 0.f); // road type
-	FProcMeshTangent BottomLeftVertexTangent = FProcMeshTangent(LineDirection1.X, LineDirection1.Y, 1.0f);
+	FProcMeshTangent BottomLeftVertexTangent = FProcMeshTangent(LineDirection1.X, LineDirection1.Y, 0.0f);
 		
 	Vertices->Add(BottomLeftVertex);
 	UV0->Add(BottomLeftVertexTexCoord0);
@@ -354,7 +429,7 @@ void AStreetMapTraceActor::StartSmoothQuadList(
 	}
 	FVector2D BottomRightVertexTexCoord2 = FVector2D(RightVector.X, RightVector.Y); // direction
 	FVector2D BottomRightVertexTexCoord3 = FVector2D(RoadTypeFloat, 0.f); // road type
-	FProcMeshTangent BottomRightVertexTangent = FProcMeshTangent(LineDirection1.X, LineDirection1.Y, 1.0f);
+	FProcMeshTangent BottomRightVertexTangent = FProcMeshTangent(LineDirection1.X, LineDirection1.Y, 0.0f);
 		
 	Vertices->Add(BottomRightVertex);
 	UV0->Add(BottomRightVertexTexCoord0);
@@ -436,7 +511,7 @@ void AStreetMapTraceActor::AddSmoothQuad(
 	}
 	FVector2D MidLeftVertexTexCoord2 = FVector2D(-RightVector.X, -RightVector.Y);
 	FVector2D MidLeftVertexTexCoord3 = FVector2D(RoadTypeFloat, 0.f);
-	FProcMeshTangent MidLeftVertexTangent = FProcMeshTangent(alteredLineDirection.X, alteredLineDirection.Y, 1.0f);
+	FProcMeshTangent MidLeftVertexTangent = FProcMeshTangent(alteredLineDirection.X, alteredLineDirection.Y, 0.0f);
 	
 	Vertices->Add(MidLeftVertex);
 	UV0->Add(MidLeftVertexTexCoord0);
@@ -463,7 +538,7 @@ void AStreetMapTraceActor::AddSmoothQuad(
 	}
 	FVector2D MidRightVertexTexCoord2 = FVector2D(RightVector.X, RightVector.Y);
 	FVector2D MidRightVertexTexCoord3 = FVector2D(RoadTypeFloat, 0.f);
-	FProcMeshTangent MidRightVertexTangent = FProcMeshTangent(alteredLineDirection.X, alteredLineDirection.Y, 1.0f);
+	FProcMeshTangent MidRightVertexTangent = FProcMeshTangent(alteredLineDirection.X, alteredLineDirection.Y, 0.0f);
 
 	Vertices->Add(MidRightVertex);
 	UV0->Add(MidRightVertexTexCoord0);
@@ -533,7 +608,7 @@ void AStreetMapTraceActor::EndSmoothQuadList(
 	}
 	FVector2D TopLeftVertexTexCoord2 = FVector2D(-RightVector.X, -RightVector.Y);
 	FVector2D TopLeftVertexTexCoord3 = FVector2D(RoadTypeFloat, 0.f);
-	FProcMeshTangent TopLeftVertexTangent = FProcMeshTangent(LineDirection1.X, LineDirection1.Y, 1.0f);
+	FProcMeshTangent TopLeftVertexTangent = FProcMeshTangent(LineDirection1.X, LineDirection1.Y, 0.0f);
 	
 	Vertices->Add(TopLeftVertex);
 	UV0->Add(TopLeftVertexTexCoord0);
@@ -560,7 +635,7 @@ void AStreetMapTraceActor::EndSmoothQuadList(
 	}
 	FVector2D TopRightVertexTexCoord2 = FVector2D(RightVector.X, RightVector.Y);
 	FVector2D TopRightVertexTexCoord3 = FVector2D(RoadTypeFloat, 0.f);
-	FProcMeshTangent TopRightVertexTangent = FProcMeshTangent(LineDirection1.X, LineDirection1.Y, 1.0f);
+	FProcMeshTangent TopRightVertexTangent = FProcMeshTangent(LineDirection1.X, LineDirection1.Y, 0.0f);
 	
 	Vertices->Add(TopRightVertex);
 	UV0->Add(TopRightVertexTexCoord0);

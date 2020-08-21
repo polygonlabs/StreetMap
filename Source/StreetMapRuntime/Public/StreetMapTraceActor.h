@@ -3,6 +3,7 @@
 #pragma once
 
 #include "ProceduralMeshComponent.h"
+#include "StreetMap.h"
 #include "StreetMapTraceActor.generated.h"
 
 /** An actor that renders a street map mesh component */
@@ -11,8 +12,11 @@ class STREETMAPRUNTIME_API AStreetMapTraceActor : public AActor
 {
 	GENERATED_UCLASS_BODY()
 
+	TMap<FGuid, TArray<int>> mTraces;
+	int mMeshIndex = 0;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StreetMap")
-		TMap<FGuid, UProceduralMeshComponent*> MeshComponents;
+		TArray<UProceduralMeshComponent*> MeshComponents;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StreetMap")
 		UProceduralMeshComponent* HighlightMeshComponent;
@@ -28,20 +32,31 @@ class STREETMAPRUNTIME_API AStreetMapTraceActor : public AActor
 	void PostActorCreated() override;
 
 public: 
-	FORCEINLINE class TMap<FGuid, UProceduralMeshComponent*> GetMeshComponents() { return MeshComponents; }
+	FORCEINLINE class TArray<UProceduralMeshComponent*> GetMeshComponents() { return MeshComponents; }
 
 	FORCEINLINE class UProceduralMeshComponent* GetHighlightMeshComponent() { return HighlightMeshComponent; }
 
 	FORCEINLINE class UMaterialInterface* GetHighlightMaterial() { return HighlightMaterial; }
 	FORCEINLINE class UMaterialInterface* GetTraceMaterial() { return TraceMaterial; }
 	
-	void AddTrace();
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		FGuid AddTrace(
+			const TArray<FStreetMapRoad>& Roads,
+			const float Z,
+			const float Thickness,
+			const FLinearColor Color,
+			const float SpeedRatio,
+			const bool Smooth
+		);
 
-	void DeleteTrace();
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void DeleteTrace(FGuid Guid);
 
-	void ShowTrace();
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void ShowTrace(FGuid Guid);
 
-	void HideTrace();
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void HideTrace(FGuid Guid);
 
 	void AddThick2DLine(
 		const FVector2D Start,
@@ -139,7 +154,7 @@ public:
 	);
 	
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		void HighlightRoad(
+		int DrawRoad(
 			const TArray<FVector2D>& RoadPoints,
 			const FString Direction,
 			const float RoadTypeFloat,
