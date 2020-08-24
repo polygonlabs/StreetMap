@@ -58,7 +58,7 @@ FGuid AStreetMapTraceActor::AddTrace(
 
 	for (auto& Road : Roads)
 	{
-		int MeshIndex = DrawRoad(
+		int MeshIndex = DrawTraceRoad(
 			Road.RoadPoints,
 			Road.Link.LinkDir,
 			static_cast<float>(Road.RoadType),
@@ -68,7 +68,9 @@ FGuid AStreetMapTraceActor::AddTrace(
 			SpeedRatio,
 			Smooth
 		);
-		MeshIndices.Add(MeshIndex);
+		if (MeshIndex >= 0) {
+			MeshIndices.Add(MeshIndex);
+		}
 
 		mMeshIndex++;
 	}
@@ -127,7 +129,7 @@ void AStreetMapTraceActor::DeleteTrace(FGuid Guid)
 	}
 }
 
-int AStreetMapTraceActor::DrawRoad(
+int AStreetMapTraceActor::DrawTraceRoad(
 	const TArray<FVector2D>& RoadPoints, 
 	const FString Direction, 
 	const float RoadTypeFloat, 
@@ -149,11 +151,56 @@ int AStreetMapTraceActor::DrawRoad(
 	TArray<FVector2D> UV3;
 	TArray<FProcMeshTangent> Tangents;
 	TArray<FLinearColor> VertexColors;
+	
+	GenerateMesh(
+		Vertices,
+		Indices,
+		Normals,
+		UV0,
+		UV1,
+		UV2,
+		UV3,
+		Tangents,
+		VertexColors,
+		RoadPoints,
+		Direction,
+		RoadTypeFloat,
+		Z,
+		Thickness,
+		Color,
+		SpeedRatio,
+		Smooth
+	);
 
+	MeshComponents[mMeshIndex % 1000]->CreateMeshSection_LinearColor(0, Vertices, Indices, Normals, UV0, UV1, UV2, UV3, VertexColors, Tangents, true);
+
+	return mMeshIndex;
+}
+
+void AStreetMapTraceActor::GenerateMesh(
+	TArray<FVector>& Vertices,
+	TArray<int32>& Indices,
+	TArray<FVector>& Normals,
+	TArray<FVector2D>& UV0,
+	TArray<FVector2D>& UV1,
+	TArray<FVector2D>& UV2,
+	TArray<FVector2D>& UV3,
+	TArray<FProcMeshTangent>& Tangents,
+	TArray<FLinearColor>& VertexColors,
+	const TArray<FVector2D>& RoadPoints,
+	const FString Direction,
+	const float RoadTypeFloat,
+	const float Z,
+	const float Thickness,
+	const FLinearColor Color,
+	const float SpeedRatio,
+	const bool Smooth = true
+)
+{
 	const bool IsForward = Direction.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
 	float VAccumulation = 0.f;
 
-	if (Smooth) 
+	if (Smooth)
 	{
 		StartSmoothQuadList(
 			RoadPoints[0],
@@ -216,7 +263,7 @@ int AStreetMapTraceActor::DrawRoad(
 			RoadTypeFloat
 		);
 	}
-	else 
+	else
 	{
 		for (int32 PointIndex = 0; PointIndex < RoadPoints.Num() - 1; ++PointIndex)
 		{
@@ -243,10 +290,6 @@ int AStreetMapTraceActor::DrawRoad(
 	for (int i = 0; i < Vertices.Num(); i++) {
 		VertexColors.Add(Color);
 	}
-
-	MeshComponents[mMeshIndex % 1000]->CreateMeshSection_LinearColor(0, Vertices, Indices, Normals, UV0, UV1, UV2, UV3, VertexColors, Tangents, true);
-
-	return mMeshIndex;
 }
 
 void AStreetMapTraceActor::AddThick2DLine(
