@@ -233,7 +233,8 @@ public:
 			FStreetMapRoad& NearestMajorRoad, 
 			float& NearestMajorRoadDistance, 
 			FStreetMapRoad& NearestStreet, 
-			float& NearestStreetDistance
+			float& NearestStreetDistance,
+			EStreetMapRoadType MaxRoadType
 		);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")

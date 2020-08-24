@@ -1442,7 +1442,8 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(
 	FStreetMapRoad& NearestMajorRoad,
 	float& NearestMajorRoadDistance,
 	FStreetMapRoad& NearestStreet,
-	float& NearestStreetDistance
+	float& NearestStreetDistance,
+	EStreetMapRoadType MaxRoadType = EStreetMapRoadType::Highway
 ) {
 	auto Roads = StreetMap->GetRoads();
 	FStreetMapRoad NearestRoad;
@@ -1533,7 +1534,7 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(
 			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
 				NearestMajorRoad = Roads[RoadIndex];
 				NearestMajorRoadDistance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
-				if (NearestMajorRoadDistance < ClosestDistance) {
+				if (NearestMajorRoadDistance < ClosestDistance && MaxRoadType != EStreetMapRoadType::Highway) {
 					ClosestDistance = NearestMajorRoadDistance;
 					NearestRoad = NearestMajorRoad;
 				}
@@ -1553,7 +1554,7 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(
 			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
 				NearestStreet = Roads[RoadIndex];
 				NearestStreetDistance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
-				if (NearestStreetDistance < ClosestDistance) {
+				if (NearestStreetDistance < ClosestDistance && MaxRoadType == EStreetMapRoadType::Street) {
 					ClosestDistance = NearestStreetDistance;
 					NearestRoad = NearestStreet;
 				}
