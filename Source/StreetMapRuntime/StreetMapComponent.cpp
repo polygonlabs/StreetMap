@@ -2241,13 +2241,13 @@ TArray<int64> UStreetMapComponent::ComputeRouteNodes(int64 start, int64 target)
 }
 
 TArray<FStreetMapLink>
-UStreetMapComponent::CalculateRoute(int64 start, int64 target, bool keepRoadType)
+UStreetMapComponent::CalculateRoute(int64 start, int64 target, EStreetMapRoadType maxRoadType = EStreetMapRoadType::Highway)
 {
-	return ComputeRoute(start, target, keepRoadType);
+	return ComputeRoute(start, target, maxRoadType);
 }
 
 TArray<FStreetMapLink>
-UStreetMapComponent::ComputeRoute(int64 start, int64 target, bool keepRoadType)
+UStreetMapComponent::ComputeRoute(int64 start, int64 target, EStreetMapRoadType maxRoadType = EStreetMapRoadType::Highway)
 {
 	auto Roads = StreetMap->GetRoads();
 	auto Nodes = StreetMap->GetNodes();
@@ -2265,6 +2265,9 @@ UStreetMapComponent::ComputeRoute(int64 start, int64 target, bool keepRoadType)
 		return r.Link.LinkId == target;
 	});
 
+	if (startRoad == -1 || targetRoad == -1) {
+		return TArray<FStreetMapLink>();
+	}
 
 	TMap<int32, float> g;
 	TMap<int32, float> f;
@@ -2273,6 +2276,18 @@ UStreetMapComponent::ComputeRoute(int64 start, int64 target, bool keepRoadType)
 
 	auto targetMidIdx = Roads[targetRoad].RoadPoints.Num() >> 1;
 	FVector2D targetMid = Roads[targetRoad].RoadPoints[targetMidIdx];
+
+	auto filterRoadType = [&](EStreetMapRoadType roadType) -> bool
+	{
+		switch (maxRoadType) {
+		case EStreetMapRoadType::Highway:
+			return roadType == EStreetMapRoadType::Highway || roadType == EStreetMapRoadType::Bridge;
+		case EStreetMapRoadType::MajorRoad:
+			return roadType == EStreetMapRoadType::Highway || roadType == EStreetMapRoadType::Bridge || roadType == EStreetMapRoadType::MajorRoad;
+		case EStreetMapRoadType::Street:
+			return true;
+		}
+	};
 
 	auto getNeighbours = [&](int32 index) -> TArray<int32>
 	{
@@ -2285,8 +2300,8 @@ UStreetMapComponent::ComputeRoute(int64 start, int64 target, bool keepRoadType)
 
 		for (auto& road : Nodes[roadStart].RoadRefs)
 		{
-			if (road.RoadIndex != index
-				&& (!keepRoadType || (Roads[road.RoadIndex].RoadType == Roads[index].RoadType) ))
+			bool meetsRoadLevel = filterRoadType(Roads[road.RoadIndex].RoadType);
+			if (road.RoadIndex != index && meetsRoadLevel)
 			{
 				neighbours.Push(road.RoadIndex);
 			}
@@ -2294,8 +2309,8 @@ UStreetMapComponent::ComputeRoute(int64 start, int64 target, bool keepRoadType)
 
 		for (auto& road : Nodes[roadEnd].RoadRefs)
 		{
-			if (road.RoadIndex != index
-				&& (!keepRoadType || (Roads[road.RoadIndex].RoadType == Roads[index].RoadType)))
+			bool meetsRoadLevel = filterRoadType(Roads[road.RoadIndex].RoadType);
+			if (road.RoadIndex != index && meetsRoadLevel)
 			{
 				neighbours.Push(road.RoadIndex);
 			}
