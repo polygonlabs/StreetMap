@@ -206,10 +206,10 @@ void UStreetMapComponent::IndexStreetMap()
 }
 
 void UStreetMapComponent::IndexVertices(
-	TMap<FStreetMapLink, 
-	TArray<int>>& LinkMap, 
-	TMap<FName, TArray<int>>& TmcMap, 
-	TArray<FStreetMapVertex>& Vertices, 
+	TMap<FStreetMapLink,
+	TArray<int>>&LinkMap,
+	TMap<FName, TArray<int>>& TmcMap,
+	TArray<FStreetMapVertex>& Vertices,
 	FGeometrySet3& GeometrySet
 ) {
 	GeometrySet.Reset();
@@ -1435,8 +1435,8 @@ TArray<FVector> UStreetMapComponent::GetRoadVertices(const FStreetMapRoad& Road)
 }
 
 FStreetMapRoad UStreetMapComponent::GetClosestRoad(
-	FVector Origin, 
-	FVector Direction, 
+	FVector Origin,
+	FVector Direction,
 	FStreetMapRoad& NearestHighway,
 	float& NearestHighwayDistance,
 	FStreetMapRoad& NearestMajorRoad,
@@ -1453,8 +1453,22 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(
 	Ray3d.Direction = Direction;
 
 	FGeometrySet3::FNearest Nearest;
+	float MaxDistance = 250.0f;
+	switch (MaxRoadType)
+	{
+	case EStreetMapRoadType::Highway:
+		MaxDistance = 10000.0f;
+		break;
+	case EStreetMapRoadType::MajorRoad:
+		MaxDistance = 2500.0f;
+		break;
+	default:
+		MaxDistance = 1000.0f;
+		break;
+	}
+
 	TFunction <bool(const FVector3d&, const FVector3d&)> PointWithinToleranceTest = [&](const FVector3d& RayPoint, const FVector3d& Point) {
-		return RayPoint.DistanceSquared(Point) < 250.0;
+		return RayPoint.DistanceSquared(Point) < MaxDistance;
 	};
 
 	//if (mHighwayGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
@@ -1504,12 +1518,12 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(
 	//	}
 	//}
 
-	if (mHighwayGeometryVertSet.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest)) 
+	if (mHighwayGeometryVertSet.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
 	{
 		int VertIndex = Nearest.ID;
 		auto Vertex = HighwayVertices[VertIndex];
 		auto Link = FStreetMapLink(Vertex.LinkId, Vertex.LinkDir);
-		
+
 		if (mLink2RoadIndex.Contains(Link))
 		{
 			int RoadIndex = mLink2RoadIndex[Link];
@@ -1672,7 +1686,7 @@ void UStreetMapComponent::ColorRoadMesh(FLinearColor val, FStreetMapLink Link, b
 {
 	auto& Roads = StreetMap->GetRoads();
 
-	if(!mLink2RoadIndex.Contains(Link)) return;
+	if (!mLink2RoadIndex.Contains(Link)) return;
 
 	int RoadIndex = mLink2RoadIndex[Link];
 	auto Road = Roads[RoadIndex];
@@ -1701,7 +1715,7 @@ void UStreetMapComponent::ColorRoadMesh(FLinearColor val, FStreetMapLink Link, b
 			(*Vertices)[VertexIndex].Position.Z = ZOffset;
 		}
 	}
-	
+
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
@@ -1784,7 +1798,7 @@ void UStreetMapComponent::ColorRoadMesh(FLinearColor val, FName TMC, bool IsTrac
 			(*Vertices)[VertexIndex].Position.Z = ZOffset;
 		}
 	}
-	
+
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
@@ -1826,7 +1840,7 @@ void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FName> TMCs, bo
 			}
 		}
 	}
-	
+
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
@@ -1953,7 +1967,7 @@ void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapLink> Links, FC
 			}
 		}
 	}
-	
+
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
@@ -2068,7 +2082,6 @@ void UStreetMapComponent::OverrideFlowColors(FLinearColor LowFlowColor, FLinearC
 
 	BuildRoadMesh(HighFlowColor.ToFColor(false), MedFlowColor.ToFColor(false), LowFlowColor.ToFColor(false));
 }
-
 
 TArray<int64> UStreetMapComponent::CalculateRouteNodes(int64 start, int64 target)
 {
@@ -2500,7 +2513,6 @@ void UStreetMapComponent::ChangeStreetColorByTMCs(FLinearColor val, EStreetMapRo
 	ColorRoadMesh(val, TMCs);
 }
 
-
 #if WITH_EDITOR
 void UStreetMapComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -2539,7 +2551,6 @@ void UStreetMapComponent::PostEditChangeProperty(FPropertyChangedEvent& Property
 }
 #endif	// WITH_EDITOR
 
-
 void UStreetMapComponent::BuildMesh()
 {
 	// Wipes out our cached mesh data. Maybe unnecessary in case GenerateMesh is clearing cached mesh data and creating a new SceneProxy  !
@@ -2567,7 +2578,6 @@ void UStreetMapComponent::BuildMesh()
 	Modify();
 }
 
-
 void UStreetMapComponent::AssignDefaultMaterialIfNeeded()
 {
 	if (this->GetNumMaterials() == 0 || this->GetMaterial(0) == nullptr)
@@ -2578,7 +2588,6 @@ void UStreetMapComponent::AssignDefaultMaterialIfNeeded()
 		this->SetMaterial(0, GetDefaultMaterial());
 	}
 }
-
 
 void UStreetMapComponent::UpdateNavigationIfNeeded()
 {
