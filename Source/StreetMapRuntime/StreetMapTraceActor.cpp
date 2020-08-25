@@ -20,6 +20,7 @@ AStreetMapTraceActor::AStreetMapTraceActor(const FObjectInitializer& ObjectIniti
 	HighlightMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(*FString("StreetMapHighlight"));
 	HighlightMeshComponent->bUseAsyncCooking = true;
 	HighlightMeshComponent->bRenderCustomDepth = true;
+	HighlightMeshComponent->SetCustomDepthStencilValue(3);
 	HighlightMeshComponent->SetMaterial(0, HighlightMaterial);
 
 	for (int i = 0; i < 1000; i++)
@@ -27,6 +28,7 @@ AStreetMapTraceActor::AStreetMapTraceActor(const FObjectInitializer& ObjectIniti
 		UProceduralMeshComponent* MeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(*(FString("StreetMapTrace") + FString::FromInt(i)));
 		MeshComponent->bUseAsyncCooking = true;
 		MeshComponent->bRenderCustomDepth = true;
+		MeshComponent->SetCustomDepthStencilValue(3);
 		MeshComponent->SetMaterial(0, TraceMaterial);		
 		MeshComponents.Add(MeshComponent);
 	}

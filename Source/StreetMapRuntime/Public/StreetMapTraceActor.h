@@ -164,17 +164,6 @@ public:
 		const bool Smooth
 	);
 
-	/*bool DrawHighlight(
-		const TArray<FVector2D>& RoadPoints,
-		const FString Direction,
-		const float RoadTypeFloat,
-		const float Z,
-		const float Thickness,
-		const FLinearColor Color,
-		const float SpeedRatio,
-		const bool Smooth
-	);*/
-
 	void GenerateMesh(
 		TArray<FVector>& Vertices,
 		TArray<int32>& Indices,
