@@ -2284,7 +2284,7 @@ UStreetMapComponent::ComputeRoute(int64 start, int64 target, EStreetMapRoadType 
 			return roadType == EStreetMapRoadType::Highway || roadType == EStreetMapRoadType::Bridge;
 		case EStreetMapRoadType::MajorRoad:
 			return roadType == EStreetMapRoadType::Highway || roadType == EStreetMapRoadType::Bridge || roadType == EStreetMapRoadType::MajorRoad;
-		case EStreetMapRoadType::Street:
+		default:
 			return true;
 		}
 	};
