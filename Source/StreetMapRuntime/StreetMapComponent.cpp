@@ -3842,6 +3842,11 @@ bool UStreetMapComponent::GetTraceDetails(TArray<FStreetMapLink> Links, float& O
 	//const auto Trace = mTraces[GUID];
 	float IdealTotalTimeMin = 0;
 	float TotalTimeMin = 0;
+	
+	OutAvgSpeed = 0;
+	OutDistance = 0;
+	OutTravelTime = 0;
+	OutIdealTravelTime = 0;
 
 	for (const auto& TraceLink : Links)
 	{
