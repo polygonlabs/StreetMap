@@ -26,7 +26,7 @@ class STREETMAPRUNTIME_API AStreetMapTraceActor : public AActor
 
 	UPROPERTY(EditAnywhere, Category = "StreetMap")
 		UMaterialInterface* TraceMaterial;
-	
+
 	void PostLoad() override;
 
 	void PostActorCreated() override;

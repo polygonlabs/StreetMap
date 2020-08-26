@@ -561,4 +561,12 @@ protected:
 	/** Cached StreetMap DefaultMaterial */
 	UPROPERTY()
 		UMaterialInterface* StreetMapDefaultMaterial;
+
+	/** Closest Road tolerance values **/
+	UPROPERTY(EditAnywhere, Category = "StreetMap")
+		float HighwayTolerance;
+	UPROPERTY(EditAnywhere, Category = "StreetMap")
+		float MajorRoadTolerance;
+	UPROPERTY(EditAnywhere, Category = "StreetMap")
+		float StreetTolerance;
 };
