@@ -26,7 +26,7 @@ class STREETMAPRUNTIME_API AStreetMapTraceActor : public AActor
 
 	UPROPERTY(EditAnywhere, Category = "StreetMap")
 		UMaterialInterface* TraceMaterial;
-	
+
 	void PostLoad() override;
 
 	void PostActorCreated() override;
@@ -39,6 +39,19 @@ public:
 	FORCEINLINE class UMaterialInterface* GetHighlightMaterial() { return HighlightMaterial; }
 	FORCEINLINE class UMaterialInterface* GetTraceMaterial() { return TraceMaterial; }
 	
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		bool AddHighlight(
+			const FStreetMapRoad& Road,
+			const float Z,
+			const float Thickness,
+			const FLinearColor Color,
+			const float SpeedRatio,
+			const bool Smooth
+		);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		void DeleteHighlight();
+
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		FGuid AddTrace(
 			const TArray<FStreetMapRoad>& Roads,
@@ -151,6 +164,17 @@ public:
 		const float SpeedRatio,
 		const bool IsForward,
 		const float RoadTypeFloat
+	);
+
+	bool DrawHighlightRoad(
+		const TArray<FVector2D>& RoadPoints,
+		const FString Direction,
+		const float RoadTypeFloat,
+		const float Z,
+		const float Thickness,
+		const FLinearColor Color,
+		const float SpeedRatio,
+		const bool Smooth
 	);
 
 	int DrawTraceRoad(

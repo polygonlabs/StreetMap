@@ -55,6 +55,10 @@ UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitial
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> DefaultMaterialAsset(TEXT("/StreetMap/StreetMapDefaultInstanceMaterial"));
 	StreetMapDefaultMaterial = DefaultMaterialAsset.Object;
 
+	HighwayTolerance = 50000.0f;
+	MajorRoadTolerance = 10000.0f;
+	StreetTolerance = 2500.0f;
+
 	mFlowData.Empty();
 	mTraces.Empty();
 
@@ -220,6 +224,7 @@ void UStreetMapComponent::IndexVertices(
 
 	for (int i = 0; i < NumVertices; i++) {
 		auto* Vertex = &Vertices[i];
+		const bool IsForward = Vertex->LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
 
 		auto Link = FStreetMapLink(Vertex->LinkId, Vertex->LinkDir);
 		if (LinkMap.Contains(Link)) {
@@ -240,7 +245,14 @@ void UStreetMapComponent::IndexVertices(
 			}
 		}
 
-		GeometrySet.AddPoint(i, Vertex->Position);
+		if (IsForward) 
+		{
+			GeometrySet.AddPoint(i, Vertex->Position + Vertex->TangentX.GetSafeNormal2D() * 10.0f);
+		}
+		else 
+		{
+			GeometrySet.AddPoint(i, Vertex->Position - Vertex->TangentX.GetSafeNormal2D() * 10.0f);
+		}
 	}
 }
 
@@ -1453,17 +1465,17 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(
 	Ray3d.Direction = Direction;
 
 	FGeometrySet3::FNearest Nearest;
-	float MaxDistance = 250.0f;
+	float MaxDistance;
 	switch (MaxRoadType)
 	{
 	case EStreetMapRoadType::Highway:
-		MaxDistance = 10000.0f;
+		MaxDistance = 50000.0f;
 		break;
 	case EStreetMapRoadType::MajorRoad:
-		MaxDistance = 2500.0f;
+		MaxDistance = 10000.0f;
 		break;
 	default:
-		MaxDistance = 1000.0f;
+		MaxDistance = 5000.0f;
 		break;
 	}
 
@@ -3920,6 +3932,11 @@ bool UStreetMapComponent::GetTraceDetails(TArray<FStreetMapLink> Links, float& O
 	//const auto Trace = mTraces[GUID];
 	float IdealTotalTimeMin = 0;
 	float TotalTimeMin = 0;
+
+	OutAvgSpeed = 0;
+	OutDistance = 0;
+	OutTravelTime = 0;
+	OutIdealTravelTime = 0;
 
 	for (const auto& TraceLink : Links)
 	{
