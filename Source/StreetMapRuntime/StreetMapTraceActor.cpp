@@ -50,6 +50,34 @@ void AStreetMapTraceActor::PostLoad()
 	Super::PostLoad();
 }
 
+bool AStreetMapTraceActor::AddHighlight(
+	const FStreetMapRoad& Road,
+	const float Z,
+	const float Thickness,
+	const FLinearColor Color,
+	const float SpeedRatio,
+	const bool Smooth
+)
+{
+	bool bValid = DrawHighlightRoad(
+		Road.RoadPoints,
+		Road.Link.LinkDir,
+		static_cast<float>(Road.RoadType),
+		Z,
+		Thickness,
+		Color,
+		SpeedRatio,
+		Smooth
+	);
+	
+	return bValid;
+}
+
+void AStreetMapTraceActor::DeleteHighlight()
+{
+	HighlightMeshComponent->ClearAllMeshSections();
+}
+
 FGuid AStreetMapTraceActor::AddTrace(
 	const TArray<FStreetMapRoad>& Roads, 
 	const float Z,
@@ -181,6 +209,60 @@ int AStreetMapTraceActor::DrawTraceRoad(
 	MeshComponents[mMeshIndex % 1000]->CreateMeshSection_LinearColor(0, Vertices, Indices, Normals, UV0, UV1, UV2, UV3, VertexColors, Tangents, true);
 
 	return mMeshIndex;
+}
+
+bool AStreetMapTraceActor::DrawHighlightRoad(
+	const TArray<FVector2D>& RoadPoints,
+	const FString Direction,
+	const float RoadTypeFloat,
+	const float Z,
+	const float Thickness,
+	const FLinearColor Color,
+	const float SpeedRatio,
+	const bool Smooth = true
+)
+{
+	if (RoadPoints.Num() < 2) return false;
+
+	TArray<FVector> Vertices;
+	TArray<int32> Indices;
+	TArray<FVector> Normals;
+	TArray<FVector2D> UV0;
+	TArray<FVector2D> UV1;
+	TArray<FVector2D> UV2;
+	TArray<FVector2D> UV3;
+	TArray<FProcMeshTangent> Tangents;
+	TArray<FLinearColor> VertexColors;
+
+	GenerateMesh(
+		Vertices,
+		Indices,
+		Normals,
+		UV0,
+		UV1,
+		UV2,
+		UV3,
+		Tangents,
+		VertexColors,
+		RoadPoints,
+		Direction,
+		RoadTypeFloat,
+		Z,
+		Thickness,
+		Color,
+		SpeedRatio,
+		Smooth
+	);
+
+	if (Vertices.Num() > 2) 
+	{
+		HighlightMeshComponent->CreateMeshSection_LinearColor(0, Vertices, Indices, Normals, UV0, UV1, UV2, UV3, VertexColors, Tangents, true);
+		return true;
+	} 
+	else
+	{
+		return false;
+	}
 }
 
 void AStreetMapTraceActor::GenerateMesh(
