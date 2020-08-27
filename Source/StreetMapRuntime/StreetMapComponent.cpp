@@ -224,6 +224,7 @@ void UStreetMapComponent::IndexVertices(
 
 	for (int i = 0; i < NumVertices; i++) {
 		auto* Vertex = &Vertices[i];
+		const bool IsForward = Vertex->LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
 
 		auto Link = FStreetMapLink(Vertex->LinkId, Vertex->LinkDir);
 		if (LinkMap.Contains(Link)) {
@@ -244,7 +245,14 @@ void UStreetMapComponent::IndexVertices(
 			}
 		}
 
-		GeometrySet.AddPoint(i, Vertex->Position);
+		if (IsForward) 
+		{
+			GeometrySet.AddPoint(i, Vertex->Position + Vertex->TangentX.GetSafeNormal2D() * 10.0f);
+		}
+		else 
+		{
+			GeometrySet.AddPoint(i, Vertex->Position - Vertex->TangentX.GetSafeNormal2D() * 10.0f);
+		}
 	}
 }
 
@@ -3846,7 +3854,7 @@ bool UStreetMapComponent::GetTraceDetails(TArray<FStreetMapLink> Links, float& O
 	//const auto Trace = mTraces[GUID];
 	float IdealTotalTimeMin = 0;
 	float TotalTimeMin = 0;
-	
+
 	OutAvgSpeed = 0;
 	OutDistance = 0;
 	OutTravelTime = 0;
