@@ -21,6 +21,7 @@ AStreetMapTraceActor::AStreetMapTraceActor(const FObjectInitializer& ObjectIniti
 	HighlightMeshComponent->bUseAsyncCooking = true;
 	HighlightMeshComponent->bRenderCustomDepth = true;
 	HighlightMeshComponent->SetCustomDepthStencilValue(3);
+	HighlightMeshComponent->TranslucencySortPriority = 6;
 	HighlightMeshComponent->SetMaterial(0, HighlightMaterial);
 
 	for (int i = 0; i < 1000; i++)
@@ -29,6 +30,7 @@ AStreetMapTraceActor::AStreetMapTraceActor(const FObjectInitializer& ObjectIniti
 		MeshComponent->bUseAsyncCooking = true;
 		MeshComponent->bRenderCustomDepth = true;
 		MeshComponent->SetCustomDepthStencilValue(3);
+		MeshComponent->TranslucencySortPriority = 5;
 		MeshComponent->SetMaterial(0, TraceMaterial);		
 		MeshComponents.Add(MeshComponent);
 	}
