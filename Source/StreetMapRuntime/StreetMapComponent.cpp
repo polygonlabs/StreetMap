@@ -3943,18 +3943,35 @@ bool UStreetMapComponent::GetSpeed(FStreetMapLink Link, float& OutSpeed, float& 
 {
 	const EColorMode ColorMode = MeshBuildSettings.ColorMode;
 	const auto& Roads = StreetMap->GetRoads();
-	const int64 LinkId = Link.LinkId;
-	const FString LinkDir = Link.LinkDir;
 	FColor Color;
-
+	FStreetMapRoad Road;
 	bool bFound = false;
 
-	auto RoadPtr = Roads.FindByPredicate([LinkId, LinkDir](const FStreetMapRoad& Road)
+	if (mLink2RoadIndex.Contains(Link))
 	{
-		return Road.Link.LinkId == LinkId && Road.Link.LinkDir == LinkDir;
-	});
+		auto RoadIndex = mLink2RoadIndex[Link];
+		Road = Roads[RoadIndex];
 
-	if (RoadPtr == nullptr)
+		switch (ColorMode) {
+		case EColorMode::Flow:
+		case EColorMode::Predictive0:
+		case EColorMode::Predictive15:
+		case EColorMode::Predictive30:
+		case EColorMode::Predictive45:
+			bFound = GetSpeedAndColorFromData(&Road, OutSpeed, OutSpeedLimit, OutSpeedRatio, Color);
+			break;
+		}
+
+		if (!bFound)
+		{
+			OutSpeed = Road.SpeedLimit;
+			OutSpeedLimit = Road.SpeedLimit;
+			OutSpeedRatio = 1.0f;
+
+			return false;
+		}
+	}
+	else
 	{
 		OutSpeed = 25;
 		OutSpeedLimit = 25;
@@ -3962,26 +3979,7 @@ bool UStreetMapComponent::GetSpeed(FStreetMapLink Link, float& OutSpeed, float& 
 
 		return false;
 	}
-
-	switch (ColorMode) {
-	case EColorMode::Flow:
-	case EColorMode::Predictive0:
-	case EColorMode::Predictive15:
-	case EColorMode::Predictive30:
-	case EColorMode::Predictive45:
-		bFound = GetSpeedAndColorFromData(RoadPtr, OutSpeed, OutSpeedLimit, OutSpeedRatio, Color);
-		break;
-	}
-
-	if (!bFound)
-	{
-		OutSpeed = RoadPtr->SpeedLimit;
-		OutSpeedLimit = RoadPtr->SpeedLimit;
-		OutSpeedRatio = 1.0f;
-
-		return false;
-	}
-
+	
 	return true;
 }
 
