@@ -1469,13 +1469,13 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(
 	switch (MaxRoadType)
 	{
 	case EStreetMapRoadType::Highway:
-		MaxDistance = 50000.0f;
+		MaxDistance = HighwayTolerance;
 		break;
 	case EStreetMapRoadType::MajorRoad:
-		MaxDistance = 10000.0f;
+		MaxDistance = MajorRoadTolerance;
 		break;
 	default:
-		MaxDistance = 5000.0f;
+		MaxDistance = StreetTolerance;
 		break;
 	}
 
