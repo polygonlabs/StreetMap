@@ -111,6 +111,7 @@ void UStreetMapComponent::IndexStreetMap()
 
 		mTMC2RoadIndex.Reset();
 		mLink2RoadIndex.Reset();
+		mTMC2Links.Reset();
 
 		for (auto& Road : Roads)
 		{
@@ -199,6 +200,14 @@ void UStreetMapComponent::IndexStreetMap()
 			// map TMC and link to road index
 			mTMC2RoadIndex.Add(Road.TMC, RoadIndex);
 			mLink2RoadIndex.Add(Road.Link, RoadIndex);
+			if (mTMC2Links.Contains(Road.TMC))
+			{
+				mTMC2Links[Road.TMC].Add(Road.Link);
+			}
+			else
+			{
+				mTMC2Links.Add(Road.TMC, { Road.Link });
+			}
 
 			RoadIndex++;
 		}
@@ -3999,3 +4008,57 @@ TArray<FStreetMapRoad> UStreetMapComponent::GetRoads(const TArray<FStreetMapLink
 
 	return LinkRoads;
 }
+
+bool UStreetMapComponent::GetOppositeRoad(const FStreetMapRoad& Road, FStreetMapRoad& OppositeRoad)
+{
+	const auto& Roads = StreetMap->GetRoads();
+	auto OppositeDir = Road.Link.LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0 ? "F" : "T";
+	auto OppositeLink = FStreetMapLink(Road.Link.LinkId, OppositeDir);
+	if (mLink2RoadIndex.Contains(OppositeLink))
+	{
+		auto RoadIndex = mLink2RoadIndex[OppositeLink];
+		OppositeRoad = Roads[RoadIndex];
+		return true;
+	}
+	else
+	{
+		auto OppositeTMC = Road.TMC.ToString();
+		
+		if (OppositeTMC.Contains("-"))
+		{
+			OppositeTMC = OppositeTMC.Replace(TEXT("-"), TEXT("+"));
+		}
+		else
+		{
+			OppositeTMC = OppositeTMC.Replace(TEXT("+"), TEXT("-"));
+		}
+
+		auto OppositeTMCName = FName(*OppositeTMC);
+
+		if (mTMC2Links.Contains(Road.TMC) && mTMC2Links.Contains(OppositeTMCName))
+		{
+			auto TMCLinks = mTMC2Links[Road.TMC];
+			auto LinkIndex = TMCLinks.Find(Road.Link);
+			auto OppositeTMCLinks = mTMC2Links[OppositeTMCName];
+			auto OppositeLinkIndex = FMath::Max(OppositeTMCLinks.Num() - LinkIndex - 1, 0);
+			auto OppositeLink = OppositeTMCLinks[OppositeLinkIndex];
+
+			if (mLink2RoadIndex.Contains(OppositeLink))
+			{
+				auto RoadIndex = mLink2RoadIndex[OppositeLink];
+				OppositeRoad = Roads[RoadIndex];
+				return true;
+			}			
+		}
+		
+		if (mTMC2RoadIndex.Contains(OppositeTMCName))
+		{
+			auto RoadIndex = mTMC2RoadIndex[OppositeTMCName];
+			OppositeRoad = Roads[RoadIndex];
+			return true;
+		}
+		
+		return false;
+	}
+}
+

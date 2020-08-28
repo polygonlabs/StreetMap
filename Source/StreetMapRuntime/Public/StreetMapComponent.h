@@ -26,6 +26,9 @@ private:
 	
 	// TMC to Road Index map
 	TMap<FName, int> mTMC2RoadIndex;
+	
+	// TMC to Road Link map
+	TMap<FName, TArray<FStreetMapLink>> mTMC2Links;
 
 	// Link to Road Index map
 	TMap<FStreetMapLink, int> mLink2RoadIndex;
@@ -319,6 +322,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		TArray<FStreetMapRoad> GetRoads(const TArray<FStreetMapLink>& Links);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		bool GetOppositeRoad(const FStreetMapRoad& Road, FStreetMapRoad& OppositeRoad);
 
 protected:
 
