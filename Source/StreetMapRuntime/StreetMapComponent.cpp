@@ -2144,10 +2144,34 @@ TArray<int64> UStreetMapComponent::ComputeRouteNodes(int64 start, int64 target)
 		return neighbours;
 	};
 
+	auto roadScale = [&](int32 road) -> float
+	{
+		switch (Roads[road].RoadType)
+		{
+			case Street:
+			{
+				return 1.5f;
+				break;
+			}
+			case MajorRoad:
+			{
+				return 1.25f;
+				break;
+			}
+			default:
+			case Highway:
+			{
+				return 1.f;
+			}
+		}
+		return 1.f;
+	};
+
 	auto distance = [&](int64 node1, int64 node2) -> float
 	{
 		auto dist = Nodes[node1].Location - Nodes[node2].Location;
-		return dist.Size();
+		float scale = roadScale(node1)* roadScale(node2);
+		return dist.Size() * scale;
 	};
 
 	auto heuristic = [&](int64 node) -> float
@@ -2262,16 +2286,22 @@ TArray<int64> UStreetMapComponent::ComputeRouteNodes(int64 start, int64 target)
 }
 
 TArray<FStreetMapLink>
-UStreetMapComponent::CalculateRoute(int64 start, int64 target, EStreetMapRoadType maxRoadType = EStreetMapRoadType::Highway)
+UStreetMapComponent::CalculateRoute(int64 start, int64 target, EStreetMapRoadType maxRoadType)
 {
-	return ComputeRoute(start, target, maxRoadType);
+	auto path = ComputeRoute(start, target, maxRoadType);
+	if (path.Num() == 0)
+	{
+		return ComputeRoute(target, start, maxRoadType);
+	}
+	return path;
 }
 
 TArray<FStreetMapLink>
-UStreetMapComponent::ComputeRoute(int64 start, int64 target, EStreetMapRoadType maxRoadType = EStreetMapRoadType::Highway)
+UStreetMapComponent::ComputeRoute(int64 start, int64 target, EStreetMapRoadType maxRoadType)
 {
 	auto Roads = StreetMap->GetRoads();
 	auto Nodes = StreetMap->GetNodes();
+
 
 	TArray<int32> openList;
 	TArray<int32> closedList;
@@ -2289,6 +2319,8 @@ UStreetMapComponent::ComputeRoute(int64 start, int64 target, EStreetMapRoadType 
 	if (startRoad == -1 || targetRoad == -1) {
 		return TArray<FStreetMapLink>();
 	}
+	UE_LOG(LogStreetMap, Log, TEXT("ComputeRoute from: %d(%s // LinkId %d) to: %d(%s // LinkId %d)"), startRoad, *Roads[startRoad].RoadName, Roads[startRoad].Link.LinkId
+																		              , targetRoad, *Roads[targetRoad].RoadName, Roads[targetRoad].Link.LinkId);
 
 	TMap<int32, float> g;
 	TMap<int32, float> f;
@@ -2310,6 +2342,31 @@ UStreetMapComponent::ComputeRoute(int64 start, int64 target, EStreetMapRoadType 
 		}
 	};
 
+	auto isPredecessor = [&](int32 index1, int32 index2) -> bool {
+		auto& road1 = Roads[index1];
+		auto& road2 = Roads[index2];
+
+		bool IsForward = road1.Link.LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
+		bool IsBackward = road1.Link.LinkDir.Compare(TEXT("F"), ESearchCase::IgnoreCase) == 0;
+		bool IsForward2 = road2.Link.LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
+		bool IsBackward2 = road2.Link.LinkDir.Compare(TEXT("F"), ESearchCase::IgnoreCase) == 0;
+
+		if (IsForward && IsForward2)
+		{
+			return road2.NodeIndices.Last() == road1.NodeIndices[0];
+		}
+		else if (IsBackward && IsBackward2)
+		{
+			return road1.NodeIndices.Last() == road2.NodeIndices[0];
+		}
+		else if (!IsForward && !IsBackward) // anyone can be my predecessor
+		{
+			return true;
+		}
+
+		return false;
+	};
+
 	auto getNeighbours = [&](int32 index) -> TArray<int32>
 	{
 		TArray<int32> neighbours;
@@ -2319,25 +2376,46 @@ UStreetMapComponent::ComputeRoute(int64 start, int64 target, EStreetMapRoadType 
 		auto roadStart = Roads[index].NodeIndices[0];
 		auto roadEnd = Roads[index].NodeIndices.Last();
 
-		for (auto& road : Nodes[roadStart].RoadRefs)
+		auto findNeighbours = [&](int32 nodeIndex)
 		{
-			bool meetsRoadLevel = filterRoadType(Roads[road.RoadIndex].RoadType);
-			if (road.RoadIndex != index && meetsRoadLevel)
+			for (auto& road : Nodes[nodeIndex].RoadRefs)
 			{
-				neighbours.Push(road.RoadIndex);
+				bool meetsRoadLevel = filterRoadType(Roads[road.RoadIndex].RoadType);
+				bool isPred = isPredecessor(index, road.RoadIndex);
+				if (road.RoadIndex != index && meetsRoadLevel && isPred)
+				{
+					neighbours.Push(road.RoadIndex);
+				}
 			}
-		}
+		};
 
-		for (auto& road : Nodes[roadEnd].RoadRefs)
-		{
-			bool meetsRoadLevel = filterRoadType(Roads[road.RoadIndex].RoadType);
-			if (road.RoadIndex != index && meetsRoadLevel)
-			{
-				neighbours.Push(road.RoadIndex);
-			}
-		}
+		findNeighbours(roadStart);
+		findNeighbours(roadEnd);
 
 		return neighbours;
+	};
+
+	auto roadScale = [&](int32 road) -> float
+	{
+		switch (Roads[road].RoadType)
+		{
+		case Street:
+		{
+			return 1.5f;
+			break;
+		}
+		case MajorRoad:
+		{
+			return 1.25f;
+			break;
+		}
+		default:
+		case Highway:
+		{
+			return 1.f;
+		}
+		}
+		return 1.f;
 	};
 
 	auto distance = [&](int32 road1, int32 road2) -> float
@@ -2346,8 +2424,9 @@ UStreetMapComponent::ComputeRoute(int64 start, int64 target, EStreetMapRoadType 
 		auto mid2 = Roads[road2].RoadPoints.Num() >> 1;
 
 		auto dist = Roads[road2].RoadPoints[mid2] - Roads[road1].RoadPoints[mid1];
+		float scale = roadScale(road1) * roadScale(road2);
 
-		return dist.Size();
+		return dist.Size() * scale;
 	};
 
 	auto heuristic = [&](int32 road) -> float
@@ -2356,12 +2435,6 @@ UStreetMapComponent::ComputeRoute(int64 start, int64 target, EStreetMapRoadType 
 		{
 			return 0.0f;
 		}
-
-		// Possible improvements
-		// - Take the direction of the road (LastPoint - First Point) and the sine
-		//   between it and the vector (target - mid) to scale the heuristic
-		//   -> Does the street point in the cirection of the target
-		// - Flat scale for slower roads
 
 		auto mid = Roads[road].RoadPoints.Num() >> 1;
 		auto dist = targetMid - Roads[road].RoadPoints[mid];
@@ -2433,6 +2506,7 @@ UStreetMapComponent::ComputeRoute(int64 start, int64 target, EStreetMapRoadType 
 		{
 			path.Add({ Roads[current].Link.LinkId, Roads[current].Link.LinkDir });
 			current = pred[current];
+
 		}
 
 		return path;
@@ -2462,10 +2536,14 @@ UStreetMapComponent::ComputeRoute(int64 start, int64 target, EStreetMapRoadType 
 	if (found)
 	{
 		// reconstruct path
-		return reconstructPath();
+		auto path = reconstructPath();
+		UE_LOG(LogStreetMap, Log, TEXT("  Path found with %d nodes"), path.Num());
+		return path;
 	}
 	else
 	{
+		UE_LOG(LogStreetMap, Log, TEXT("  Path not found"));
+
 		return TArray<FStreetMapLink>();
 	}
 }
