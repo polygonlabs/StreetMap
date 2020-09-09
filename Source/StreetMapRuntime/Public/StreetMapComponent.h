@@ -7,6 +7,7 @@
 #include "../StreetMapSceneProxy.h"
 #include "./PredictiveData.h"
 #include "Spatial/GeometrySet3.h"
+#include "Spatial/PointHashGrid2.h"
 #include "StreetMapComponent.generated.h"
 
 class UBodySetup;
@@ -41,25 +42,16 @@ private:
 	TMap<FName, TArray<int>> mMajorTmcs2Vertices;
 	TMap<FName, TArray<int>> mStreetTmcs2Vertices;
 
-	// Geometry Sets to query closest road
-	FGeometrySet3 mHighwayGeometrySet3;
-	TMap<int, TArray<int>> mHighwayRoadIndex2PointIndices;
-	TMap<int, int> mHighwayPointIndex2RoadIndex;
-
-	FGeometrySet3 mMajorGeometrySet3;
-	TMap<int, TArray<int>> mMajorRoadIndex2PointIndices;
-	TMap<int, int> mMajorPointIndex2RoadIndex;
-
-	FGeometrySet3 mStreetGeometrySet3;
-	TMap<int, TArray<int>> mStreetRoadIndex2PointIndices;
-	TMap<int, int> mStreetPointIndex2RoadIndex;
-
-	FGeometrySet3 mHighwayGeometryVertSet;
-	FGeometrySet3 mMajorGeometryVertSet;
-	FGeometrySet3 mStreetGeometryVertSet;
+	// Point Hash Grid to query closest road
+	FStreetMapRoad InvalidRoad;
+	TPointHashGrid2d<FStreetMapRoad> mHighwayGrid2d;
+	TPointHashGrid2d<FStreetMapRoad> mMajorRoadGrid2d;
+	TPointHashGrid2d<FStreetMapRoad> mStreetGrid2d;
 
 	const float HighSpeedRatio = 0.8f;
 	const float MedSpeedRatio = 0.5f;
+
+	FStreetMapRoad PrevOppositeRoad;
 public:
 
 	/** UStreetMapComponent constructor */
@@ -152,7 +144,6 @@ public:
 		void SetStreetMap(UStreetMap* NewStreetMap, bool bClearPreviousMeshIfAny = false, bool bRebuildMesh = false);
 
 
-
 	//** Begin Interface_CollisionDataProvider Interface */
 	virtual bool GetPhysicsTriMeshData(struct FTriMeshCollisionData* CollisionData, bool InUseAllTriData) override;
 	virtual bool ContainsPhysicsTriMeshData(bool InUseAllTriData) const override;
@@ -196,7 +187,7 @@ public:
 
 	/** Rebuilds indices for street map */
 	void IndexStreetMap();
-	void IndexVertices(TMap<FStreetMapLink, TArray<int>>& LinkMap, TMap<FName, TArray<int>>& TmcMap, TArray<FStreetMapVertex>& Vertices, FGeometrySet3& GeometrySet);
+	void IndexVertices(TMap<FStreetMapLink, TArray<int>>& LinkMap, TMap<FName, TArray<int>>& TmcMap, TArray<FStreetMapVertex>& Vertices);
 
 	/** Get speed & color from flow/predictive data, returns false if no data is found */
 	bool GetSpeedAndColorFromData(const FStreetMapRoad* Road, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio, FColor& OutColor, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
@@ -230,7 +221,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		FStreetMapRoad GetClosestRoad(
 			FVector Origin, 
-			FVector Direction, 
 			FStreetMapRoad& NearestHighway, 
 			float& NearestHighwayDistance, 
 			FStreetMapRoad& NearestMajorRoad, 
