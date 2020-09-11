@@ -22,7 +22,8 @@ namespace UnrealBuildTool.Rules
             PublicDependencyModuleNames.AddRange(
                 new string[]
                 {
-                    "GeometricObjects"
+                    "GeometricObjects",
+                    "ProceduralMeshComponent"
                 }
             );
 

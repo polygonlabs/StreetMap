@@ -7,6 +7,7 @@
 #include "../StreetMapSceneProxy.h"
 #include "./PredictiveData.h"
 #include "Spatial/GeometrySet3.h"
+#include "Spatial/PointHashGrid2.h"
 #include "StreetMapComponent.generated.h"
 
 class UBodySetup;
@@ -26,6 +27,9 @@ private:
 	
 	// TMC to Road Index map
 	TMap<FName, int> mTMC2RoadIndex;
+	
+	// TMC to Road Link map
+	TMap<FName, TArray<FStreetMapLink>> mTMC2Links;
 
 	// Link to Road Index map
 	TMap<FStreetMapLink, int> mLink2RoadIndex;
@@ -38,25 +42,16 @@ private:
 	TMap<FName, TArray<int>> mMajorTmcs2Vertices;
 	TMap<FName, TArray<int>> mStreetTmcs2Vertices;
 
-	// Geometry Sets to query closest road
-	FGeometrySet3 mHighwayGeometrySet3;
-	TMap<int, TArray<int>> mHighwayRoadIndex2PointIndices;
-	TMap<int, int> mHighwayPointIndex2RoadIndex;
-
-	FGeometrySet3 mMajorGeometrySet3;
-	TMap<int, TArray<int>> mMajorRoadIndex2PointIndices;
-	TMap<int, int> mMajorPointIndex2RoadIndex;
-
-	FGeometrySet3 mStreetGeometrySet3;
-	TMap<int, TArray<int>> mStreetRoadIndex2PointIndices;
-	TMap<int, int> mStreetPointIndex2RoadIndex;
-
-	FGeometrySet3 mHighwayGeometryVertSet;
-	FGeometrySet3 mMajorGeometryVertSet;
-	FGeometrySet3 mStreetGeometryVertSet;
+	// Point Hash Grid to query closest road
+	FStreetMapRoad InvalidRoad;
+	TPointHashGrid2d<FStreetMapRoad> mHighwayGrid2d;
+	TPointHashGrid2d<FStreetMapRoad> mMajorRoadGrid2d;
+	TPointHashGrid2d<FStreetMapRoad> mStreetGrid2d;
 
 	const float HighSpeedRatio = 0.8f;
 	const float MedSpeedRatio = 0.5f;
+
+	FStreetMapRoad PrevOppositeRoad;
 public:
 
 	/** UStreetMapComponent constructor */
@@ -149,7 +144,6 @@ public:
 		void SetStreetMap(UStreetMap* NewStreetMap, bool bClearPreviousMeshIfAny = false, bool bRebuildMesh = false);
 
 
-
 	//** Begin Interface_CollisionDataProvider Interface */
 	virtual bool GetPhysicsTriMeshData(struct FTriMeshCollisionData* CollisionData, bool InUseAllTriData) override;
 	virtual bool ContainsPhysicsTriMeshData(bool InUseAllTriData) const override;
@@ -193,7 +187,7 @@ public:
 
 	/** Rebuilds indices for street map */
 	void IndexStreetMap();
-	void IndexVertices(TMap<FStreetMapLink, TArray<int>>& LinkMap, TMap<FName, TArray<int>>& TmcMap, TArray<FStreetMapVertex>& Vertices, FGeometrySet3& GeometrySet);
+	void IndexVertices(TMap<FStreetMapLink, TArray<int>>& LinkMap, TMap<FName, TArray<int>>& TmcMap, TArray<FStreetMapVertex>& Vertices);
 
 	/** Get speed & color from flow/predictive data, returns false if no data is found */
 	bool GetSpeedAndColorFromData(const FStreetMapRoad* Road, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio, FColor& OutColor, FColor HighFlowColor, FColor MedFlowColor, FColor LowFlowColor);
@@ -225,10 +219,29 @@ public:
 	
 	/** Spatial functions */
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		FStreetMapRoad GetClosestRoad(FVector Origin, FVector Direction, FStreetMapRoad& NearestHighway, FStreetMapRoad& NearestMajorRoad, FStreetMapRoad& NearestStreet);
+		FStreetMapRoad GetClosestRoad(
+			FVector Origin, 
+			FStreetMapRoad& NearestHighway, 
+			float& NearestHighwayDistance, 
+			FStreetMapRoad& NearestMajorRoad, 
+			float& NearestMajorRoadDistance, 
+			FStreetMapRoad& NearestStreet, 
+			float& NearestStreetDistance,
+			EStreetMapRoadType MaxRoadType
+		);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		TArray<FVector> GetRoadVertices(const FStreetMapRoad& Road);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		TArray<int64> CalculateRouteNodes(int64 start, int64 target);
+
+	TArray<int64> ComputeRouteNodes(int64 start, int64 target);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		TArray<FStreetMapLink> CalculateRoute(int64 start, int64 target, EStreetMapRoadType maxRoadType);
+
+	TArray<FStreetMapLink> ComputeRoute(int64 start, int64 target, EStreetMapRoadType maxRoadType);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void ChangeStreetThickness(float val, EStreetMapRoadType type);
@@ -286,7 +299,7 @@ public:
 		bool DeleteTrace(FGuid GUID, FColor LowFlowColor, FColor MedFlowColor, FColor HighFlowColor);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
-		bool GetTraceDetails(FGuid GUID, float& OutAvgSpeed, float& OutDistance, float& OutTravelTime, float& OutIdealTravelTime);
+		bool GetTraceDetails(TArray<FStreetMapLink> Links, float& OutAvgSpeed, float& OutDistance, float& OutTravelTime, float& OutIdealTravelTime);
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		bool GetSpeed(FStreetMapLink Link, float& OutSpeed, float& OutSpeedLimit, float& OutSpeedRatio);
@@ -296,6 +309,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
 		void SetColorMode(EColorMode ColorMode);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		TArray<FStreetMapRoad> GetRoads(const TArray<FStreetMapLink>& Links);
+
+	UFUNCTION(BlueprintCallable, Category = "StreetMap")
+		bool GetOppositeRoad(const FStreetMapRoad& Road, FStreetMapRoad& OppositeRoad);
 
 protected:
 
@@ -538,4 +557,12 @@ protected:
 	/** Cached StreetMap DefaultMaterial */
 	UPROPERTY()
 		UMaterialInterface* StreetMapDefaultMaterial;
+
+	/** Closest Road tolerance values **/
+	UPROPERTY(EditAnywhere, Category = "StreetMap")
+		float HighwayTolerance;
+	UPROPERTY(EditAnywhere, Category = "StreetMap")
+		float MajorRoadTolerance;
+	UPROPERTY(EditAnywhere, Category = "StreetMap")
+		float StreetTolerance;
 };

@@ -9,10 +9,7 @@
 #include "GenericPlatform/GenericPlatformMath.h"
 #include "PolygonTools.h"
 #include "Async.h"
-#include "Spatial/GeometrySet3.h"
 #include "RayTypes.h"
-
-
 #include <algorithm>
 
 #include "PhysicsEngine/BodySetup.h"
@@ -29,7 +26,10 @@
 UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
 	StreetMap(nullptr),
-	CachedLocalBounds(FBox(ForceInitToZero))
+	CachedLocalBounds(FBox(ForceInitToZero)),
+	mHighwayGrid2d(10.0, FStreetMapRoad()),
+	mMajorRoadGrid2d(10.0, FStreetMapRoad()),
+	mStreetGrid2d(10.0, FStreetMapRoad())
 {
 	// We make sure our mesh collision profile name is set to NoCollisionProfileName at initialization. 
 	// Because we don't have collision data yet!
@@ -54,6 +54,10 @@ UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitial
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> DefaultMaterialAsset(TEXT("/StreetMap/StreetMapDefaultInstanceMaterial"));
 	StreetMapDefaultMaterial = DefaultMaterialAsset.Object;
+
+	HighwayTolerance = 50000.0f;
+	MajorRoadTolerance = 10000.0f;
+	StreetTolerance = 2500.0f;
 
 	mFlowData.Empty();
 	mTraces.Empty();
@@ -90,129 +94,103 @@ void UStreetMapComponent::IndexStreetMap()
 {
 	if (StreetMap != nullptr) {
 		auto Roads = StreetMap->GetRoads();
-		int RoadIndex = 0;
-		int PointIndex = 0;
-
-		mHighwayGeometrySet3.Reset();
-		mHighwayRoadIndex2PointIndices.Reset();
-		mHighwayPointIndex2RoadIndex.Reset();
-
-		mMajorGeometrySet3.Reset();
-		mMajorRoadIndex2PointIndices.Reset();
-		mMajorPointIndex2RoadIndex.Reset();
-
-		mStreetGeometrySet3.Reset();
-		mStreetRoadIndex2PointIndices.Reset();
-		mStreetPointIndex2RoadIndex.Reset();
 
 		mTMC2RoadIndex.Reset();
 		mLink2RoadIndex.Reset();
+		mTMC2Links.Reset();
+
+		int RoadIndex = 0;
 
 		for (auto& Road : Roads)
 		{
-			TArray<int> PointIndices;
+			const bool IsForward = Road.Link.LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
 			double PositionZ = 0;
 
-			int LocalPointIndex = 0;
 			FPoly Poly = FPoly();
 
-			FGeometrySet3* GeometrySet3;
-			TMap<int, TArray<int>>* RoadIndex2PointIndices;
-			TMap<int, int>* PointIndex2RoadIndex;
+			TPointHashGrid2d<FStreetMapRoad>* PtHashGrid2d;
 
 			switch (Road.RoadType) {
 			case EStreetMapRoadType::Highway:
 				PositionZ = MeshBuildSettings.HighwayOffsetZ;
-				GeometrySet3 = &mHighwayGeometrySet3;
-				RoadIndex2PointIndices = &mHighwayRoadIndex2PointIndices;
-				PointIndex2RoadIndex = &mHighwayPointIndex2RoadIndex;
+				PtHashGrid2d = &mHighwayGrid2d;
 
 				break;
 			case EStreetMapRoadType::MajorRoad:
 				PositionZ = MeshBuildSettings.MajorRoadOffsetZ;
-				GeometrySet3 = &mMajorGeometrySet3;
-				RoadIndex2PointIndices = &mMajorRoadIndex2PointIndices;
-				PointIndex2RoadIndex = &mMajorPointIndex2RoadIndex;
+				PtHashGrid2d = &mMajorRoadGrid2d;
 
 				break;
 			default:
 				PositionZ = MeshBuildSettings.StreetOffsetZ;
-				GeometrySet3 = &mStreetGeometrySet3;
-				RoadIndex2PointIndices = &mStreetRoadIndex2PointIndices;
-				PointIndex2RoadIndex = &mStreetPointIndex2RoadIndex;
+				PtHashGrid2d = &mStreetGrid2d;
 
 				break;
 			}
 
+			int LocalPointIndex = 0;
 
 			// add road points to geometry set
 			for (auto& Point : Road.RoadPoints) {
 				FVector Vector = FVector(Point.X, Point.Y, PositionZ);
+				FVector2d Vector2d = FVector2d(Point.X, Point.Y);
 
 				// build poly
 				Poly.InsertVertex(LocalPointIndex, Vector);
 
-				// add point to geometry set
-				GeometrySet3->AddPoint(PointIndex, Vector);
-
-				// map point index to road index
-				PointIndices.Add(PointIndex);
-				PointIndex2RoadIndex->Add(PointIndex, RoadIndex);
+				// add point to point hash grid
+				PtHashGrid2d->InsertPoint(Road, Vector2d);
 
 				LocalPointIndex++;
-				PointIndex++;
 			}
 
 			// add midpoint
 			FVector MidPoint = Poly.GetMidPoint();
-			GeometrySet3->AddPoint(PointIndex, MidPoint);
-			PointIndices.Add(PointIndex);
-			PointIndex2RoadIndex->Add(PointIndex, RoadIndex);
-			PointIndex++;
+			FVector2d MidPoint2d = FVector2d(MidPoint.X, MidPoint.Y);
+			PtHashGrid2d->InsertPoint(Road, MidPoint2d);
 
 			//// add 1/4 and 3/4 points
 			if (Poly.Vertices.Num() >= 2) {
 				FPoly PolyA = FPoly();
 				PolyA.InsertVertex(0, Poly.Vertices[0]);
 				PolyA.InsertVertex(1, MidPoint);
-				GeometrySet3->AddPoint(PointIndex, PolyA.GetMidPoint());
-				PointIndices.Add(PointIndex);
-				PointIndex2RoadIndex->Add(PointIndex, RoadIndex);
-				PointIndex++;
-
+				FVector PolyAMidPoint = PolyA.GetMidPoint();
+				PtHashGrid2d->InsertPoint(Road, FVector2d(PolyAMidPoint.X, PolyAMidPoint.Y));
+				
 				FPoly PolyB = FPoly();
 				PolyB.InsertVertex(0, MidPoint);
 				PolyB.InsertVertex(1, Poly.Vertices[Poly.Vertices.Num() - 1]);
-				GeometrySet3->AddPoint(PointIndex, PolyB.GetMidPoint());
-				PointIndices.Add(PointIndex);
-				PointIndex2RoadIndex->Add(PointIndex, RoadIndex);
-				PointIndex++;
+				FVector PolyBMidPoint = PolyB.GetMidPoint();
+				PtHashGrid2d->InsertPoint(Road, FVector2d(PolyBMidPoint.X, PolyBMidPoint.Y));				
 			}
-
-			// map road index to point indices
-			RoadIndex2PointIndices->Add(RoadIndex, PointIndices);
 
 			// map TMC and link to road index
 			mTMC2RoadIndex.Add(Road.TMC, RoadIndex);
 			mLink2RoadIndex.Add(Road.Link, RoadIndex);
+			if (mTMC2Links.Contains(Road.TMC))
+			{
+				mTMC2Links[Road.TMC].Add(Road.Link);
+			}
+			else
+			{
+				mTMC2Links.Add(Road.TMC, { Road.Link });
+			}
 
 			RoadIndex++;
 		}
 
-		IndexVertices(mHighwayLink2Vertices, mHighwayTmcs2Vertices, HighwayVertices, mHighwayGeometryVertSet);
-		IndexVertices(mMajorLink2Vertices, mMajorTmcs2Vertices, MajorRoadVertices, mMajorGeometryVertSet);
-		IndexVertices(mStreetLink2Vertices, mStreetTmcs2Vertices, StreetVertices, mStreetGeometryVertSet);
+		IndexVertices(mHighwayLink2Vertices, mHighwayTmcs2Vertices, HighwayVertices);
+		IndexVertices(mMajorLink2Vertices, mMajorTmcs2Vertices, MajorRoadVertices);
+		IndexVertices(mStreetLink2Vertices, mStreetTmcs2Vertices, StreetVertices);
 	}
 }
 
 void UStreetMapComponent::IndexVertices(
-	TMap<FStreetMapLink, 
-	TArray<int>>& LinkMap, 
-	TMap<FName, TArray<int>>& TmcMap, 
-	TArray<FStreetMapVertex>& Vertices, 
-	FGeometrySet3& GeometrySet
+	TMap<FStreetMapLink,
+	TArray<int>>&LinkMap,
+	TMap<FName, TArray<int>>& TmcMap,
+	TArray<FStreetMapVertex>& Vertices
 ) {
-	GeometrySet.Reset();
 	LinkMap.Reset();
 	TmcMap.Reset();
 
@@ -220,6 +198,7 @@ void UStreetMapComponent::IndexVertices(
 
 	for (int i = 0; i < NumVertices; i++) {
 		auto* Vertex = &Vertices[i];
+		const bool IsForward = Vertex->LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
 
 		auto Link = FStreetMapLink(Vertex->LinkId, Vertex->LinkDir);
 		if (LinkMap.Contains(Link)) {
@@ -239,8 +218,6 @@ void UStreetMapComponent::IndexVertices(
 				TmcMap.Add(Vertex->TMC, VertexIndices);
 			}
 		}
-
-		GeometrySet.AddPoint(i, Vertex->Position);
 	}
 }
 
@@ -1434,123 +1411,73 @@ TArray<FVector> UStreetMapComponent::GetRoadVertices(const FStreetMapRoad& Road)
 	return Vertices;
 }
 
-FStreetMapRoad UStreetMapComponent::GetClosestRoad(FVector Origin, FVector Direction, FStreetMapRoad& NearestHighway, FStreetMapRoad& NearestMajorRoad, FStreetMapRoad& NearestStreet) {
+FStreetMapRoad UStreetMapComponent::GetClosestRoad(
+	FVector Origin,
+	FStreetMapRoad& NearestHighway,
+	float& NearestHighwayDistance,
+	FStreetMapRoad& NearestMajorRoad,
+	float& NearestMajorRoadDistance,
+	FStreetMapRoad& NearestStreet,
+	float& NearestStreetDistance,
+	EStreetMapRoadType MaxRoadType = EStreetMapRoadType::Highway
+) {
+	// clear previous opposite road
+	PrevOppositeRoad = InvalidRoad;
+
 	auto Roads = StreetMap->GetRoads();
 	FStreetMapRoad NearestRoad;
 	double ClosestDistance = DBL_MAX;
-	FRay3d Ray3d;
-	Ray3d.Origin = Origin;
-	Ray3d.Direction = Direction;
 
-	FGeometrySet3::FNearest Nearest;
-	TFunction <bool(const FVector3d&, const FVector3d&)> PointWithinToleranceTest = [&](const FVector3d& RayPoint, const FVector3d& Point) {
-		return RayPoint.DistanceSquared(Point) < 250.0;
+	float MaxDistance;
+	switch (MaxRoadType)
+	{
+	case EStreetMapRoadType::Highway:
+		MaxDistance = HighwayTolerance;
+		break;
+	case EStreetMapRoadType::MajorRoad:
+		MaxDistance = MajorRoadTolerance;
+		break;
+	default:
+		MaxDistance = StreetTolerance;
+		break;
+	}
+
+	FVector2d QueryPoint = FVector2d(Origin.X, Origin.Y);
+
+	TFunction <double(const FStreetMapRoad&)> DistanceSqFunc = [&](const FStreetMapRoad& Road) {
+		double MinDistance = MAX_dbl;
+		for (auto& RoadPoint : Road.RoadPoints)
+		{
+			auto DistSq = QueryPoint.DistanceSquared(RoadPoint);
+			if (MinDistance > DistSq)
+			{
+				MinDistance = DistSq;
+			}
+		}
+
+		return MinDistance;
 	};
+	
+	auto NearestHighwayPair = mHighwayGrid2d.FindNearestInRadius(QueryPoint, sqrt(HighwayTolerance), DistanceSqFunc);
+	NearestHighway = NearestHighwayPair.Key;
+	NearestHighwayDistance = NearestHighwayPair.Value;
+	NearestRoad = NearestHighway;
+	ClosestDistance = NearestHighwayDistance;
 
-	//if (mHighwayGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
-	//{
-	//	int PointIndex = Nearest.ID;
-	//	if (mHighwayPointIndex2RoadIndex.Contains(PointIndex)) {
-	//		int RoadIndex = mHighwayPointIndex2RoadIndex[PointIndex];
-	//		if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
-	//			NearestHighway = Roads[RoadIndex];
-	//			ClosestDistance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
-	//			NearestRoad = NearestHighway;
-	//		}
-	//	}
-	//}
-
-	//if (mMajorGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
-	//{
-	//	int PointIndex = Nearest.ID;
-	//	if (mMajorPointIndex2RoadIndex.Contains(PointIndex)) {
-	//		int RoadIndex = mMajorPointIndex2RoadIndex[PointIndex];
-	//		if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
-	//			NearestMajorRoad = Roads[RoadIndex];
-	//			double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
-	//			Distance *= 1.5; // make larger roads easier to pick by multiplying distance
-	//			if (Distance < ClosestDistance) {
-	//				ClosestDistance = Distance;
-	//				NearestRoad = NearestMajorRoad;
-	//			}
-	//		}
-	//	}
-	//}
-
-	//if (mStreetGeometrySet3.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
-	//{
-	//	int PointIndex = Nearest.ID;
-	//	if (mStreetPointIndex2RoadIndex.Contains(PointIndex)) {
-	//		int RoadIndex = mStreetPointIndex2RoadIndex[PointIndex];
-	//		if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
-	//			NearestStreet = Roads[RoadIndex];
-	//			double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
-	//			Distance *= 2.0; // make larger roads easier to pick by multiplying distance
-	//			if (Distance < ClosestDistance) {
-	//				ClosestDistance = Distance;
-	//				NearestRoad = NearestStreet;
-	//			}
-	//		}
-	//	}
-	//}
-
-	if (mHighwayGeometryVertSet.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest)) 
-	{
-		int VertIndex = Nearest.ID;
-		auto Vertex = HighwayVertices[VertIndex];
-		auto Link = FStreetMapLink(Vertex.LinkId, Vertex.LinkDir);
-		
-		if (mLink2RoadIndex.Contains(Link))
-		{
-			int RoadIndex = mLink2RoadIndex[Link];
-			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
-				NearestHighway = Roads[RoadIndex];
-				ClosestDistance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
-				NearestRoad = NearestHighway;
-			}
-		}
+	auto NearestMajorRoadPair = mMajorRoadGrid2d.FindNearestInRadius(QueryPoint, sqrt(MajorRoadTolerance), DistanceSqFunc);
+	NearestMajorRoad = NearestMajorRoadPair.Key;
+	NearestMajorRoadDistance = NearestMajorRoadPair.Value;
+	if (NearestMajorRoadDistance < ClosestDistance && MaxRoadType != EStreetMapRoadType::Highway) {
+		ClosestDistance = NearestMajorRoadDistance;
+		NearestRoad = NearestMajorRoad;
 	}
 
-	if (mMajorGeometryVertSet.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
-	{
-		int VertIndex = Nearest.ID;
-		auto Vertex = MajorRoadVertices[VertIndex];
-		auto Link = FStreetMapLink(Vertex.LinkId, Vertex.LinkDir);
-
-		if (mLink2RoadIndex.Contains(Link))
-		{
-			int RoadIndex = mLink2RoadIndex[Link];
-			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
-				NearestMajorRoad = Roads[RoadIndex];
-				double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
-				Distance *= 1.25; // make larger roads easier to pick by multiplying distance
-				if (Distance < ClosestDistance) {
-					ClosestDistance = Distance;
-					NearestRoad = NearestMajorRoad;
-				}
-			}
-		}
-	}
-
-	if (mStreetGeometryVertSet.FindNearestPointToRay(Ray3d, Nearest, PointWithinToleranceTest))
-	{
-		int VertIndex = Nearest.ID;
-		auto Vertex = StreetVertices[VertIndex];
-		auto Link = FStreetMapLink(Vertex.LinkId, Vertex.LinkDir);
-
-		if (mLink2RoadIndex.Contains(Link))
-		{
-			int RoadIndex = mLink2RoadIndex[Link];
-			if (RoadIndex >= 0 && RoadIndex < Roads.Num()) {
-				NearestStreet = Roads[RoadIndex];
-				double Distance = Nearest.NearestRayPoint.DistanceSquared(Nearest.NearestGeoPoint);
-				Distance *= 1.5; // make larger roads easier to pick by multiplying distance
-				if (Distance < ClosestDistance) {
-					ClosestDistance = Distance;
-					NearestRoad = NearestStreet;
-				}
-			}
-		}
+	auto NearestStreetPair = mStreetGrid2d.FindNearestInRadius(QueryPoint, sqrt(StreetTolerance), DistanceSqFunc);
+	NearestStreet = NearestStreetPair.Key;
+	NearestStreetDistance = NearestStreetPair.Value;
+	if (NearestStreetDistance < ClosestDistance && MaxRoadType == EStreetMapRoadType::Street) {
+		ClosestDistance = NearestStreetDistance;
+		NearestRoad = NearestStreet;
 	}
 
 	UE_LOG(LogStreetMap, Log, TEXT("Clicked Road: %s"), *NearestRoad.RoadName);
@@ -1663,7 +1590,7 @@ void UStreetMapComponent::ColorRoadMesh(FLinearColor val, FStreetMapLink Link, b
 {
 	auto& Roads = StreetMap->GetRoads();
 
-	if(!mLink2RoadIndex.Contains(Link)) return;
+	if (!mLink2RoadIndex.Contains(Link)) return;
 
 	int RoadIndex = mLink2RoadIndex[Link];
 	auto Road = Roads[RoadIndex];
@@ -1692,7 +1619,7 @@ void UStreetMapComponent::ColorRoadMesh(FLinearColor val, FStreetMapLink Link, b
 			(*Vertices)[VertexIndex].Position.Z = ZOffset;
 		}
 	}
-	
+
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
@@ -1775,7 +1702,7 @@ void UStreetMapComponent::ColorRoadMesh(FLinearColor val, FName TMC, bool IsTrac
 			(*Vertices)[VertexIndex].Position.Z = ZOffset;
 		}
 	}
-	
+
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
@@ -1817,7 +1744,7 @@ void UStreetMapComponent::ColorRoadMesh(FLinearColor val, TArray<FName> TMCs, bo
 			}
 		}
 	}
-	
+
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
@@ -1944,7 +1871,7 @@ void UStreetMapComponent::ColorRoadMeshFromData(TArray<FStreetMapLink> Links, FC
 			}
 		}
 	}
-	
+
 	// Mark our render state dirty so that CreateSceneProxy can refresh it on demand
 	MarkRenderStateDirty();
 
@@ -2060,6 +1987,450 @@ void UStreetMapComponent::OverrideFlowColors(FLinearColor LowFlowColor, FLinearC
 	BuildRoadMesh(HighFlowColor.ToFColor(false), MedFlowColor.ToFColor(false), LowFlowColor.ToFColor(false));
 }
 
+TArray<int64> UStreetMapComponent::CalculateRouteNodes(int64 start, int64 target)
+{
+	return ComputeRouteNodes(start, target);
+}
+
+TArray<int64> UStreetMapComponent::ComputeRouteNodes(int64 start, int64 target)
+{
+	TArray<int64> openList;
+	TArray<int64> closedList;
+
+	int64 startNode = start;
+	int64 targetNode = target;
+
+	TMap<int64, float> g;
+	TMap<int64, float> f;
+
+	TMap<int64, int64> pred;
+
+	auto Roads = StreetMap->GetRoads();
+	auto Nodes = StreetMap->GetNodes();
+
+	auto getNeighbours = [&](int64 index) -> TArray<int64>
+	{
+		TArray<int64> neighbours;
+		if (index < 0 || index >= Nodes.Num())
+			return neighbours;
+
+		// possible optimization
+		// only use start/end indices as neighbours (but have to check if target node lies within this road)
+		for (const auto& ref : Nodes[index].RoadRefs)
+		{
+			for (auto& idx : Roads[ref.RoadIndex].NodeIndices)
+			{
+				neighbours.Push(idx);
+			}
+		}
+
+		return neighbours;
+	};
+
+	auto roadScale = [&](int32 road) -> float
+	{
+		switch (Roads[road].RoadType)
+		{
+			case Street:
+			{
+				return 1.5f;
+				break;
+			}
+			case MajorRoad:
+			{
+				return 1.25f;
+				break;
+			}
+			default:
+			case Highway:
+			{
+				return 1.f;
+			}
+		}
+		return 1.f;
+	};
+
+	auto distance = [&](int64 node1, int64 node2) -> float
+	{
+		auto dist = Nodes[node1].Location - Nodes[node2].Location;
+		float scale = roadScale(node1)* roadScale(node2);
+		return dist.Size() * scale;
+	};
+
+	auto heuristic = [&](int64 node) -> float
+	{
+		if (node == targetNode)
+		{
+			return 0.0f;
+		}
+
+		return distance(node, targetNode);
+	};
+
+	auto expandNode = [&](int64 node)
+	{
+		TArray<int64> neighbours = getNeighbours(node);
+		for (auto successor : neighbours)
+		{
+			if (successor < 0)
+			{
+				continue;
+			}
+			if (closedList.Contains(successor))
+			{
+				continue;
+			}
+
+			float fDistance = distance(node, successor);
+			if (successor == targetNode)
+			{
+				fDistance = 0.0f;
+			}
+
+			float tentative_g = g[node] + fDistance;
+
+			if (!openList.Contains(successor))
+			{
+				openList.Push(successor);
+				g.Emplace(successor, FLT_MAX);
+				f.Emplace(successor, 0.0f);
+			}
+
+			if (tentative_g >= g[successor])
+			{
+				continue;
+			}
+
+			pred.Emplace(successor, node);
+			g.Emplace(successor, tentative_g);
+			f.Emplace(successor, tentative_g + heuristic(successor));
+		}
+	};
+
+	auto removeMinOpen = [&]() -> int
+	{
+		int64 min = openList[0];
+		float f_ = f[min];
+		for (auto n : openList)
+		{
+			if (f[n] < f_)
+			{
+				f_ = f[n];
+				min = n;
+			}
+		}
+		openList.Remove(min);
+		return min;
+	};
+
+	auto reconstructPath = [&]() -> TArray<int64>
+	{
+		TArray<int64> path;
+		int64 current = targetNode;
+		while (current != startNode)
+		{
+			path.Add(current);
+			current = pred[current];
+		}
+
+		return path;
+	};
+
+	bool found = false;
+	int64 nodesVisisted = 0;
+	g.Emplace(startNode, 0);
+	f.Emplace(startNode, heuristic(startNode));
+	openList.Add(startNode);
+	while (openList.Num() > 0)
+	{
+		int64 currentNode = removeMinOpen();
+
+		if (currentNode == targetNode)
+		{
+			found = true;
+			break;
+		}
+
+		expandNode(currentNode);
+		++nodesVisisted;
+
+		closedList.Push(currentNode);
+	}
+
+	if (found)
+	{
+		// reconstruct path
+		return reconstructPath();
+	}
+	else
+	{
+		return TArray<int64>();
+	}
+}
+
+TArray<FStreetMapLink>
+UStreetMapComponent::CalculateRoute(int64 start, int64 target, EStreetMapRoadType maxRoadType)
+{
+	auto path = ComputeRoute(start, target, maxRoadType);
+	if (path.Num() == 0)
+	{
+		return ComputeRoute(target, start, maxRoadType);
+	}
+	return path;
+}
+
+TArray<FStreetMapLink>
+UStreetMapComponent::ComputeRoute(int64 start, int64 target, EStreetMapRoadType maxRoadType)
+{
+	auto Roads = StreetMap->GetRoads();
+	auto Nodes = StreetMap->GetNodes();
+
+
+	TArray<int32> openList;
+	TArray<int32> closedList;
+
+	auto startRoad = Roads.IndexOfByPredicate([&](const FStreetMapRoad& r)
+	{
+		return r.Link.LinkId == start;
+	});
+
+	auto targetRoad = Roads.IndexOfByPredicate([&](const FStreetMapRoad& r)
+	{
+		return r.Link.LinkId == target;
+	});
+
+	if (startRoad == -1 || targetRoad == -1) {
+		return TArray<FStreetMapLink>();
+	}
+	UE_LOG(LogStreetMap, Log, TEXT("ComputeRoute from: %d(%s // LinkId %d) to: %d(%s // LinkId %d)"), startRoad, *Roads[startRoad].RoadName, Roads[startRoad].Link.LinkId
+																		              , targetRoad, *Roads[targetRoad].RoadName, Roads[targetRoad].Link.LinkId);
+
+	TMap<int32, float> g;
+	TMap<int32, float> f;
+
+	TMap<int32, int32> pred;
+
+	auto targetMidIdx = Roads[targetRoad].RoadPoints.Num() >> 1;
+	FVector2D targetMid = Roads[targetRoad].RoadPoints[targetMidIdx];
+
+	auto filterRoadType = [&](EStreetMapRoadType roadType) -> bool
+	{
+		switch (maxRoadType) {
+		case EStreetMapRoadType::Highway:
+			return roadType == EStreetMapRoadType::Highway || roadType == EStreetMapRoadType::Bridge;
+		case EStreetMapRoadType::MajorRoad:
+			return roadType == EStreetMapRoadType::Highway || roadType == EStreetMapRoadType::Bridge || roadType == EStreetMapRoadType::MajorRoad;
+		default:
+			return true;
+		}
+	};
+
+	auto isPredecessor = [&](int32 index1, int32 index2) -> bool {
+		auto& road1 = Roads[index1];
+		auto& road2 = Roads[index2];
+
+		bool IsForward = road1.Link.LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
+		bool IsBackward = road1.Link.LinkDir.Compare(TEXT("F"), ESearchCase::IgnoreCase) == 0;
+		bool IsForward2 = road2.Link.LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0;
+		bool IsBackward2 = road2.Link.LinkDir.Compare(TEXT("F"), ESearchCase::IgnoreCase) == 0;
+
+		if (IsForward && IsForward2)
+		{
+			return road2.NodeIndices.Last() == road1.NodeIndices[0];
+		}
+		else if (IsBackward && IsBackward2)
+		{
+			return road1.NodeIndices.Last() == road2.NodeIndices[0];
+		}
+		else if (!IsForward && !IsBackward) // anyone can be my predecessor
+		{
+			return true;
+		}
+
+		return false;
+	};
+
+	auto getNeighbours = [&](int32 index) -> TArray<int32>
+	{
+		TArray<int32> neighbours;
+		if (index < 0 || index >= Roads.Num())
+			return neighbours;
+
+		auto roadStart = Roads[index].NodeIndices[0];
+		auto roadEnd = Roads[index].NodeIndices.Last();
+
+		auto findNeighbours = [&](int32 nodeIndex)
+		{
+			for (auto& road : Nodes[nodeIndex].RoadRefs)
+			{
+				bool meetsRoadLevel = filterRoadType(Roads[road.RoadIndex].RoadType);
+				bool isPred = isPredecessor(index, road.RoadIndex);
+				if (road.RoadIndex != index && meetsRoadLevel && isPred)
+				{
+					neighbours.Push(road.RoadIndex);
+				}
+			}
+		};
+
+		findNeighbours(roadStart);
+		findNeighbours(roadEnd);
+
+		return neighbours;
+	};
+
+	auto roadScale = [&](int32 road) -> float
+	{
+		switch (Roads[road].RoadType)
+		{
+		case Street:
+		{
+			return 1.5f;
+			break;
+		}
+		case MajorRoad:
+		{
+			return 1.25f;
+			break;
+		}
+		default:
+		case Highway:
+		{
+			return 1.f;
+		}
+		}
+		return 1.f;
+	};
+
+	auto distance = [&](int32 road1, int32 road2) -> float
+	{
+		auto mid1 = Roads[road1].RoadPoints.Num() >> 1;
+		auto mid2 = Roads[road2].RoadPoints.Num() >> 1;
+
+		auto dist = Roads[road2].RoadPoints[mid2] - Roads[road1].RoadPoints[mid1];
+		float scale = roadScale(road1) * roadScale(road2);
+
+		return dist.Size() * scale;
+	};
+
+	auto heuristic = [&](int32 road) -> float
+	{
+		if (road == targetRoad)
+		{
+			return 0.0f;
+		}
+
+		auto mid = Roads[road].RoadPoints.Num() >> 1;
+		auto dist = targetMid - Roads[road].RoadPoints[mid];
+
+		return dist.Size();
+	};
+
+	auto expandNode = [&](int32 road)
+	{
+		TArray<int32> neighbours = getNeighbours(road);
+		for (auto successor : neighbours)
+		{
+			if (successor < 0)
+			{
+				continue;
+			}
+			if (closedList.Contains(successor))
+			{
+				continue;
+			}
+
+			float fDistance = distance(road, successor);
+			if (successor == targetRoad)
+			{
+				fDistance = 0.0f;
+			}
+
+			float tentative_g = g[road] + fDistance;
+
+			if (!openList.Contains(successor))
+			{
+				openList.Push(successor);
+				g.Emplace(successor, FLT_MAX);
+				f.Emplace(successor, 0.0f);
+			}
+
+			if (tentative_g >= g[successor])
+			{
+				continue;
+			}
+
+			pred.Emplace(successor, road);
+			g.Emplace(successor, tentative_g);
+			f.Emplace(successor, tentative_g + heuristic(successor));
+		}
+	};
+
+	auto removeMinOpen = [&]() -> int
+	{
+		int32 min = openList[0];
+		float f_ = f[min];
+		for (auto n : openList)
+		{
+			if (f[n] < f_)
+			{
+				f_ = f[n];
+				min = n;
+			}
+		}
+		openList.Remove(min);
+		return min;
+	};
+
+	auto reconstructPath = [&]() -> TArray<FStreetMapLink>
+	{
+		TArray<FStreetMapLink> path;
+		int32 current = targetRoad;
+		while (current != startRoad)
+		{
+			path.Add({ Roads[current].Link.LinkId, Roads[current].Link.LinkDir });
+			current = pred[current];
+
+		}
+
+		return path;
+	};
+
+	bool found = false;
+	int32 nodesVisisted = 0;
+	g.Emplace(startRoad, 0);
+	f.Emplace(startRoad, heuristic(startRoad));
+	openList.Add(startRoad);
+	while (openList.Num() > 0)
+	{
+		int32 currentNode = removeMinOpen();
+
+		if (currentNode == targetRoad)
+		{
+			found = true;
+			break;
+		}
+
+		expandNode(currentNode);
+		++nodesVisisted;
+
+		closedList.Push(currentNode);
+	}
+
+	if (found)
+	{
+		// reconstruct path
+		auto path = reconstructPath();
+		UE_LOG(LogStreetMap, Log, TEXT("  Path found with %d nodes"), path.Num());
+		return path;
+	}
+	else
+	{
+		UE_LOG(LogStreetMap, Log, TEXT("  Path not found"));
+
+		return TArray<FStreetMapLink>();
+	}
+}
+
 void UStreetMapComponent::ChangeStreetThickness(float val, EStreetMapRoadType type)
 {
 	const FColor LowFlowColor = MeshBuildSettings.LowFlowColor.ToFColor(false);
@@ -2139,7 +2510,6 @@ void UStreetMapComponent::ChangeStreetColorByTMCs(FLinearColor val, EStreetMapRo
 	ColorRoadMesh(val, TMCs);
 }
 
-
 #if WITH_EDITOR
 void UStreetMapComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -2178,7 +2548,6 @@ void UStreetMapComponent::PostEditChangeProperty(FPropertyChangedEvent& Property
 }
 #endif	// WITH_EDITOR
 
-
 void UStreetMapComponent::BuildMesh()
 {
 	// Wipes out our cached mesh data. Maybe unnecessary in case GenerateMesh is clearing cached mesh data and creating a new SceneProxy  !
@@ -2206,7 +2575,6 @@ void UStreetMapComponent::BuildMesh()
 	Modify();
 }
 
-
 void UStreetMapComponent::AssignDefaultMaterialIfNeeded()
 {
 	if (this->GetNumMaterials() == 0 || this->GetMaterial(0) == nullptr)
@@ -2217,7 +2585,6 @@ void UStreetMapComponent::AssignDefaultMaterialIfNeeded()
 		this->SetMaterial(0, GetDefaultMaterial());
 	}
 }
-
 
 void UStreetMapComponent::UpdateNavigationIfNeeded()
 {
@@ -3448,17 +3815,22 @@ bool UStreetMapComponent::HideTrace(FGuid GUID, FColor LowFlowColor = FColor::Tr
 	return true;
 }
 
-bool UStreetMapComponent::GetTraceDetails(FGuid GUID, float& OutAvgSpeed, float& OutDistance, float& OutTravelTime, float& OutIdealTravelTime)
+bool UStreetMapComponent::GetTraceDetails(TArray<FStreetMapLink> Links, float& OutAvgSpeed, float& OutDistance, float& OutTravelTime, float& OutIdealTravelTime)
 {
 	if (!StreetMap) return false;
-	if (!mTraces.Contains(GUID)) return false;
+	//if (!mTraces.Contains(GUID)) return false;
 
 	const auto& Roads = StreetMap->GetRoads();
-	const auto Trace = mTraces[GUID];
+	//const auto Trace = mTraces[GUID];
 	float IdealTotalTimeMin = 0;
 	float TotalTimeMin = 0;
 
-	for (const auto& TraceLink : Trace.Links)
+	OutAvgSpeed = 0;
+	OutDistance = 0;
+	OutTravelTime = 0;
+	OutIdealTravelTime = 0;
+
+	for (const auto& TraceLink : Links)
 	{
 		if (mLink2RoadIndex.Contains(TraceLink))
 		{
@@ -3532,18 +3904,35 @@ bool UStreetMapComponent::GetSpeed(FStreetMapLink Link, float& OutSpeed, float& 
 {
 	const EColorMode ColorMode = MeshBuildSettings.ColorMode;
 	const auto& Roads = StreetMap->GetRoads();
-	const int64 LinkId = Link.LinkId;
-	const FString LinkDir = Link.LinkDir;
 	FColor Color;
-
+	FStreetMapRoad Road;
 	bool bFound = false;
 
-	auto RoadPtr = Roads.FindByPredicate([LinkId, LinkDir](const FStreetMapRoad& Road)
+	if (mLink2RoadIndex.Contains(Link))
 	{
-		return Road.Link.LinkId == LinkId && Road.Link.LinkDir == LinkDir;
-	});
+		auto RoadIndex = mLink2RoadIndex[Link];
+		Road = Roads[RoadIndex];
 
-	if (RoadPtr == nullptr)
+		switch (ColorMode) {
+		case EColorMode::Flow:
+		case EColorMode::Predictive0:
+		case EColorMode::Predictive15:
+		case EColorMode::Predictive30:
+		case EColorMode::Predictive45:
+			bFound = GetSpeedAndColorFromData(&Road, OutSpeed, OutSpeedLimit, OutSpeedRatio, Color);
+			break;
+		}
+
+		if (!bFound)
+		{
+			OutSpeed = Road.SpeedLimit;
+			OutSpeedLimit = Road.SpeedLimit;
+			OutSpeedRatio = 1.0f;
+
+			return false;
+		}
+	}
+	else
 	{
 		OutSpeed = 25;
 		OutSpeedLimit = 25;
@@ -3551,26 +3940,7 @@ bool UStreetMapComponent::GetSpeed(FStreetMapLink Link, float& OutSpeed, float& 
 
 		return false;
 	}
-
-	switch (ColorMode) {
-	case EColorMode::Flow:
-	case EColorMode::Predictive0:
-	case EColorMode::Predictive15:
-	case EColorMode::Predictive30:
-	case EColorMode::Predictive45:
-		bFound = GetSpeedAndColorFromData(RoadPtr, OutSpeed, OutSpeedLimit, OutSpeedRatio, Color);
-		break;
-	}
-
-	if (!bFound)
-	{
-		OutSpeed = RoadPtr->SpeedLimit;
-		OutSpeedLimit = RoadPtr->SpeedLimit;
-		OutSpeedRatio = 1.0f;
-
-		return false;
-	}
-
+	
 	return true;
 }
 
@@ -3581,3 +3951,100 @@ EColorMode UStreetMapComponent::GetColorMode() {
 void UStreetMapComponent::SetColorMode(EColorMode colorMode) {
 	MeshBuildSettings.ColorMode = colorMode;
 }
+
+TArray<FStreetMapRoad> UStreetMapComponent::GetRoads(const TArray<FStreetMapLink>& Links)
+{
+	TArray<FStreetMapRoad> LinkRoads;
+
+	const auto& Roads = StreetMap->GetRoads();
+
+	for (auto& Link : Links) {
+		if (mLink2RoadIndex.Contains(Link)) {
+			int RoadIndex = mLink2RoadIndex[Link];
+			LinkRoads.Add(Roads[RoadIndex]);
+		}
+	}
+
+	return LinkRoads;
+}
+
+bool UStreetMapComponent::GetOppositeRoad(const FStreetMapRoad& Road, FStreetMapRoad& OppositeRoad)
+{
+	const auto& Roads = StreetMap->GetRoads();
+	
+	if (PrevOppositeRoad.Link.LinkId != 0) {
+		OppositeRoad = PrevOppositeRoad;
+		PrevOppositeRoad = Road;
+		return true;
+	}
+
+	auto OppositeDir = Road.Link.LinkDir.Compare(TEXT("T"), ESearchCase::IgnoreCase) == 0 ? "F" : "T";
+	auto OppositeLink = FStreetMapLink(Road.Link.LinkId, OppositeDir);
+	
+	if (mLink2RoadIndex.Contains(OppositeLink))
+	{
+		auto RoadIndex = mLink2RoadIndex[OppositeLink];
+		OppositeRoad = Roads[RoadIndex];
+		return true;
+	}
+	else
+	{
+		auto OppositeTMC = Road.TMC.ToString();
+		
+		if (OppositeTMC.Contains("-"))
+		{
+			OppositeTMC = OppositeTMC.Replace(TEXT("-"), TEXT("+"));
+		}
+		else
+		{
+			OppositeTMC = OppositeTMC.Replace(TEXT("+"), TEXT("-"));
+		}
+
+		auto OppositeTMCName = FName(*OppositeTMC);
+
+		// get road mid point
+		FVector2d QueryPoint = Road.RoadPoints[(int)round(Road.RoadPoints.Num() / 2)];
+
+		TFunction <double(const FStreetMapRoad&)> DistanceSqFunc = [&](const FStreetMapRoad& Road) {
+			double MinDistance = MAX_dbl;
+			for (auto& RoadPoint : Road.RoadPoints)
+			{
+				auto DistSq = QueryPoint.DistanceSquared(RoadPoint);
+				if (MinDistance > DistSq)
+				{
+					MinDistance = DistSq;
+				}
+			}
+
+			return MinDistance;
+		};
+
+		TFunction <bool(const FStreetMapRoad&)> IgnoreFunc = [&](const FStreetMapRoad& Road) {
+			return Road.TMC.Compare(OppositeTMCName) != 0;
+		};
+
+		TPair<FStreetMapRoad, double> NearestPair;
+
+		switch (Road.RoadType) {
+		case EStreetMapRoadType::Highway:
+			NearestPair = mHighwayGrid2d.FindNearestInRadius(QueryPoint, sqrt(HighwayTolerance), DistanceSqFunc, IgnoreFunc);
+			break;
+		case EStreetMapRoadType::MajorRoad:
+			NearestPair = mMajorRoadGrid2d.FindNearestInRadius(QueryPoint, sqrt(HighwayTolerance), DistanceSqFunc, IgnoreFunc);
+			break;
+		default:
+			NearestPair = mStreetGrid2d.FindNearestInRadius(QueryPoint, sqrt(HighwayTolerance), DistanceSqFunc, IgnoreFunc);
+			break;
+		}
+
+		if (NearestPair.Value != MAX_dbl)
+		{
+			OppositeRoad = NearestPair.Key;
+			PrevOppositeRoad = Road;
+			return true;
+		}
+		
+		return false;
+	}
+}
+
