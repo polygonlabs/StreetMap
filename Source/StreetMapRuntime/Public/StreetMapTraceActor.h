@@ -12,6 +12,8 @@ class STREETMAPRUNTIME_API AStreetMapTraceActor : public AActor
 {
 	GENERATED_UCLASS_BODY()
 
+	const int MAX_MESH_INDEX = 10000;
+	
 	TMap<FGuid, TArray<int>> mTraces;
 	int mMeshIndex = 0;
 

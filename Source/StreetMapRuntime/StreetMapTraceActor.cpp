@@ -24,7 +24,7 @@ AStreetMapTraceActor::AStreetMapTraceActor(const FObjectInitializer& ObjectIniti
 	HighlightMeshComponent->TranslucencySortPriority = 6;
 	HighlightMeshComponent->SetMaterial(0, HighlightMaterial);
 
-	for (int i = 0; i < 1000; i++)
+	for (int i = 0; i < MAX_MESH_INDEX; i++)
 	{
 		UProceduralMeshComponent* MeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(*(FString("StreetMapTrace") + FString::FromInt(i)));
 		MeshComponent->bUseAsyncCooking = true;
@@ -206,7 +206,10 @@ int AStreetMapTraceActor::DrawTraceRoad(
 		Smooth
 	);
 
-	MeshComponents[mMeshIndex % 1000]->CreateMeshSection_LinearColor(0, Vertices, Indices, Normals, UV0, UV1, UV2, UV3, VertexColors, Tangents, true);
+	mMeshIndex = mMeshIndex % MAX_MESH_INDEX;
+
+	MeshComponents[mMeshIndex]->ClearAllMeshSections();
+	MeshComponents[mMeshIndex]->CreateMeshSection_LinearColor(0, Vertices, Indices, Normals, UV0, UV1, UV2, UV3, VertexColors, Tangents, true);
 
 	return mMeshIndex;
 }
