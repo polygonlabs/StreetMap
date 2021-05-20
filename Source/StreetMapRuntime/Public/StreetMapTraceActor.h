@@ -17,10 +17,10 @@ class STREETMAPRUNTIME_API AStreetMapTraceActor : public AActor
 	TMap<FGuid, TArray<int>> mTraces;
 	int mMeshIndex = 0;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StreetMap")
+	UPROPERTY(BlueprintReadOnly, Category = "StreetMap")
 		TArray<UProceduralMeshComponent*> MeshComponents;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "StreetMap")
+	UPROPERTY(BlueprintReadOnly, Category = "StreetMap")
 		UProceduralMeshComponent* HighlightMeshComponent;
 
 	UPROPERTY(EditAnywhere, Category = "StreetMap")
