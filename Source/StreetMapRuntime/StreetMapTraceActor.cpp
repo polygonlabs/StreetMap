@@ -1,8 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
+#include "StreetMapTraceActor.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Engine/Polys.h"
-#include "StreetMapTraceActor.h"
 
 AStreetMapTraceActor::AStreetMapTraceActor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)

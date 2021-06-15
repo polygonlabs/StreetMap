@@ -4,11 +4,11 @@ namespace UnrealBuildTool.Rules
 {
     public class StreetMapImporting : ModuleRules
     {
-        public StreetMapImporting(ReadOnlyTargetRules Target) : base(Target)
+        public StreetMapImporting(ReadOnlyTargetRules Target)
+			: base(Target)
         {
-            bEnforceIWYU = false;
-
             PrivatePCHHeaderFile = "StreetMapImporting.h";
+
             PrivateDependencyModuleNames.AddRange(
                 new string[] {
                     "Core",
@@ -27,18 +27,7 @@ namespace UnrealBuildTool.Rules
                     "RawMesh",
                     "AssetTools",
                     "AssetRegistry",
-                    "StreetMapRuntime",
-                    "HTTP",
-                    "ImageWrapper",
-                    "DesktopPlatform",
-                    "Landscape",
-                    "CinematicCamera"
-                }
-            );
-
-            PrivateIncludePaths.AddRange(
-                new string[] {
-                    "Developer/DesktopPlatform/Public",
+                    "StreetMapRuntime"
                 }
             );
         }

@@ -651,21 +651,15 @@ struct STREETMAPRUNTIME_API FStreetMapRoadRef
 	}
 };
 
-/** Nodes have a list of railway refs, one for each railway that intersects this node.  Each railway ref references a railway and also the
-point along that railway where this node exists. */
-USTRUCT(BlueprintType)
-struct STREETMAPRUNTIME_API FStreetMapRailwayRef
-{
-	GENERATED_USTRUCT_BODY()
-
-		/** Index of railway in the list of all railway in this street map */
-		UPROPERTY(Category = StreetMap, EditAnywhere)
-		int32 RailwayIndex;
-
-	/** Index of the point along railway where this node exists */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
-		int32 RailwayPointIndex;
-};
+//
+//		/** Index of railway in the list of all railway in this street map */
+//		UPROPERTY(Category = StreetMap, EditAnywhere)
+//		int32 RailwayIndex;
+//
+//	/** Index of the point along railway where this node exists */
+//	UPROPERTY(Category = StreetMap, EditAnywhere)
+//		int32 RailwayPointIndex;
+//};
 
 
 /** OSM Tag kept for later use */
@@ -695,10 +689,11 @@ struct STREETMAPRUNTIME_API FStreetMapNode
 		UPROPERTY(Category = StreetMap, EditAnywhere)
 		TArray<FStreetMapRoadRef> RoadRefs;
 
-	/** All of the Railways that intersect this node.  We have references to each of these railways, as well as the point along each
-		railway where this node exists */
-	UPROPERTY(Category = StreetMap, EditAnywhere)
-		TArray<FStreetMapRailwayRef> RailwayRefs;
+	/** Returns this node's index */
+	inline int32 GetNodeIndex(const UStreetMap& StreetMap) const;
+
+	/** Gets the location of this node */
+	//inline FVector2D GetLocation( const UStreetMap& StreetMap ) const;
 
 	/** All Tags of this Node. Usually empty */
 	UPROPERTY(Category = StreetMap, EditAnywhere)
@@ -707,9 +702,6 @@ struct STREETMAPRUNTIME_API FStreetMapNode
 	/** 2D location of this node */
 	UPROPERTY(Category = StreetMap, EditAnywhere)
 		FVector2D Location;
-
-	/** Returns this node's index */
-	inline int32 GetNodeIndex(const UStreetMap& StreetMap) const;
 
 	///
 	/// Utility functions which may be useful for pathfinding algorithms (not used internally.)
@@ -909,31 +901,6 @@ public:
 	{
 		return Buildings;
 	}
-
-	/** Gets all of the railways (read only) */
-	const TArray<FStreetMapRailway>& GetRailways() const
-	{
-		return Railways;
-	}
-
-	/** Gets all of the railways */
-	TArray<FStreetMapRailway>& GetRailways()
-	{
-		return Railways;
-	}
-
-	/** Gets all of the miscellaneous ways (read only) */
-	const TArray<FStreetMapMiscWay>& GetMiscWays() const
-	{
-		return MiscWays;
-	}
-
-	/** Gets all of the miscellaneous ways */
-	TArray<FStreetMapMiscWay>& GetMiscWays()
-	{
-		return MiscWays;
-	}
-
 
 	/** Gets the bounding box of the map */
 	FVector2D GetBoundsMin() const

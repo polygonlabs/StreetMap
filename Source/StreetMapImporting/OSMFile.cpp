@@ -1,12 +1,12 @@
 // Copyright 2017 Mike Fricker. All Rights Reserved.
 
-#include "StreetMapImporting.h"
 #include "OSMFile.h"
+#include "StreetMapImporting.h"
 
 
 FOSMFile::FOSMFile()
 	: ParsingState( ParsingState::Root )
-	, SpatialReferenceSystem( 0, 0 )
+	, SpatialReferenceSystem(0, 0)
 {
 }
 		
@@ -52,8 +52,6 @@ bool FOSMFile::LoadOpenStreetMapFile( FString& OSMFilePath, const bool bIsFilePa
 		{
 			AverageLatitude /= NodeMap.Num();
 			AverageLongitude /= NodeMap.Num();
-
-			SpatialReferenceSystem = FSpatialReferenceSystem(AverageLongitude, AverageLatitude);
 		}
 
 		return true;
@@ -111,19 +109,6 @@ bool FOSMFile::ProcessElement( const TCHAR* ElementName, const TCHAR* ElementDat
 			// @todo: We're currently ignoring the "visible" tag on ways, which means that roads will always
 			//        be included in our data set.  It might be nice to make this an import option.
 		}
-		else if (!FCString::Stricmp(ElementName, TEXT("relation")))
-		{
-			ParsingState = ParsingState::Relation;
-			CurrentRelation = new FOSMRelation();
-			CurrentRelation->Type = EOSMRelationType::Other;
-		}
-	}
-	else if (ParsingState == ParsingState::Node)
-	{
-		if (!FCString::Stricmp(ElementName, TEXT("tag")))
-		{
-			ParsingState = ParsingState::Node_Tag;
-		}
 	}
 	else if( ParsingState == ParsingState::Way )
 	{
@@ -134,20 +119,6 @@ bool FOSMFile::ProcessElement( const TCHAR* ElementName, const TCHAR* ElementDat
 		else if( !FCString::Stricmp( ElementName, TEXT( "tag" ) ) )
 		{
 			ParsingState = ParsingState::Way_Tag;
-		}
-	}
-	else if (ParsingState == ParsingState::Relation)
-	{
-		if (!FCString::Stricmp(ElementName, TEXT("member")))
-		{
-			ParsingState = ParsingState::Relation_Member;
-			CurrentRelationMember = new FOSMRelationMember();
-			CurrentRelationMember->Type = EOSMRelationMemberType::Other;
-			CurrentRelationMember->Role = EOSMRelationMemberRole::Other;
-		}
-		else if (!FCString::Stricmp(ElementName, TEXT("tag")))
-		{
-			ParsingState = ParsingState::Relation_Tag;
 		}
 	}
 
@@ -198,44 +169,24 @@ bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* Attrib
 			}
 		}
 	}
-	else if (ParsingState == ParsingState::Node_Tag)
-	{
-		if (!FCString::Stricmp(AttributeName, TEXT("k")))
-		{
-			CurrentNodeTagKey = AttributeValue;
-		}
-		else if (!FCString::Stricmp(AttributeName, TEXT("v")))
-		{
-			FOSMTag Tag;
-			Tag.Key = FName::FName(CurrentNodeTagKey);
-			Tag.Value = FName::FName(AttributeValue);
-			CurrentNodeInfo->Tags.Add(Tag);
-		}
-	}
 	else if( ParsingState == ParsingState::Way )
 	{
-		if (!FCString::Stricmp(AttributeName, TEXT("id")))
-		{
-			CurrentWayID = FPlatformString::Atoi64(AttributeValue);
-		}
+		// ...
 	}
 	else if( ParsingState == ParsingState::Way_NodeRef )
 	{
 		if( !FCString::Stricmp( AttributeName, TEXT( "ref" ) ) )
 		{
 			FOSMNodeInfo* ReferencedNode = NodeMap.FindRef( FPlatformString::Atoi64( AttributeValue ) );
-			if(ReferencedNode)
-			{
-				const int NewNodeIndex = CurrentWayInfo->Nodes.Num();
-				CurrentWayInfo->Nodes.Add( ReferencedNode );
+			const int NewNodeIndex = CurrentWayInfo->Nodes.Num();
+			CurrentWayInfo->Nodes.Add( ReferencedNode );
 					
-				// Update the node with information about the way that is referencing it
-				{
-					FOSMWayRef NewWayRef;
-					NewWayRef.Way = CurrentWayInfo;
-					NewWayRef.NodeIndex = NewNodeIndex;
-					ReferencedNode->WayRefs.Add( NewWayRef );
-				}
+			// Update the node with information about the way that is referencing it
+			{
+				FOSMWayRef NewWayRef;
+				NewWayRef.Way = CurrentWayInfo;
+				NewWayRef.NodeIndex = NewNodeIndex;
+				ReferencedNode->WayRefs.Add( NewWayRef );
 			}
 		}
 	}
@@ -277,21 +228,131 @@ bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* Attrib
 			}
 			else if( !FCString::Stricmp( CurrentWayTagKey, TEXT( "highway" ) ) )
 			{
-				CurrentWayInfo->WayType = EOSMWayType::Highway;
-				CurrentWayInfo->Category = AttributeValue;
-			}
-			else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("railway")))
-			{
-				CurrentWayInfo->WayType = EOSMWayType::Railway;
-				CurrentWayInfo->Category = AttributeValue;
+				EOSMWayType WayType = EOSMWayType::Highway;
+						
+				//if( !FCString::Stricmp( AttributeValue, TEXT( "motorway" ) ) )
+				//{
+				//	WayType = EOSMWayType::Motorway;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "motorway_link" ) ) )
+				//{
+				//	WayType = EOSMWayType::Motorway_Link;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "trunk" ) ) )
+				//{
+				//	WayType = EOSMWayType::Trunk;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "trunk_link" ) ) )
+				//{
+				//	WayType = EOSMWayType::Trunk_Link;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "primary" ) ) )
+				//{
+				//	WayType = EOSMWayType::Primary;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "primary_link" ) ) )
+				//{
+				//	WayType = EOSMWayType::Primary_Link;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "secondary" ) ) )
+				//{
+				//	WayType = EOSMWayType::Secondary;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "secondary_link" ) ) )
+				//{
+				//	WayType = EOSMWayType::Secondary_Link;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "tertiary" ) ) )
+				//{
+				//	WayType = EOSMWayType::Tertiary;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "tertiary_link" ) ) )
+				//{
+				//	WayType = EOSMWayType::Tertiary_Link;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "residential" ) ) )
+				//{
+				//	WayType = EOSMWayType::Residential;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "service" ) ) )
+				//{
+				//	WayType = EOSMWayType::Service;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "unclassified" ) ) )
+				//{
+				//	WayType = EOSMWayType::Unclassified;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "living_street" ) ) )
+				//{
+				//	WayType = EOSMWayType::Living_Street;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "pedestrian" ) ) )
+				//{
+				//	WayType = EOSMWayType::Pedestrian;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "track" ) ) )
+				//{
+				//	WayType = EOSMWayType::Track;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "bus_guideway" ) ) )
+				//{
+				//	WayType = EOSMWayType::Bus_Guideway;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "raceway" ) ) )
+				//{
+				//	WayType = EOSMWayType::Raceway;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "road" ) ) )
+				//{
+				//	WayType = EOSMWayType::Road;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "footway" ) ) )
+				//{
+				//	WayType = EOSMWayType::Footway;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "cycleway" ) ) )
+				//{
+				//	WayType = EOSMWayType::Cycleway;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "bridleway" ) ) )
+				//{
+				//	WayType = EOSMWayType::Bridleway;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "steps" ) ) )
+				//{
+				//	WayType = EOSMWayType::Steps;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "path" ) ) )
+				//{
+				//	WayType = EOSMWayType::Path;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "proposed" ) ) )
+				//{
+				//	WayType = EOSMWayType::Proposed;
+				//}
+				//else if( !FCString::Stricmp( AttributeValue, TEXT( "construction" ) ) )
+				//{
+				//	WayType = EOSMWayType::Construction;
+				//}
+				//else
+				//{
+				//	// Other type that we don't recognize yet.  See http://wiki.openstreetmap.org/wiki/Key:highway
+				//}
+				//		
+				//		
+				//CurrentWayInfo->WayType = WayType;
 			}
 			else if( !FCString::Stricmp( CurrentWayTagKey, TEXT( "building" ) ) )
 			{
 				CurrentWayInfo->WayType = EOSMWayType::Building;
 
-				if( FCString::Stricmp( AttributeValue, TEXT( "yes" ) ) )
+				if( !FCString::Stricmp( AttributeValue, TEXT( "yes" ) ) )
 				{
-					CurrentWayInfo->Category = AttributeValue;
+					CurrentWayInfo->WayType = EOSMWayType::Building;
+				}
+				else
+				{
+					// Other type that we don't recognize yet.  See http://wiki.openstreetmap.org/wiki/Key:building
 				}
 			}
 			else if( !FCString::Stricmp( CurrentWayTagKey, TEXT( "height" ) ) )
@@ -325,91 +386,6 @@ bool FOSMFile::ProcessAttribute( const TCHAR* AttributeName, const TCHAR* Attrib
 					CurrentWayInfo->bIsOneWay = false;
 				}
 			}
-			else if(CurrentWayInfo->WayType == EOSMWayType::Other)
-			{
-				// if this way was not already marked as building or highway, try other types as well
-				if (!FCString::Stricmp(CurrentWayTagKey, TEXT("leisure")))
-				{
-					CurrentWayInfo->WayType = EOSMWayType::Leisure;
-					CurrentWayInfo->Category = AttributeValue;
-				}
-				else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("natural")))
-				{
-					CurrentWayInfo->WayType = EOSMWayType::Natural;
-					CurrentWayInfo->Category = AttributeValue;
-				}
-				else if (!FCString::Stricmp(CurrentWayTagKey, TEXT("landuse")))
-				{
-					CurrentWayInfo->WayType = EOSMWayType::LandUse;
-					CurrentWayInfo->Category = AttributeValue;
-				}
-			}
-		}
-	}
-	else if (ParsingState == ParsingState::Relation)
- 	{
-		if (!FCString::Stricmp(AttributeName, TEXT("id")))
-		{
-			CurrentRelationID = FPlatformString::Atoi64(AttributeValue);
-		}
-	}
-	else if (ParsingState == ParsingState::Relation_Member)
-	{
-		if (!FCString::Stricmp(AttributeName, TEXT("type")))
-		{
-			if (!FCString::Stricmp(AttributeValue, TEXT("node")))
-			{
-				CurrentRelationMember->Type = EOSMRelationMemberType::Node;
-			}
-			else if (!FCString::Stricmp(AttributeValue, TEXT("way")))
-			{
-				CurrentRelationMember->Type = EOSMRelationMemberType::Way;
-			}
-			else if (!FCString::Stricmp(AttributeValue, TEXT("relation")))
-			{
-				CurrentRelationMember->Type = EOSMRelationMemberType::Relation;
-			}
-		}
-		else if (!FCString::Stricmp(AttributeName, TEXT("ref")))
-		{
-			CurrentRelationMember->Ref = FPlatformString::Atoi64(AttributeValue); // TODO: decide if int64 or FString is better
-		}
-		else if (!FCString::Stricmp(AttributeName, TEXT("role")))
-		{
-			if (!FCString::Stricmp(AttributeValue, TEXT("outer")))
-			{
-				CurrentRelationMember->Role = EOSMRelationMemberRole::Outer;
-			}
-			else if (!FCString::Stricmp(AttributeValue, TEXT("inner")))
-			{
-				CurrentRelationMember->Role = EOSMRelationMemberRole::Inner;
-			}
-		}
-	}
-	else if (ParsingState == ParsingState::Relation_Tag)
-	{
-		if (!FCString::Stricmp(AttributeName, TEXT("k")))
-		{
-			CurrentRelationTagKey = AttributeValue;
-		}
-		else if (!FCString::Stricmp(AttributeName, TEXT("v")))
-		{
-			FOSMTag Tag;
-			Tag.Key = FName::FName(CurrentRelationTagKey);
-			Tag.Value = FName::FName(AttributeValue);
-			CurrentRelation->Tags.Add(Tag);
-
-			if (!FCString::Stricmp(CurrentRelationTagKey, TEXT("type")))
-			{
-				if (!FCString::Stricmp(AttributeValue, TEXT("boundary")))
-				{
-					CurrentRelation->Type = EOSMRelationType::Boundary;
-				}
-				else if (!FCString::Stricmp(AttributeValue, TEXT("multipolygon")))
-				{
-					CurrentRelation->Type = EOSMRelationType::Multipolygon;
-				}
-			}
 		}
 	}
 
@@ -427,15 +403,8 @@ bool FOSMFile::ProcessClose( const TCHAR* Element )
 				
 		ParsingState = ParsingState::Root;
 	}
-	else if (ParsingState == ParsingState::Node_Tag)
-	{
-		CurrentNodeTagKey = TEXT("");
-		ParsingState = ParsingState::Node;
-	}
 	else if( ParsingState == ParsingState::Way )
 	{
-		WayMap.Add(CurrentWayID, CurrentWayInfo );
-		CurrentWayID = 0;
 		Ways.Add( CurrentWayInfo );
 		CurrentWayInfo = nullptr;
 				
@@ -449,21 +418,6 @@ bool FOSMFile::ProcessClose( const TCHAR* Element )
 	{
 		CurrentWayTagKey = TEXT( "" );
 		ParsingState = ParsingState::Way;
-	}
-	else if (ParsingState == ParsingState::Relation)
-	{
-		Relations.Add( CurrentRelation );
-		ParsingState = ParsingState::Root;
-	}
-	else if (ParsingState == ParsingState::Relation_Member)
-	{
-		CurrentRelation->Members.Add(CurrentRelationMember);
-		ParsingState = ParsingState::Relation;
-	}
-	else if (ParsingState == ParsingState::Relation_Tag)
-	{
-		CurrentWayTagKey = TEXT("");
-		ParsingState = ParsingState::Relation;
 	}
 
 	return true;

@@ -12,6 +12,20 @@
 
 class UBodySetup;
 
+struct FPointHashGridContainer {
+
+public: 
+
+	FPointHashGridContainer()
+		: Grid(10.0, FStreetMapRoad())
+	{
+		//Grid = TPointHashGrid2d<FStreetMapRoad>(10.0, FStreetMapRoad());
+	} 
+
+	TPointHashGrid2d<FStreetMapRoad> Grid;
+
+};
+
 /**
  * Component that represents a section of street map roads and buildings
  */
@@ -44,9 +58,9 @@ private:
 
 	// Point Hash Grid to query closest road
 	FStreetMapRoad InvalidRoad;
-	TPointHashGrid2d<FStreetMapRoad> mHighwayGrid2d;
-	TPointHashGrid2d<FStreetMapRoad> mMajorRoadGrid2d;
-	TPointHashGrid2d<FStreetMapRoad> mStreetGrid2d;
+	FPointHashGridContainer mHighwayGrid2d;
+	FPointHashGridContainer mMajorRoadGrid2d;
+	FPointHashGridContainer mStreetGrid2d;
 
 	const float HighSpeedRatio = 0.8f;
 	const float MedSpeedRatio = 0.5f;
@@ -56,6 +70,8 @@ public:
 
 	/** UStreetMapComponent constructor */
 	UStreetMapComponent(const class FObjectInitializer& ObjectInitializer);
+
+	UStreetMapComponent();
 
 	/** @return Gets the street map object associated with this component */
 	UFUNCTION(BlueprintCallable, Category = "StreetMap")
@@ -504,18 +520,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "StreetMap")
 		FStreetMapCollisionSettings CollisionSettings;
-
-	UPROPERTY(EditAnywhere, Category = "Landscape")
-		FStreetMapLandscapeBuildSettings LandscapeSettings;
-
-	UPROPERTY(EditAnywhere, Category = "Railway")
-		FStreetMapRailwayBuildSettings RailwaySettings;
-
-	UPROPERTY(EditAnywhere, Category = "Roads")
-		FStreetMapRoadBuildSettings RoadSettings;
-
-	UPROPERTY(EditAnywhere, Category = "Splines")
-		FStreetMapSplineBuildSettings SplineSettings;
 
 	//** Physics data for mesh collision. */
 	UPROPERTY(Transient)

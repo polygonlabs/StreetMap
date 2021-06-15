@@ -1,6 +1,6 @@
 // Copyright 2017 Mike Fricker. All Rights Reserved.
 
-#include "Public/StreetMapComponent.h"
+#include "StreetMapComponent.h"
 #include "StreetMapRuntime.h"
 #include "StreetMapSceneProxy.h"
 #include "Runtime/Engine/Classes/Engine/StaticMesh.h"
@@ -8,7 +8,7 @@
 #include "Engine/Polys.h"
 #include "GenericPlatform/GenericPlatformMath.h"
 #include "PolygonTools.h"
-#include "Async.h"
+#include "Async\Async.h"
 #include "RayTypes.h"
 #include <algorithm>
 
@@ -17,7 +17,6 @@
 #if WITH_EDITOR
 #include "Modules/ModuleManager.h"
 #include "PropertyEditorModule.h"
-#include "LandscapeLayerInfoObject.h"
 #include "Public\StreetMapComponent.h"
 #endif //WITH_EDITOR
 
@@ -26,10 +25,7 @@
 UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
 	StreetMap(nullptr),
-	CachedLocalBounds(FBox(ForceInitToZero)),
-	mHighwayGrid2d(10.0, FStreetMapRoad()),
-	mMajorRoadGrid2d(10.0, FStreetMapRoad()),
-	mStreetGrid2d(10.0, FStreetMapRoad())
+	CachedLocalBounds(FBox(ForceInitToZero))
 {
 	// We make sure our mesh collision profile name is set to NoCollisionProfileName at initialization. 
 	// Because we don't have collision data yet!
@@ -66,7 +62,7 @@ UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitial
 	mLink2RoadIndex.Empty();
 
 #if WITH_EDITOR
-	if (GEngine)
+	/*if (GEngine)
 	{
 		static ConstructorHelpers::FObjectFinder<UMaterialInterface> DefaultLandscapeMaterialAsset(TEXT("/StreetMap/LandscapeDefaultMaterial"));
 		LandscapeSettings.Material = DefaultLandscapeMaterialAsset.Object;
@@ -86,7 +82,7 @@ UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitial
 
 			LandscapeSettings.Layers.Add(MoveTemp(NewImportLayer));
 		}
-	}
+	}*/
 #endif
 }
 
@@ -113,17 +109,17 @@ void UStreetMapComponent::IndexStreetMap()
 			switch (Road.RoadType) {
 			case EStreetMapRoadType::Highway:
 				PositionZ = MeshBuildSettings.HighwayOffsetZ;
-				PtHashGrid2d = &mHighwayGrid2d;
+				PtHashGrid2d = &mHighwayGrid2d.Grid;
 
 				break;
 			case EStreetMapRoadType::MajorRoad:
 				PositionZ = MeshBuildSettings.MajorRoadOffsetZ;
-				PtHashGrid2d = &mMajorRoadGrid2d;
+				PtHashGrid2d = &mMajorRoadGrid2d.Grid;
 
 				break;
 			default:
 				PositionZ = MeshBuildSettings.StreetOffsetZ;
-				PtHashGrid2d = &mStreetGrid2d;
+				PtHashGrid2d = &mStreetGrid2d.Grid;
 
 				break;
 			}
@@ -349,7 +345,6 @@ void UStreetMapComponent::GenerateCollision()
 	// Rebuild the body setup
 	StreetMapBodySetup->InvalidatePhysicsData();
 	StreetMapBodySetup->CreatePhysicsMeshes();
-
 	UpdateNavigationIfNeeded();
 }
 
@@ -676,7 +671,7 @@ void UStreetMapComponent::GenerateMesh()
 
 				// calculate fill Z for buildings
 				// either use the defined height or extrapolate from building level count
-				float BuildingFillZ = MeshBuildSettings.BuildDefaultZ;
+				float BuildingFillZ = 0.0f;
 				if (bWant3DBuildings) {
 					if (Building.Height > 0) {
 						BuildingFillZ = Building.Height;
@@ -1458,13 +1453,13 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(
 		return MinDistance;
 	};
 	
-	auto NearestHighwayPair = mHighwayGrid2d.FindNearestInRadius(QueryPoint, sqrt(HighwayTolerance), DistanceSqFunc);
+	auto NearestHighwayPair = mHighwayGrid2d.Grid.FindNearestInRadius(QueryPoint, sqrt(HighwayTolerance), DistanceSqFunc);
 	NearestHighway = NearestHighwayPair.Key;
 	NearestHighwayDistance = NearestHighwayPair.Value;
 	NearestRoad = NearestHighway;
 	ClosestDistance = NearestHighwayDistance;
 
-	auto NearestMajorRoadPair = mMajorRoadGrid2d.FindNearestInRadius(QueryPoint, sqrt(MajorRoadTolerance), DistanceSqFunc);
+	auto NearestMajorRoadPair = mMajorRoadGrid2d.Grid.FindNearestInRadius(QueryPoint, sqrt(MajorRoadTolerance), DistanceSqFunc);
 	NearestMajorRoad = NearestMajorRoadPair.Key;
 	NearestMajorRoadDistance = NearestMajorRoadPair.Value;
 	if (NearestMajorRoadDistance < ClosestDistance && MaxRoadType != EStreetMapRoadType::Highway) {
@@ -1472,7 +1467,7 @@ FStreetMapRoad UStreetMapComponent::GetClosestRoad(
 		NearestRoad = NearestMajorRoad;
 	}
 
-	auto NearestStreetPair = mStreetGrid2d.FindNearestInRadius(QueryPoint, sqrt(StreetTolerance), DistanceSqFunc);
+	auto NearestStreetPair = mStreetGrid2d.Grid.FindNearestInRadius(QueryPoint, sqrt(StreetTolerance), DistanceSqFunc);
 	NearestStreet = NearestStreetPair.Key;
 	NearestStreetDistance = NearestStreetPair.Value;
 	if (NearestStreetDistance < ClosestDistance && MaxRoadType == EStreetMapRoadType::Street) {
@@ -4027,13 +4022,13 @@ bool UStreetMapComponent::GetOppositeRoad(const FStreetMapRoad& Road, FStreetMap
 
 		switch (Road.RoadType) {
 		case EStreetMapRoadType::Highway:
-			NearestPair = mHighwayGrid2d.FindNearestInRadius(QueryPoint, sqrt(HighwayTolerance), DistanceSqFunc, IgnoreFunc);
+			NearestPair = mHighwayGrid2d.Grid.FindNearestInRadius(QueryPoint, sqrt(HighwayTolerance), DistanceSqFunc, IgnoreFunc);
 			break;
 		case EStreetMapRoadType::MajorRoad:
-			NearestPair = mMajorRoadGrid2d.FindNearestInRadius(QueryPoint, sqrt(HighwayTolerance), DistanceSqFunc, IgnoreFunc);
+			NearestPair = mMajorRoadGrid2d.Grid.FindNearestInRadius(QueryPoint, sqrt(HighwayTolerance), DistanceSqFunc, IgnoreFunc);
 			break;
 		default:
-			NearestPair = mStreetGrid2d.FindNearestInRadius(QueryPoint, sqrt(HighwayTolerance), DistanceSqFunc, IgnoreFunc);
+			NearestPair = mStreetGrid2d.Grid.FindNearestInRadius(QueryPoint, sqrt(HighwayTolerance), DistanceSqFunc, IgnoreFunc);
 			break;
 		}
 

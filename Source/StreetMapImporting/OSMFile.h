@@ -22,7 +22,7 @@ public:
 
 
 	struct FOSMWayInfo;
-
+		
 	/** Types of ways */
 	enum class EOSMWayType
 	{

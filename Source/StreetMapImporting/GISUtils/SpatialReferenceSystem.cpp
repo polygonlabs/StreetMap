@@ -1,5 +1,5 @@
-#include "../StreetMapImporting.h"
 #include "SpatialReferenceSystem.h"
+#include "../StreetMapImporting.h"
 
 // Latitude/longitude scale factor
 //			- https://en.wikipedia.org/wiki/Equator#Exact_length

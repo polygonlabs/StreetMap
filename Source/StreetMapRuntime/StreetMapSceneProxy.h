@@ -112,6 +112,9 @@ public:
 
 	/** Destructor that cleans up our rendering data */
 	virtual ~FStreetMapSceneProxy();
+
+
+	/** Return a type (or subtype) specific hash for sorting purposes */
 
 	SIZE_T GetTypeHash() const override;
 
@@ -139,6 +142,9 @@ protected:
 	virtual bool CanBeOccluded() const override;
 	
 protected:
+
+	/** Our vertex factory specific to street map meshes */
+	//FLocalVertexFactory VertexFactory;
 
 	/** Contains all of the vertices in our street map mesh */
 	FStaticMeshVertexBuffers StreetVertexBuffer;
