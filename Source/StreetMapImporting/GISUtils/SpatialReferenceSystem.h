@@ -30,6 +30,9 @@ public:
 	 */
 	bool ToEPSG3857(const FVector2D& Location, double& OutX, double& OutY) const;
 
+	inline void SetOriginLongitude(double longitude) { OriginLongitude = longitude; }
 	inline double GetOriginLongitude() const { return OriginLongitude; }
-	inline double GetOriginLatitude() const { return OriginLatitude; }
+	
+	inline void SetOriginLatitude(double latitude) { OriginLatitude = latitude; }
+	inline double GetOriginLatitude() const { return OriginLatitude; }	
 };
