@@ -29,7 +29,8 @@
 UStreetMapComponent::UStreetMapComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
 	StreetMap(nullptr),
-	CachedLocalBounds(FBox(ForceInitToZero))
+	CachedLocalBounds(FBox(ForceInitToZero)),
+	HeightHack(10000)
 {
 	// We make sure our mesh collision profile name is set to NoCollisionProfileName at initialization. 
 	// Because we don't have collision data yet!
@@ -4156,8 +4157,8 @@ bool UStreetMapComponent::GetOppositeRoad(const FStreetMapRoad& Road, FStreetMap
 
 float UStreetMapComponent::GetStreetVertexHeight(int Index)
 {
-	if (Index < 0 || Index >= StreetVertexHeights.Num())
-		return 0;
+	if (Index < 0 || Index >= StreetVertexHeights.Num() || StreetVertexHeights[Index] <= 0)
+		return HeightHack;
 	else
 		return StreetVertexHeights[Index];
 }

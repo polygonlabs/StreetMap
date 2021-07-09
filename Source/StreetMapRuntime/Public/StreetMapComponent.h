@@ -529,6 +529,8 @@ protected:
 	UPROPERTY(Transient)
 		UBodySetup* StreetMapBodySetup;
 
+	UPROPERTY(EditAnywhere, Category = "StreetMap")
+		float HeightHack;
 
 
 	friend class FStreetMapComponentDetails;
