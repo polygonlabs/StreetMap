@@ -2,6 +2,7 @@
 // Copyright 2017 Mike Fricker. All Rights Reserved.
 #pragma once
 
+#include "StreetMap.h"
 #include "Runtime/Engine/Public/PrimitiveSceneProxy.h"
 #include "Runtime/Engine/Public/LocalVertexFactory.h"
 #include "Runtime/Engine/Public/DynamicMeshBuilder.h"

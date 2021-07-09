@@ -3,6 +3,7 @@
 #include "StreetMapComponentDetails.h"
 #include "StreetMapImporting.h"
 
+#include "AssetToolsModule.h"
 #include "SlateBasics.h"
 #include "RawMesh.h"
 #include "PropertyEditorModule.h"
@@ -22,7 +23,7 @@
 #include "Framework\Notifications\NotificationManager.h"
 //#include "AssertionMacros.h"
 #include "Misc\AssertionMacros.h"
-
+#include "Toolkits/AssetEditorManager.h"
 
 #include "StreetMapComponent.h"
 
@@ -143,6 +144,42 @@ void FStreetMapComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 		[
 			SNew(STextBlock)
 			.Text(LOCTEXT("CreateStaticMeshAsset", "Create Static Mesh Asset"))
+		.Font(IDetailLayoutBuilder::GetDetailFont())
+		]
+		]
+		];
+
+	StreetMapCategory.AddCustomRow(FText::GetEmpty(), false)
+		[
+			SAssignNew(TempHorizontalBox, SHorizontalBox)
+			+ SHorizontalBox::Slot()
+		[
+			SNew(SButton)
+			.ToolTipText(LOCTEXT("BuildHeightMap_Tooltip", "Build the road height map from the terrain data."))
+		.OnClicked(this, &FStreetMapComponentDetails::OnBuildHeightMapClicked)
+		.IsEnabled(bCanCreateMeshAsset)
+		.HAlign(HAlign_Center)
+		[
+			SNew(STextBlock)
+			.Text(LOCTEXT("BuildHeightMap", "Build Height Map"))
+		.Font(IDetailLayoutBuilder::GetDetailFont())
+		]
+		]
+		];
+
+	StreetMapCategory.AddCustomRow(FText::GetEmpty(), false)
+		[
+			SAssignNew(TempHorizontalBox, SHorizontalBox)
+			+ SHorizontalBox::Slot()
+		[
+			SNew(SButton)
+			.ToolTipText(LOCTEXT("ClearHeightMap_Tooltip", "Clear the road height map."))
+		.OnClicked(this, &FStreetMapComponentDetails::OnClearHeightMapClicked)
+		.IsEnabled(bCanCreateMeshAsset)
+		.HAlign(HAlign_Center)
+		[
+			SNew(STextBlock)
+			.Text(LOCTEXT("ClearHeightMap", "Clear Height Map"))
 		.Font(IDetailLayoutBuilder::GetDetailFont())
 		]
 		]
@@ -390,6 +427,24 @@ FReply FStreetMapComponentDetails::OnClearMeshClicked()
 		RefreshDetails();
 	}
 
+	return FReply::Handled();
+}
+
+FReply FStreetMapComponentDetails::OnBuildHeightMapClicked()
+{
+	if (SelectedStreetMapComponent != nullptr)
+	{
+		SelectedStreetMapComponent->BuildHeightMap();
+	}
+	return FReply::Handled();
+}
+
+FReply FStreetMapComponentDetails::OnClearHeightMapClicked()
+{
+	if (SelectedStreetMapComponent != nullptr)
+	{
+		SelectedStreetMapComponent->ClearHeightMap();
+	}
 	return FReply::Handled();
 }
 

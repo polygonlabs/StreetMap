@@ -3,6 +3,7 @@
 #pragma once
 
 #include "IDetailCustomization.h"
+#include "StreetMapSceneProxy.h"
 
 class  FStreetMapComponentDetails : public IDetailCustomization
 {
@@ -32,6 +33,9 @@ public:
 		
 	/** Handles clear mesh button clicking */
 	FReply OnClearMeshClicked();
+
+	FReply OnBuildHeightMapClicked();
+	FReply OnClearHeightMapClicked();
 
 	/** Refreshes the details view and regenerates all the customized layouts. */
 	void RefreshDetails();

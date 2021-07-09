@@ -14,11 +14,15 @@
 
 #include "PhysicsEngine/BodySetup.h"
 
+#include "DrawDebugHelpers.h"
+
 #if WITH_EDITOR
 #include "Modules/ModuleManager.h"
 #include "PropertyEditorModule.h"
 #include "Public\StreetMapComponent.h"
 #endif //WITH_EDITOR
+
+#define ECC_GameTraceTerrain ECC_GameTraceChannel1
 
 // #define BAKE_THICKNESS
 
@@ -259,6 +263,82 @@ void UStreetMapComponent::SetStreetMap(class UStreetMap* NewStreetMap, bool bCle
 	}
 }
 
+void UStreetMapComponent::BuildHeightMap()
+{
+	if (StreetMap != nullptr)
+	{
+		FBox MeshBoundingBox;
+		MeshBoundingBox.Init();
+
+		auto& Roads = StreetMap->GetRoads();
+		const auto& Nodes = StreetMap->GetNodes();
+		const auto& Buildings = StreetMap->GetBuildings();
+
+		TArray<AActor*> Ignore;
+		Ignore.Add(GetOwner());
+
+		int HitCount = 0;
+		int NoHitCount = 0;
+
+		auto Loc = GetComponentLocation();
+		FVector2D XYOffset(Loc.X, Loc.Y);
+		FVector2D XYScale(1, 1);
+		float ZOffset = Loc.Z;
+
+		const float OffsetTest = 15;
+		//const TArray<FVector> TestOffsets = {FVector(0, 0, 0), FVector(0, OffsetTest, 0), FVector(0, -OffsetTest, 0), FVector(OffsetTest, 0, 0), FVector(-OffsetTest, 0, 0) };
+		const TArray<FVector> TestOffsets = { FVector(0, 0, 0) };
+
+		int HeightIndex = 0;
+
+		FlushPersistentDebugLines(GetWorld());
+
+		for (auto& Road : Roads)
+		{
+			for (auto Point : Road.RoadPoints)
+			{
+				if (HeightIndex >= StreetVertexHeights.Num())
+				{
+					StreetVertexHeights.Add(0);
+				}
+				FVector StartTrace(Point + XYOffset, ZOffset + 5000000);
+				FVector EndTrace(Point + XYOffset, ZOffset - 5000000);
+				FHitResult HitResult;
+
+				bool Hit = false;
+				float CurrZ = StreetVertexHeights[HeightIndex];
+
+				for (auto TestOffset : TestOffsets)
+				{
+					UKismetSystemLibrary::LineTraceSingle(this, StartTrace + TestOffset, EndTrace + TestOffset, UEngineTypes::ConvertToTraceType(ECC_GameTraceTerrain), false, Ignore, EDrawDebugTrace::None, HitResult, true);
+					if (HitResult.bBlockingHit)
+					{
+						Hit = true;
+						float HitZ = HitResult.ImpactPoint.Z - ZOffset;
+						CurrZ = FMath::Max(CurrZ, HitZ);
+						//DrawDebugPoint(GetWorld(), HitResult.ImpactPoint, 5, FColor::Red, true);
+					}
+				}
+				if (Hit)
+				{
+					StreetVertexHeights[HeightIndex] = CurrZ;
+					++HitCount;
+				}
+				else
+				{
+					++NoHitCount;
+				}
+				++HeightIndex;
+			}
+		}
+		UE_LOG(LogTemp, Warning, TEXT("Hit: %d No hit: %d"), HitCount, NoHitCount);
+	}
+}
+
+void UStreetMapComponent::ClearHeightMap()
+{
+	StreetVertexHeights.Empty();
+}
 
 bool UStreetMapComponent::GetPhysicsTriMeshData(struct FTriMeshCollisionData* CollisionData, bool InUseAllTriData)
 {
@@ -441,6 +521,8 @@ void UStreetMapComponent::GenerateMesh()
 		const auto& Nodes = StreetMap->GetNodes();
 		const auto& Buildings = StreetMap->GetBuildings();
 
+		int HeightIndex = 0;
+
 		for (auto& Road : Roads)
 		{
 			float RoadThickness = HighwayThickness;
@@ -509,6 +591,7 @@ void UStreetMapComponent::GenerateMesh()
 					{
 						CheckRoadSmoothQuadList(Road,
 							true,
+							HeightIndex,
 							RoadZ,
 							RoadThickness,
 							MaxThickness,
@@ -529,9 +612,10 @@ void UStreetMapComponent::GenerateMesh()
 					}
 					else
 					{
+						float Z = RoadZ + FMath::Max(GetStreetVertexHeight(HeightIndex), GetStreetVertexHeight(HeightIndex + 1));
 						StartSmoothQuadList(Road.RoadPoints[0],
 							Road.RoadPoints[1],
-							RoadZ,
+							Z,
 							RoadThickness,
 							MaxThickness,
 							RoadColor,
@@ -553,12 +637,14 @@ void UStreetMapComponent::GenerateMesh()
 					bool even = true;
 					for (; PointIndex < Road.RoadPoints.Num() - 2; ++PointIndex)
 					{
+						float Z = RoadZ + GetStreetVertexHeight(HeightIndex + PointIndex + 1);
+
 						even = PointIndex % 2 == 0;
 						AddSmoothQuad(
 							Road.RoadPoints[PointIndex],
 							Road.RoadPoints[PointIndex + 1],
 							Road.RoadPoints[PointIndex + 2],
-							RoadZ,
+							Z,
 							RoadThickness,
 							MaxThickness,
 							RoadColor,
@@ -580,6 +666,7 @@ void UStreetMapComponent::GenerateMesh()
 					{
 						CheckRoadSmoothQuadList(Road,
 							false,
+							HeightIndex,
 							RoadZ,
 							RoadThickness,
 							MaxThickness,
@@ -600,9 +687,10 @@ void UStreetMapComponent::GenerateMesh()
 					}
 					else
 					{
+						float Z = RoadZ + GetStreetVertexHeight(HeightIndex + PointIndex);
 						EndSmoothQuadList(Road.RoadPoints[PointIndex],
 							Road.RoadPoints[PointIndex + 1],
-							RoadZ,
+							Z,
 							RoadThickness,
 							MaxThickness,
 							RoadColor,
@@ -625,6 +713,7 @@ void UStreetMapComponent::GenerateMesh()
 				{
 					for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
 					{
+						float Z = RoadZ + FMath::Max(GetStreetVertexHeight(HeightIndex + PointIndex), GetStreetVertexHeight(HeightIndex + PointIndex + 1));
 						AddThick2DLine(
 							Road.RoadPoints[PointIndex],
 							Road.RoadPoints[PointIndex + 1],
@@ -647,6 +736,8 @@ void UStreetMapComponent::GenerateMesh()
 					}
 				}
 			}
+
+			HeightIndex += Road.RoadPoints.Num();
 		}
 
 		TArray< int32 > TempIndices;
@@ -847,6 +938,7 @@ void UStreetMapComponent::BuildRoadMesh(FColor HighFlowColor, FColor MedFlowColo
 
 		auto& Roads = StreetMap->GetRoads();
 
+		int HeightIndex = 0;
 		for (auto& Road : Roads)
 		{
 			float RoadThickness = HighwayThickness;
@@ -925,6 +1017,7 @@ void UStreetMapComponent::BuildRoadMesh(FColor HighFlowColor, FColor MedFlowColo
 					{
 						CheckRoadSmoothQuadList(Road,
 							true,
+							HeightIndex,
 							RoadZ,
 							RoadThickness,
 							MaxThickness,
@@ -945,9 +1038,10 @@ void UStreetMapComponent::BuildRoadMesh(FColor HighFlowColor, FColor MedFlowColo
 					}
 					else
 					{
+						float Z = RoadZ + GetStreetVertexHeight(HeightIndex + 1);
 						StartSmoothQuadList(Road.RoadPoints[0],
 							Road.RoadPoints[1],
-							RoadZ,
+							Z,
 							RoadThickness,
 							MaxThickness,
 							RoadColor,
@@ -970,11 +1064,12 @@ void UStreetMapComponent::BuildRoadMesh(FColor HighFlowColor, FColor MedFlowColo
 					for (; PointIndex < Road.RoadPoints.Num() - 2; ++PointIndex)
 					{
 						even = PointIndex % 2 == 0;
+						float Z = RoadZ + GetStreetVertexHeight(HeightIndex + 1);
 						AddSmoothQuad(
 							Road.RoadPoints[PointIndex],
 							Road.RoadPoints[PointIndex + 1],
 							Road.RoadPoints[PointIndex + 2],
-							RoadZ,
+							Z,
 							RoadThickness,
 							MaxThickness,
 							RoadColor,
@@ -996,6 +1091,7 @@ void UStreetMapComponent::BuildRoadMesh(FColor HighFlowColor, FColor MedFlowColo
 					{
 						CheckRoadSmoothQuadList(Road,
 							false,
+							HeightIndex,
 							RoadZ,
 							RoadThickness,
 							MaxThickness,
@@ -1016,9 +1112,10 @@ void UStreetMapComponent::BuildRoadMesh(FColor HighFlowColor, FColor MedFlowColo
 					}
 					else
 					{
+						float Z = RoadZ + GetStreetVertexHeight(HeightIndex);
 						EndSmoothQuadList(Road.RoadPoints[PointIndex],
 							Road.RoadPoints[PointIndex + 1],
-							RoadZ,
+							Z,
 							RoadThickness,
 							MaxThickness,
 							RoadColor,
@@ -1041,10 +1138,11 @@ void UStreetMapComponent::BuildRoadMesh(FColor HighFlowColor, FColor MedFlowColo
 				{
 					for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
 					{
+						float Z = RoadZ + FMath::Max(GetStreetVertexHeight(HeightIndex + PointIndex), GetStreetVertexHeight(HeightIndex + PointIndex + 1));
 						AddThick2DLine(
 							Road.RoadPoints[PointIndex],
 							Road.RoadPoints[PointIndex + 1],
-							RoadZ,
+							Z,
 							RoadThickness,
 							MaxThickness,
 							RoadColor,
@@ -1063,6 +1161,7 @@ void UStreetMapComponent::BuildRoadMesh(FColor HighFlowColor, FColor MedFlowColo
 					}
 				}
 			}
+			HeightIndex += Road.RoadPoints.Num();
 		}
 
 		CachedLocalBounds = MeshBoundingBox;
@@ -1132,6 +1231,7 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType, FColor High
 		MeshBoundingBox.Init();
 
 		auto& Roads = StreetMap->GetRoads();
+		int HeightIndex = 0;
 
 		for (auto& Road : Roads)
 		{
@@ -1211,6 +1311,7 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType, FColor High
 						{
 							CheckRoadSmoothQuadList(Road,
 								true,
+								HeightIndex,
 								RoadZ,
 								RoadThickness,
 								MaxThickness,
@@ -1231,9 +1332,10 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType, FColor High
 						}
 						else
 						{
+							float Z = GetStreetVertexHeight(HeightIndex);
 							StartSmoothQuadList(Road.RoadPoints[0],
 								Road.RoadPoints[1],
-								RoadZ,
+								Z,
 								RoadThickness,
 								MaxThickness,
 								RoadColor,
@@ -1256,11 +1358,12 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType, FColor High
 						for (; PointIndex < Road.RoadPoints.Num() - 2; ++PointIndex)
 						{
 							even = PointIndex % 2 == 0;
+							float Z = RoadZ + GetStreetVertexHeight(HeightIndex + PointIndex + 1);
 							AddSmoothQuad(
 								Road.RoadPoints[PointIndex],
 								Road.RoadPoints[PointIndex + 1],
 								Road.RoadPoints[PointIndex + 2],
-								RoadZ,
+								Z,
 								RoadThickness,
 								MaxThickness,
 								RoadColor,
@@ -1282,6 +1385,7 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType, FColor High
 						{
 							CheckRoadSmoothQuadList(Road,
 								false,
+								HeightIndex,
 								RoadZ,
 								RoadThickness,
 								MaxThickness,
@@ -1327,10 +1431,11 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType, FColor High
 					{
 						for (int32 PointIndex = 0; PointIndex < Road.RoadPoints.Num() - 1; ++PointIndex)
 						{
+							float Z = RoadZ + FMath::Max(GetStreetVertexHeight(HeightIndex + PointIndex), GetStreetVertexHeight(HeightIndex + PointIndex + 1));
 							AddThick2DLine(
 								Road.RoadPoints[PointIndex],
 								Road.RoadPoints[PointIndex + 1],
-								RoadZ,
+								Z,
 								RoadThickness,
 								MaxThickness,
 								RoadColor,
@@ -1350,6 +1455,7 @@ void UStreetMapComponent::BuildRoadMesh(EStreetMapRoadType RoadType, FColor High
 					}
 				}
 			}
+			HeightIndex += Road.RoadPoints.Num();
 		}
 
 		CachedLocalBounds = MeshBoundingBox;
@@ -2935,7 +3041,8 @@ void UStreetMapComponent::findConnectedRoad(
 void UStreetMapComponent::CheckRoadSmoothQuadList(
 	FStreetMapRoad& Road
 	, const bool Start
-	, const float Z
+	, const int HeightIndex
+	, const float BaseZ
 	, const float Thickness
 	, const float MaxThickness
 	, const FColor& StartColor
@@ -3004,6 +3111,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 			//}
 			//VAccumulation = Road.textureVStart.X;
 
+			float Z = BaseZ + GetStreetVertexHeight(HeightIndex + 1);
 			StartSmoothQuadList(fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],
 				Road.RoadPoints[0],
 				Road.RoadPoints[1],
@@ -3027,6 +3135,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 		}
 		else
 		{
+			float Z = BaseZ + GetStreetVertexHeight(HeightIndex + Road.RoadPoints.Num() - 2);
 			EndSmoothQuadList(Road.RoadPoints.Last(1),
 				Road.RoadPoints.Last(),
 				fromBack ? OtherRoad.RoadPoints.Last(1) : OtherRoad.RoadPoints[1],
@@ -3060,6 +3169,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 		//}
 		//VAccumulation = Road.textureVStart.X;
 
+		float Z = BaseZ + GetStreetVertexHeight(HeightIndex);
 		StartSmoothQuadList(Road.RoadPoints[0],
 			Road.RoadPoints[1],
 			Z,
@@ -3082,6 +3192,7 @@ void UStreetMapComponent::CheckRoadSmoothQuadList(
 	}
 	else
 	{
+		float Z = BaseZ + GetStreetVertexHeight(HeightIndex + Road.RoadPoints.Num() - 2);
 		EndSmoothQuadList(Road.RoadPoints.Last(1),
 			Road.RoadPoints.Last(),
 			Z,
@@ -3450,7 +3561,7 @@ void UStreetMapComponent::AddSmoothQuad(const FVector2D& Start
 	auto BottomLeftVertexIndex = (*Indices)[numIdx - 2];
 
 	VAccumulation += XRatio;
-	// Finish Last trinagle
+	// Finish Last triangle
 	Indices->Add(MidRightVertexIndex);
 
 	Indices->Add(BottomLeftVertexIndex);
@@ -4043,3 +4154,10 @@ bool UStreetMapComponent::GetOppositeRoad(const FStreetMapRoad& Road, FStreetMap
 	}
 }
 
+float UStreetMapComponent::GetStreetVertexHeight(int Index)
+{
+	if (Index < 0 || Index >= StreetVertexHeights.Num())
+		return 0;
+	else
+		return StreetVertexHeights[Index];
+}

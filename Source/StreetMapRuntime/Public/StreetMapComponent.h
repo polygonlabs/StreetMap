@@ -160,6 +160,9 @@ public:
 		void SetStreetMap(UStreetMap* NewStreetMap, bool bClearPreviousMeshIfAny = false, bool bRebuildMesh = false);
 
 
+	void BuildHeightMap();
+	void ClearHeightMap();
+
 	//** Begin Interface_CollisionDataProvider Interface */
 	virtual bool GetPhysicsTriMeshData(struct FTriMeshCollisionData* CollisionData, bool InUseAllTriData) override;
 	virtual bool ContainsPhysicsTriMeshData(bool InUseAllTriData) const override;
@@ -379,6 +382,7 @@ protected:
 	/** Generate a quad for a road segment */
 	void CheckRoadSmoothQuadList(FStreetMapRoad& road
 		, const bool Start
+		, const int HeightIndex
 		, const float Z
 		, const float Thickness
 		, const float MaxThickness
@@ -553,6 +557,11 @@ protected:
 		TArray< uint32 > HighwayIndices;
 	UPROPERTY()
 		TArray< uint32 > BuildingIndices;
+
+	UPROPERTY()
+	TArray<float> StreetVertexHeights;
+
+	float GetStreetVertexHeight(int Index);
 
 	/** Cached bounding box */
 	UPROPERTY()
